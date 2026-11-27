@@ -48,7 +48,7 @@ by a script from a pinned source with SHA-256 checks, not committed.
       release.
 - [x] Capture with cpal, resampled to 16 kHz mono with rubato, level readings for the meter; the microphone
       chosen by the priority list.
-- [ ] The silence gate: level, VAD (at least 250 ms of speech), the no-speech threshold, known phrases.
+- [ ] The silence gate: level, VAD (at least 250 ms of speech), known phrases.
 - [ ] Transcribe with NB-Whisper Large on Metal, loaded once, with beam search 5.
 - [ ] Insert by clipboard and ⌘V after the key is released; put the previous clipboard back unless the user
       chose to copy the text.

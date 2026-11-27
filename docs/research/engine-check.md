@@ -8,17 +8,17 @@ M1a, the «NB-Whisper and VAD» block of [plan.md](../plan.md). Checked on 2026-
 - **Conversion works.** transcribe.cpp's converter turns NbAiLab's NB-Whisper Large checkpoint into a GGUF. It writes
   the same text as whisper.cpp with NbAiLab's `ggml-model.bin` on all 20 clean FLEURS clips, greedy and beam 5
   alike. transcribe.cpp also loads `ggml-model.bin` itself, with the same text as the converted GGUF on 40 of 40
-  clips.
+  clips. First run downloads that file from NbAiLab (decided in review).
 - **The prompt works; carrying it does not yet.** The vocabulary prompt works as an initial prompt: 10 of 23 terms
   right against 4 without it. Carrying it into every 30-second window works only with a small prompt. transcribe.cpp
   0.5.1 puts the prompt plus up to 223 tokens of earlier text into each window, so a full ordskatt (213 tokens)
-  breaks a 97 s take (61 % word errors). A small upstream change fixes this; until then, Skald can cap the
-  earlier text, which works for prompts up to 111 tokens.
+  breaks a 97 s take (61 % word errors). A small change fixes this; Skald builds transcribe.cpp with it until
+  upstream releases it, so the meter keeps its 223 tokens (decided in review).
 - **Silero VAD separates speech from silence on every take.** It finds no speech in any of 10 takes without speech
   and at least 380 ms in every take with speech, so the 250 ms rule has room on both sides. NB-Whisper's no-speech
-  probability is 0.000 on every silent take, so design.md's third check cannot work with it. NB-Whisper marks
-  silence with the text «<|nocaptions|>» instead, and transcribe.cpp suppresses that text (as Hugging Face does);
-  NB-Whisper then invents a sentence. The VAD check is what keeps silence out.
+  probability is 0.000 on every silent take, so the no-speech check is dropped from design.md (decided in review,
+  D-22). NB-Whisper marks silence with the text «<|nocaptions|>» instead, and transcribe.cpp suppresses that text
+  (as Hugging Face does); NB-Whisper then invents a sentence. The VAD check is what keeps silence out.
 - **No beam search.** transcribe.cpp 0.5.1 decodes Whisper greedily. On these clips beam 5 (in whisper.cpp) brought
   no gain: the same text on 20 of 20 clean clips, and on 20 noisy clips 3 better, 1 worse, 1 mixed, word errors
   20.1 % greedy against 20.4 % with beam 5. The recommendation is greedy until M3 measures it on Skald's own
@@ -169,7 +169,8 @@ the other 10 are the same check repeated.
 | NbAiLab `ggml-model-q5_0.bin` | 1.08 GB | 4 | 5.4 % | 9 | 20.8 % |
 
 On these 40 clips no quantization changed the error rate by more than 0.7 points; Q8_0 is the closest to F16.
-Skald could download NbAiLab's own files from NbAiLab's repository, pinned and hashed, and would host nothing.
+Decided in review: first run downloads NbAiLab's `ggml-model.bin`, pinned and hashed, from NbAiLab's repository;
+Skald hosts no model file.
 
 ## 2. The vocabulary prompt
 
@@ -264,7 +265,8 @@ are the same except prompt and carry, 11/23. What the prompt changes, «none» �
 
 The fix belongs upstream, and either of two small changes in `whisper_run` would do: let `ALL_SEGMENTS` run
 without `condition_on_prev_tokens` (the code path that puts only the prompt at each window's head already exists;
-only the validation refuses it), or budget the earlier text as 223 minus the prompt, as whisper.cpp does.
+only the validation refuses it), or budget the earlier text as 223 minus the prompt, as whisper.cpp does. Decided
+in review: Skald builds transcribe.cpp with this change as its own patch until upstream releases it.
 
 **Counting the prompt's tokens.** NbAiLab's `tokenizer.json` has BPE dropout 0.2 set (left from training), so Hugging
 Face's tokenizers library counts the same text differently from one run to the next: 206, 211 and 214 tokens for
@@ -327,8 +329,9 @@ speech to at least 380 ms in the shortest real word. Two details for M1b:
 
 What this means for design.md's four checks: level and VAD work; **the third check, the model's doubt, does not work
 with NB-Whisper** (nor with Bokfink, which has no such probability; [bokfink-gguf.md](bokfink-gguf.md)); the fourth,
-known phrases, cannot catch what NB-Whisper invents here, because it is a different sentence each time. Whether to
-drop or change the third check is a question for Thomas below.
+known phrases, cannot catch what NB-Whisper invents here, because it is a different sentence each time. Decided in
+review: the third check is dropped (D-22). Level, VAD and known phrases carry the gate, and a model whose
+probability works may add the check back.
 
 ## 4. The Rust binding
 
@@ -356,8 +359,8 @@ generated from the same header, checked against the header's ABI hash, released 
 built here with Metal on the first try, ran every model in this report, and its VAD API was used as is. Two things
 Skald needs are missing from the safe API, both small, and both available through `-sys` today: `prompt_condition`
 in `WhisperRunOptions`, and the per-window decoding trace (no-speech probability, average log probability) on
-`Session`. Skald's engine crate uses the safe API, uses `-sys` for those two until the binding has them, and offers
-both upstream. Pin both crates exactly (`=0.5.1`), since they move with the C library.
+`Session`. Skald's engine crate uses the safe API, and `-sys` for those two until the binding has them; whether we
+offer them upstream is question 2 below. Pin both crates exactly (`=0.5.1`), since they move with the C library.
 
 The decision is D-22 in [decisions.md](../decisions.md).
 
@@ -435,9 +438,9 @@ Works:
 Does not work, or not yet:
 
 - Beam search: transcribe.cpp has none for Whisper.
-- Carrying a prompt over 111 tokens into every window: it breaks long takes (61 % word errors with 213 tokens). The
-  upstream fix is small.
-- NB-Whisper's no-speech probability: 0.000 on everything, so design.md's third check does nothing.
+- Carrying a prompt over 111 tokens into every window: it breaks long takes (61 % word errors with 213 tokens) in
+  stock transcribe.cpp 0.5.1. The fix is small, and Skald's build carries it as a patch.
+- NB-Whisper's no-speech probability: 0.000 on everything, so the check is dropped from the silence gate (D-22).
 - A sentence that straddles a 30-second boundary can be lost, with timestamps off or on.
 - `prompt_condition` and the per-window trace are not in the safe Rust API.
 
@@ -445,30 +448,48 @@ Does not work, or not yet:
 
 1. **`skald-engine` on `transcribe-cpp` and `transcribe-cpp-sys`, both `=0.5.1`, feature `metal`.** The safe API for
    loading, sessions and VAD; `-sys` for the Whisper run extension's `prompt_condition` and
-   `max_prev_context_tokens`, and for the window trace, until the safe crate has them. Upstream pull requests for
-   both.
-2. **The model file.** Either NbAiLab's `ggml-model.bin` (3.10 GB, `0f2f66f2…`, from NbAiLab's repository at
-   `8c6249fd…`, which transcribe.cpp loads directly), or a GGUF of our own, which someone must host. A question for
-   Thomas below.
-3. **Decoding:** language `no` for bokmål and `nn` for nynorsk; greedy (temperature 0 with the default fallback)
+   `max_prev_context_tokens`, and for the window trace, until the safe crate has them.
+2. **transcribe.cpp built with Skald's own patches until upstream releases them** (decided in review): the budget
+   for a prompt carried into every window (section 2), and Bokfink's language names
+   ([bokfink-gguf.md](bokfink-gguf.md)). `transcribe-cpp-sys` builds the C++ it vendors, so the patched build
+   either replaces that copy (a patched copy of the crate through `[patch.crates-io]`) or points the crate at a
+   patched transcribe.cpp installed elsewhere (`TRANSCRIBE_DIR`). The patches would also be offered upstream if
+   Thomas agrees (question 2 below).
+3. **The model file** (decided in review): NbAiLab's `ggml-model.bin` (3.10 GB, SHA-256 `0f2f66f2…`) from
+   NbAiLab's repository at revision `8c6249fd…`, which transcribe.cpp loads directly. It gives the reference text,
+   and Skald hosts no model file (design.md, First run).
+4. **Decoding:** language `no` for bokmål and `nn` for nynorsk; greedy (temperature 0 with the default fallback)
    unless Thomas keeps beam 5, which transcribe.cpp cannot do yet; timestamps off for takes up to 30 s. For longer
    takes, segment timestamps with the earlier text carried gave the fewest errors, but each mode lost one sentence
    at a window boundary (section 2); M3's long recordings should settle it.
-4. **The prompt:** Whisper's `initial_prompt`, never the generic `prompt`/`vocabulary` fields: those fit terms by
+5. **The prompt:** Whisper's `initial_prompt`, never the generic `prompt`/`vocabulary` fields: those fit terms by
    dropping from the end of the list, and design.md puts the most important names last. Carry it into every window
-   with `ALL_SEGMENTS`, `condition_on_prev_tokens` and `max_prev_context_tokens` = 223 − prompt tokens. Until
-   transcribe.cpp budgets this itself, either limit the meter to 111 tokens, or carry only prompts up to 111 tokens
-   and use `condition_on_prev_tokens` alone above that. Send the upstream fix (section 2).
-5. **Token counting for the meter:** `skald-core` takes a `CountTokens`; the engine implements it with
+   with `ALL_SEGMENTS` and `condition_on_prev_tokens`. With the budget patch in the build, the meter keeps its 223
+   tokens. Only while the patch is not in does the engine cap: `max_prev_context_tokens` = 223 − prompt tokens for
+   prompts up to 111 tokens, and `condition_on_prev_tokens` alone, without carrying, above that.
+6. **Token counting for the meter:** `skald-core` takes a `CountTokens`; the engine implements it with
    `Model::tokenize(" " + text)`, not with NbAiLab's `tokenizer.json` (dropout).
-6. **The silence gate:** level, then Silero VAD with Silero's defaults, the segments added up and compared with
-   250 ms, then the model only if there is enough speech. The no-speech check (design.md's third) as Thomas decides
-   below; known phrases still help with Bokfink's «Det er.» ([bokfink-gguf.md](bokfink-gguf.md)), not with what
-   NB-Whisper invents.
-7. **Per model, from the Bokfink report:** language codes per model, vocabulary as a sentence for Whisper and a term
+7. **The silence gate** (design.md, Silence): level, then Silero VAD with Silero's defaults, the segments added up
+   and compared with 250 ms, then the model only if there is enough speech, then known phrases. The model's
+   no-speech check is dropped (D-22). Known phrases help with Bokfink's «Det er.»
+   ([bokfink-gguf.md](bokfink-gguf.md)), not with what NB-Whisper invents.
+8. **Per model, from the Bokfink report:** language codes per model, vocabulary as a sentence for Whisper and a term
    list for Bokfink, control tags removed from Bokfink's text, no 30-second windows for Qwen3-ASR, and the
    language-name patch to transcribe.cpp. All of it goes through the same `transcribe_run`, so none of it changes
    the binding.
+
+## Decided in review
+
+The lead settled three of the questions this report raised; D-22 records them.
+
+- **The no-speech check is dropped** from design.md, Silence. It never fires with NB-Whisper (0.000 on every silent
+  take) or with Bokfink, which has no such probability. Level, VAD and known phrases carry the gate. A model whose
+  probability works may add the check back.
+- **Skald builds transcribe.cpp with its own patches until upstream releases them:** the budget for a carried
+  prompt (section 2) and Bokfink's language names. The ordskatt meter keeps its 223 tokens; the engine caps a
+  carried prompt at 111 tokens only while the budget patch is not in the build.
+- **First run downloads NbAiLab's `ggml-model.bin`** at revision `8c6249fd…`, SHA-256 `0f2f66f2…`: it gives the
+  reference text, the National Library hosts it, and Skald hosts no model file (design.md, First run).
 
 ## Questions for Thomas
 
@@ -476,15 +497,7 @@ Does not work, or not yet:
    greedy with beam 5 on Skald's recordings (the beam runs through whisper.cpp), with beam search added to
    transcribe.cpp upstream only if it helps. The alternatives are writing beam search into transcribe.cpp first, or a
    second engine (whisper.cpp) for Whisper models. Agree to change D-16 and the M1b item accordingly?
-2. **The no-speech check (D-11, design.md Silence, check 3).** It cannot work with NB-Whisper or Bokfink. Drop it, and
-   let level and VAD carry the gate? Or keep it in the design for Whisper models that have the probability?
-3. **The ordskatt meter's 223 tokens.** Until transcribe.cpp budgets a carried prompt, long takes are safe only with
-   prompts up to 111 tokens. Keep 223 and accept that prompts over 111 tokens are not carried until the upstream fix
-   lands, or show 111 as the limit for now?
-4. **Which file first run downloads.** NbAiLab's `ggml-model.bin` (3.10 GB, hosted by NbAiLab, the reference text),
-   or a smaller file: NbAiLab's `ggml-model-q5_0.bin` (1.08 GB, hosted by NbAiLab, differed on 13 of 40 clips) or our
-   Q8_0 GGUF (1.67 GB, differed on 1 of 40, needs hosting)?
-5. **Upstream.** May the two changes (transcribe.cpp: the carried prompt's budget; the Rust binding:
+2. **Upstream.** May the two changes (transcribe.cpp: the carried prompt's budget; the Rust binding:
    `prompt_condition` and the window trace) be offered as pull requests to handy-computer/transcribe.cpp from
    Thomas's account?
 

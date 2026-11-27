@@ -107,12 +107,20 @@ med Ctrl-C i terminalen.
 "
     };
 }
-#[cfg(not(any(target_os = "macos", target_os = "linux")))]
+#[cfg(windows)]
+macro_rules! how_it_runs {
+    () => {
+        "Uten kommando starter skald, med ᚨ i systemstatusfeltet: hold høyre Ctrl, snakk,
+slipp, og teksten settes inn der markøren er. Ctrl+Win+X starter og stopper et
+håndfritt opptak. Avslutt Skald fra menyen; med --terminal, med Ctrl-C.
+"
+    };
+}
+#[cfg(not(any(target_os = "macos", target_os = "linux", windows)))]
 macro_rules! how_it_runs {
     () => {
         "Uten kommando starter skald: hold høyre Ctrl, snakk, slipp, og teksten settes inn
-der markøren er. Ctrl+Win+X starter og stopper et håndfritt opptak. Avslutt Skald
-med Ctrl-C i terminalen.
+der markøren er. Avslutt Skald med Ctrl-C i terminalen.
 "
     };
 }

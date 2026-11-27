@@ -23,6 +23,15 @@ pub struct SettingsModel {
     pub tokens: Option<TokenCounter>,
     /// Skald's version, shown in Om.
     pub version: String,
+    /// What the loaded model computes on, shown in Om; `None` until a model has loaded.
+    pub compute: Option<Compute>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Compute {
+    Metal,
+    Vulkan,
+    Cpu,
 }
 
 /// Microphones by the names the system gives them, the form the configuration keeps them in.

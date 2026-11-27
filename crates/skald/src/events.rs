@@ -39,8 +39,8 @@ pub(crate) enum Event {
     Microphones(MicrophoneList),
     /// The history and the correction counts, read at start and again after each take or correction.
     State(State),
-    /// The speech model has loaded, so it can count the ordskatt's tokens.
-    ModelLoaded,
+    /// The speech model has loaded, on this, so it can count the ordskatt's tokens.
+    ModelLoaded(skald_engine::Compute),
     /// The settings in use, read at start and again whenever they change.
     Settings(Arc<Config>),
     /// The loop has ended and the model is dropped; the process may exit.

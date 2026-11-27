@@ -203,6 +203,8 @@ fn first_run(options: &Options, paths: &Paths) -> Result<Option<FirstRun>, Exit>
     Ok(needed.then(|| {
         let mut first_run = FirstRunModel::new(card, status);
         first_run.hold_key = config.hold_key.clone();
+        // Asking loads the backends, which the model would load anyway; only Windows decides at run time.
+        first_run.no_vulkan = cfg!(windows) && !skald_engine::gpu_available();
         FirstRun {
             model: first_run,
             model_id: model.id,
@@ -466,12 +468,13 @@ impl Running<'_> {
     fn on_worker_event(&self, event: WorkerEvent) -> Result<(), Exit> {
         match event {
             WorkerEvent::Loaded { device, took } => {
+                let compute = skald_engine::Compute::of_device(&device);
                 self.out.say(Line::ModelLoaded { device, took });
                 if cfg!(windows) && !skald_engine::gpu_available() {
                     self.out.say(Line::NoVulkan);
                 }
                 self.out.say(Line::Ready(self.keys.key));
-                self.out.show(Event::ModelLoaded);
+                self.out.show(Event::ModelLoaded(compute));
             }
             WorkerEvent::LoadFailed(reason) => return Err(Exit::ModelLoad(reason)),
             WorkerEvent::Done(report) => {
@@ -645,9 +648,12 @@ mod tests {
     fn the_screen_hears_the_loop_and_can_ask_it_to_stop() {
         let (out, inbox, stop, _started) = linked();
         assert!(out.has_screen());
-        out.show(Event::ModelLoaded);
+        out.show(Event::ModelLoaded(skald_engine::Compute::Cpu));
         out.show(Event::Level(-20.0));
-        assert_eq!(inbox.try_recv(), Ok(Event::ModelLoaded));
+        assert_eq!(
+            inbox.try_recv(),
+            Ok(Event::ModelLoaded(skald_engine::Compute::Cpu))
+        );
         assert_eq!(inbox.try_recv(), Ok(Event::Level(-20.0)));
         assert!(!out.stop_asked());
         stop.store(true, Ordering::Release);
@@ -655,7 +661,7 @@ mod tests {
 
         // The screen gone, the loop still runs.
         drop(inbox);
-        out.show(Event::ModelLoaded);
+        out.show(Event::ModelLoaded(skald_engine::Compute::Cpu));
     }
 
     #[test]
@@ -713,7 +719,7 @@ mod tests {
             link: None,
         };
         assert!(!out.has_screen());
-        out.show(Event::ModelLoaded);
+        out.show(Event::ModelLoaded(skald_engine::Compute::Cpu));
         assert!(!out.stop_asked());
     }
 }

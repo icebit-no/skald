@@ -304,7 +304,7 @@ impl FirstRunView {
         }
         card = card.child(row);
 
-        vec![
+        let mut elements = vec![
             controls::heading("Last ned talemodellen", p).into_any_element(),
             controls::quiet(
                 "Skald gjenkjenner talen din her på maskinen. Modellen lastes ned én gang, og \
@@ -321,7 +321,11 @@ impl FirstRunView {
                 p,
             )
             .into_any_element(),
-        ]
+        ];
+        if self.model.no_vulkan {
+            elements.push(controls::warning(crate::NO_VULKAN, p).into_any_element());
+        }
+        elements
     }
 
     fn permissions_step(&self, p: &Palette, cx: &Context<Self>) -> Vec<AnyElement> {

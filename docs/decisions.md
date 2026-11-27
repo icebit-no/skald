@@ -7,7 +7,8 @@ that undoes one adds an entry of its own, and the earlier entry gets one line na
 
 ## D-49 — Skald runs its screen on Windows; the overlay lets clicks through as a layered window
 
-2026-11-27, Claude; the administrator window's words settled by the lead.
+2026-11-27, Claude; the administrator window's words, the windowed program and where the backend is shown
+settled by the lead.
 
 `skald` on Windows runs as on macOS and Linux (D-44): GPUI on the main thread with the icon in the
 notification area (D-48), the overlay, the first-run window while the model is missing and the settings
@@ -25,10 +26,17 @@ When the window in front runs as administrator, the overlay says «Administrator
 tekster» (D-41), and the text is in «Siste tekster». The pill's fit test allows 0.6 em a letter, a third
 above what Alegreya Sans and SF Pro measure, so Segoe UI in Kjedelig has room.
 
-`skald.exe` stays a console program, so a console window opens beside the app when it starts from the Start
-menu or at login; making it a windowed program whose command line writes to the console it was started from
-belongs with M4's packaging. The line for a model on the CPU (D-43) is printed in the terminal; the app shows
-it nowhere yet.
+Decided by the lead: `skald.exe` is a windowed program, so no console opens beside the app when it starts
+from the Start menu or at login, and it stays one binary (D-25). A command, `--terminal`, `--help` and a
+wrong argument attach to the console of the program that ran them, so `skald last` prints in PowerShell; a
+pipe an agent reads is used as it is. PowerShell and cmd.exe do not wait for a windowed program unless its
+output is piped, so in an interactive console the prompt can come back before the answer.
+
+Decided by the lead: Om shows under «Motoren» what the loaded model computes on, Metal, Vulkan or the CPU, and
+the first-run window's «Talemodell» step says «Fant ingen skjermkortdriver med Vulkan, …» (D-43) when the
+machine has no GPU with a Vulkan driver; it asks the engine as the window opens, which loads the backends the
+model would load anyway. The overlay shows no message for it. Changed: [design.md](design.md#overlay)
+(Overlay, First run, Settings).
 
 ## D-48 — Skald's item on Windows is an icon in the notification area with the rune drawn at its size
 

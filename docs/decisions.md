@@ -5,6 +5,20 @@ decision, and that pull request also edits the page where the rule lives ([desig
 [plan.md](plan.md)). Those pages say what holds; this one says when and why it came to hold. A later decision
 that undoes one adds an entry of its own, and the earlier entry gets one line naming it.
 
+## D-53 — Start at login on Windows is a value in the user's Run key naming the running exe
+
+2026-11-28, Claude.
+
+On Windows «Start Skald ved innlogging» keeps a value named Skald under
+`HKCU\Software\Microsoft\Windows\CurrentVersion\Run`, holding the running exe's path in quotes. Windows starts
+what it names at login and Task Manager lists it among the start-up apps, where the user can turn it off without
+Skald. It is applied at start and whenever the setting changes, as on macOS and Linux: written when the setting
+is on and the value is missing or names another exe, removed when the setting is off. So a zip unpacked
+elsewhere, or a build that has moved, is put right at the next start, as Linux's autostart entry is (D-47).
+Scoop starts Skald from its `current` folder and winget from one folder per package (D-51), so an update keeps
+the path. The user's own key needs no administrator rights; a scheduled task or a shortcut in the Startup folder
+would do the same with more to keep. It replaces D-45's stand-in.
+
 ## D-50 — On Linux transcribe.cpp's Vulkan backend is linked in
 
 2026-11-27, Claude.
@@ -144,6 +158,8 @@ seconds before Windows ends the process. The command the terminal prints for a m
 with the path in double quotes on Windows, which PowerShell and cmd.exe both read.
 
 Windows runs its screen from D-49.
+
+Start at login on Windows: D-53.
 
 ## D-44 — On Linux the overlay is a layer-shell surface, and the app's screen runs there
 

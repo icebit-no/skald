@@ -2,7 +2,6 @@
 //! for the take. The chord is kept from the app in front, so it reaches Skald alone.
 
 use std::collections::HashSet;
-use std::fmt;
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender, TryRecvError};
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -10,10 +9,17 @@ use std::time::{Duration, Instant};
 
 use handy_keys::{KeyEvent, KeyboardListener};
 
-use crate::hold::{HoldEvent, HoldMachine};
+use crate::hold::HoldMachine;
 use crate::hotkey::{HANDS_FREE, HoldKey, KeyChange, classify};
+use crate::listening::{ListenerEvent, Unavailable};
+#[cfg(target_os = "macos")]
 use crate::macos::access::{AccessWatch, accessibility_granted};
+#[cfg(target_os = "macos")]
 use crate::macos::keyboard::sample;
+#[cfg(windows)]
+use crate::windows::access::{AccessWatch, accessibility_granted};
+#[cfg(windows)]
+use crate::windows::keyboard::sample;
 
 /// How often the thread wakes when no key arrives: the longest a revoked permission keeps the event tap in
 /// place, and the longest the thread outlives its listener.
@@ -25,33 +31,6 @@ const RECHECK_AFTER: Duration = Duration::from_millis(500);
 
 /// How often starting is tried again while the listener cannot run.
 const RETRY_EVERY: Duration = Duration::from_secs(5);
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum ListenerEvent {
-    /// The hold key is listened for.
-    Ready,
-    /// The hold key is not listened for, and why. The listener keeps trying and reports
-    /// [`ListenerEvent::Ready`] once it can listen again.
-    Unavailable(Unavailable),
-    Hold(HoldEvent),
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Unavailable {
-    /// macOS Accessibility is not granted, or was revoked.
-    NoAccessibility,
-    /// The key listener could not start or stopped, for the reason given.
-    ListenerFailed(String),
-}
-
-impl fmt::Display for Unavailable {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Unavailable::NoAccessibility => f.write_str("Accessibility is not granted"),
-            Unavailable::ListenerFailed(reason) => write!(f, "the key listener failed: {reason}"),
-        }
-    }
-}
 
 /// What the app tells the listener's thread.
 #[derive(Debug)]

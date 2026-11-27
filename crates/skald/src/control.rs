@@ -17,6 +17,7 @@ use skald_core::silence_gate::Decision;
 use skald_core::state::State;
 use skald_core::vocabulary::Prompt;
 use skald_engine::{Decoding, Engine, PROMPT_TOKENS, Take, TakeOptions};
+use skald_input::PressRefused;
 use skald_models::{MODELS, Status};
 
 use crate::dictation::microphone_order;
@@ -198,6 +199,28 @@ impl Skald for Control {
             .transcribe(samples, self.settings.current())
             .map(transcribed)
             .map_err(failed)
+    }
+
+    fn press_hold_key(&self, down: bool) -> Result<(), Error> {
+        skald_input::press_hold_key(down).map_err(refused)
+    }
+
+    fn toggle_hands_free(&self) -> Result<(), Error> {
+        skald_input::toggle_hands_free().map_err(refused)
+    }
+}
+
+/// Why a key binding's press reached no take, for the command line.
+fn refused(refused: PressRefused) -> Error {
+    match refused {
+        PressRefused::KeyHeard => Error::new(
+            ErrorCode::Invalid,
+            "Her lytter Skald selv på tastaturet, så «skald start», «skald stop» og «skald toggle» \
+             trengs ikke.",
+        ),
+        PressRefused::NotListening => {
+            Error::new(ErrorCode::Failed, "Skald lytter ikke etter tasten nå.")
+        }
     }
 }
 
@@ -512,6 +535,27 @@ mod tests {
             microphones_in(&connected, &config).active.as_deref(),
             Some("MacBook Pro-mikrofon")
         );
+    }
+
+    #[test]
+    fn the_hold_key_is_pressed_only_where_a_key_binding_holds_it() {
+        let run = running("control-hold-key", Vec::new());
+        for refused in [
+            run.control.press_hold_key(true).unwrap_err(),
+            run.control.toggle_hands_free().unwrap_err(),
+        ] {
+            if cfg!(target_os = "linux") {
+                // No listener runs in the test, so the press reaches nothing.
+                assert_eq!(refused.code, ErrorCode::Failed);
+            } else {
+                assert_eq!(refused.code, ErrorCode::Invalid);
+                assert!(
+                    refused.message.contains("«skald start»"),
+                    "{}",
+                    refused.message
+                );
+            }
+        }
     }
 
     #[test]

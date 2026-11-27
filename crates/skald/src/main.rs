@@ -2,16 +2,19 @@
 //! `--terminal` dictation in the terminal alone; with a command it is the command line an agent uses
 //! (D-25), which talks to the running Skald or works on the files; `skald bench` runs a test set.
 
-// Off macOS only the parts without a key listener or a clipboard build, so most of the binary is unused.
+// Off macOS much of the binary is unused: Linux runs the loop without the screen, and elsewhere only the
+// parts without a key listener or a clipboard build.
 #![cfg_attr(not(target_os = "macos"), allow(dead_code))]
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 mod app;
 mod cli;
 mod control;
 mod dictation;
 mod events;
 mod files;
+#[cfg(target_os = "linux")]
+mod linux;
 #[cfg(target_os = "macos")]
 mod login;
 mod models;
@@ -19,9 +22,9 @@ mod models;
 mod permissions;
 mod pipeline;
 mod say;
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 mod screen;
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 mod shell;
 mod signals;
 mod sounds;
@@ -31,6 +34,8 @@ mod wav;
 use std::process::ExitCode;
 
 use cli::Invocation;
+#[cfg(target_os = "linux")]
+use linux::{login, permissions};
 use say::Exit;
 
 fn main() -> ExitCode {
@@ -85,12 +90,12 @@ fn bench(args: Vec<std::ffi::OsString>) -> ExitCode {
     skald_bench::run(args)
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 fn dictate(options: cli::Options) -> Result<(), Exit> {
     app::run(options)
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(not(any(target_os = "macos", target_os = "linux")))]
 fn dictate(_options: cli::Options) -> Result<(), Exit> {
     Err(Exit::UnsupportedSystem)
 }

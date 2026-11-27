@@ -18,7 +18,7 @@ use crate::skill::{self, Status};
 
 /// Every command with its arguments and what it does, for the help and for a command given the wrong
 /// arguments.
-pub(crate) const COMMANDS: [(&str, &str); 22] = [
+pub(crate) const COMMANDS: [(&str, &str); 25] = [
     ("last", "Den siste teksten"),
     ("history", "De fem siste tekstene"),
     ("fix list", "Rettingene, og hvor ofte hver er brukt"),
@@ -54,6 +54,15 @@ pub(crate) const COMMANDS: [(&str, &str); 22] = [
     (
         "transcribe <fil.wav>",
         "Skriv ut teksten i en lydfil, med rettingene brukt",
+    ),
+    (
+        "start",
+        "Trykk ned tasten for å snakke, fra en hurtigtast på Linux",
+    ),
+    ("stop", "Slipp tasten for å snakke"),
+    (
+        "toggle",
+        "Start eller stopp et håndfritt opptak, fra en hurtigtast på Linux",
     ),
     (
         "bench <mappe> [valg]",
@@ -377,6 +386,9 @@ fn parse(args: &[OsString]) -> Result<Invocation, Error> {
         ["transcribe", file] => Request::Transcribe {
             path: PathBuf::from(file),
         },
+        ["start"] => Request::Start,
+        ["stop"] => Request::Stop,
+        ["toggle"] => Request::Toggle,
         _ => return Err(misuse(&words)),
     };
     Ok(Invocation::Command(request))
@@ -553,6 +565,9 @@ fn render(output: &Output, request: &Request, running: bool) -> String {
                 )),
             }
         }
+        Output::Pressed => line("Tasten er nede til «skald stop»."),
+        Output::Released => line("Tasten er sluppet."),
+        Output::Toggled => line("Håndfritt opptak startet eller stoppet."),
     }
     if changed && !running {
         text.push_str("Skald kjører ikke. Endringen gjelder når Skald starter.\n");

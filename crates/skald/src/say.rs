@@ -166,7 +166,15 @@ impl fmt::Display for Line {
             Line::HoldKeyChanged(key) => write!(f, "Hold {} for å snakke.", key_name(*key)),
             Line::MicrophoneChanged(Some(name)) => write!(f, "{name} · koblet til, brukes nå"),
             Line::Recording(name) => write!(f, "Opptak · {name}"),
-            Line::RecordingHandsFree(name) => write!(f, "Håndfritt opptak · {name} · ⌃⌘X stopper"),
+            Line::RecordingHandsFree(name) => write!(
+                f,
+                "Håndfritt opptak · {name} · {} stopper",
+                if cfg!(target_os = "linux") {
+                    "Ctrl+Super+X"
+                } else {
+                    "⌃⌘X"
+                }
+            ),
             Line::Carving => f.write_str("rister …"),
             Line::Cancelled => f.write_str("Avbrutt."),
             Line::Capped => write!(
@@ -332,7 +340,7 @@ pub(crate) enum Exit {
     KeysStopped,
     /// The dictation's thread ended without saying why.
     Stopped,
-    #[cfg(not(target_os = "macos"))]
+    #[cfg(not(any(target_os = "macos", target_os = "linux")))]
     UnsupportedSystem,
 }
 
@@ -426,8 +434,8 @@ impl fmt::Display for Exit {
             Exit::CannotStart(reason) => write!(f, "Kunne ikke starte: {reason}"),
             Exit::KeysStopped => f.write_str("Tastelytteren stoppet uventet."),
             Exit::Stopped => f.write_str("Dikteringen stoppet uventet."),
-            #[cfg(not(target_os = "macos"))]
-            Exit::UnsupportedSystem => f.write_str("Skald kjører foreløpig bare på macOS."),
+            #[cfg(not(any(target_os = "macos", target_os = "linux")))]
+            Exit::UnsupportedSystem => f.write_str("Skald kjører foreløpig bare på macOS og Linux."),
         }
     }
 }
@@ -489,8 +497,10 @@ fn insert_reason(error: &InsertError) -> &'static str {
     match error {
         InsertError::NoAccessibility => "Skald mangler Tilgjengelighet",
         InsertError::KeysHeld => "en tast ble holdt nede",
+        InsertError::ElevatedWindow => "vinduet foran kjører som administrator",
         InsertError::Clipboard => "utklippstavlen tok ikke imot teksten",
-        InsertError::Paste => "⌘V kunne ikke sendes",
+        InsertError::Paste if cfg!(target_os = "macos") => "⌘V kunne ikke sendes",
+        InsertError::Paste => "Ctrl+V kunne ikke sendes",
     }
 }
 

@@ -32,11 +32,11 @@ by a script from a pinned source with SHA-256 checks, not committed.
 
 **Bokfink** (`docs/research/bokfink-gguf.md`):
 
-- [ ] Convert NB-ASR Bokfink02 (Qwen3-ASR 0.6B with NbAiLab's own tokenizer) to GGUF. Check that its text
+- [x] Convert NB-ASR Bokfink02 (Qwen3-ASR 0.6B with NbAiLab's own tokenizer) to GGUF. Check that its text
       matches NbAiLab's `inference.py` on 20 clips. Find out whether transcribe.cpp takes the custom tokenizer,
       the language prefixes (`language Norwegian<asr_text>` and `language Norwegian Nynorsk<asr_text>`) and
       keyword context, and what is missing if not.
-- [ ] Measure the time to transcribe 9 s of speech with Bokfink on Apple Silicon.
+- [x] Measure the time to transcribe 9 s of speech with Bokfink on Apple Silicon.
 
 ### M1b The core
 

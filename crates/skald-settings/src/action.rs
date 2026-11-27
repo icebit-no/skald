@@ -12,7 +12,8 @@ pub enum Action {
     DownloadModel(String),
     StopDownload(String),
     /// A word corrected in a history entry. The entry is the one that ended at `unix_ms` with the text
-    /// `before`, so a take that arrives meanwhile is never the one changed.
+    /// `before`, so a take that arrives meanwhile is never the one changed; `History::replace` takes the
+    /// three as they are.
     CorrectHistory {
         unix_ms: i64,
         before: String,

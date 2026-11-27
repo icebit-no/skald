@@ -131,6 +131,11 @@ tooltip.
 | Historikk | The five latest texts, «Kopier», correct a word |
 | Om | Version, models and engine with their licences, source link, «Ingenting sendes fra maskinen» |
 
+The settings are named «Tasten du holder inne for å snakke» (Høyre ⌘ or Høyre Control on macOS, Høyre Ctrl
+elsewhere), «Skriftspråk», «Mikrofoner», «Talemodell», «Overleggets utseende», «Kopier også teksten til
+utklippstavlen», «Start Skald ved innlogging» and «Lyd når opptaket starter og slutter»; Ordskatt holds
+«Setningen», «Ord og navn» and «Rettinger». The window follows the system's light or dark mode, in its UI font.
+
 ## First run
 
 1. Download the model, NbAiLab's own `ggml-model.bin` at a pinned revision, with size, progress and SHA-256.

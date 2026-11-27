@@ -16,7 +16,7 @@ use std::time::{Duration, SystemTime, UNIX_EPOCH};
 
 use gpui_kit::{App, QuitMode};
 use skald_core::Config;
-use skald_core::history::{Entry, History};
+use skald_core::history::Entry;
 use skald_core::state::State;
 use skald_models::Status;
 use skald_settings::{
@@ -94,16 +94,15 @@ impl Example {
                 before,
                 after,
             } => {
-                let mut model = self.model.borrow_mut();
-                let mut history = History::default();
-                for entry in model.state.history.entries().iter().rev() {
-                    let mut entry = entry.clone();
-                    if entry.unix_ms == unix_ms && entry.text == before {
-                        entry.text = after.clone();
-                    }
-                    history.push(entry);
+                let replaced = self
+                    .model
+                    .borrow_mut()
+                    .state
+                    .history
+                    .replace(unix_ms, &before, &after);
+                if !replaced {
+                    println!("  the entry has changed since");
                 }
-                model.state.history = history;
             }
         }
         self.show(cx);

@@ -62,7 +62,7 @@ Design: [Overlay](design.md#overlay), [Menu](design.md#menu), [Settings](design.
 - [ ] `skald` command line over a local socket only the user can open; `--json` on every command; writes the
       configuration file directly when the app is not running.
 - [ ] Claude skill in `packaging/skills/skald/`, installed with `skald skill install`; `skald mcp`.
-- [ ] App icon in granite: 1024, 512, 256, 128 and 64 px from the chosen drawing, own drawings for 32 and
+- [x] App icon in granite: 1024, 512, 256, 128 and 64 px from the chosen drawing, own drawings for 32 and
       16 px, and the one-colour ᚨ for the menu bar, with the source they are rendered from.
 - [ ] `.app` bundle signed with Developer ID and notarized.
 

@@ -5648,6 +5648,7 @@ dependencies = [
  "objc2-foundation 0.3.2",
  "raw-window-handle",
  "skald-core",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

@@ -37,5 +37,5 @@ pub mod vocabulary;
 mod words;
 
 pub use action::{Action, Change};
-pub use model::{Microphones, ModelState, SettingsModel, TokenCounter};
+pub use model::{Compute, Microphones, ModelState, SettingsModel, TokenCounter};
 pub use ui::{SettingsWindow, Tab};

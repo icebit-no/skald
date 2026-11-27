@@ -26,6 +26,7 @@ pub(crate) enum Pill {
     Inserted(String),
     HeardNothing(String),
     NotInserted,
+    AdministratorWindow,
     TranscriptionFailed,
     NoMicrophone,
     MicrophoneChanged(String),
@@ -48,6 +49,8 @@ pub(crate) struct Screen {
     state: State,
     microphones: MicrophoneList,
     model_loaded: bool,
+    /// What the loaded model computes on, which Om shows.
+    compute: Option<skald_engine::Compute>,
     /// The take the overlay shows: the latest that started, until it ends.
     on_screen: Option<u64>,
     recording: bool,
@@ -62,6 +65,7 @@ impl Default for Screen {
             state: State::default(),
             microphones: MicrophoneList::default(),
             model_loaded: false,
+            compute: None,
             on_screen: None,
             recording: false,
             carving: 0,
@@ -111,6 +115,7 @@ impl Screen {
                         Ending::Inserted(text) => Pill::Inserted(text),
                         Ending::HeardNothing { microphone } => Pill::HeardNothing(microphone),
                         Ending::NotInserted(_) => Pill::NotInserted,
+                        Ending::AdministratorWindow(_) => Pill::AdministratorWindow,
                         Ending::Failed(_) => Pill::TranscriptionFailed,
                     });
                 }
@@ -124,8 +129,9 @@ impl Screen {
                 changed.settings = state != self.state;
                 self.state = state;
             }
-            Event::ModelLoaded => {
+            Event::ModelLoaded(compute) => {
                 self.model_loaded = true;
+                self.compute = Some(compute);
                 changed.settings = true;
             }
             Event::Settings(config) => return self.set_config(config),
@@ -211,6 +217,11 @@ impl Screen {
             models,
             tokens: tokens.filter(|_| self.model_loaded),
             version: env!("CARGO_PKG_VERSION").to_owned(),
+            compute: self.compute.map(|compute| match compute {
+                skald_engine::Compute::Metal => skald_settings::Compute::Metal,
+                skald_engine::Compute::Vulkan => skald_settings::Compute::Vulkan,
+                skald_engine::Compute::Cpu => skald_settings::Compute::Cpu,
+            }),
         }
     }
 }
@@ -233,16 +244,16 @@ pub(crate) fn change_for(action: &TrayAction) -> Option<Change> {
 /// not change it.
 pub(crate) fn test_dictation(event: &Event) -> Option<TestDictation> {
     Some(match event {
-        Event::ModelLoaded | Event::Cancelled { .. } => TestDictation::Listening,
+        Event::ModelLoaded(_) | Event::Cancelled { .. } => TestDictation::Listening,
         Event::Recording { .. } => TestDictation::Recording,
         Event::Carving { .. } => TestDictation::Transcribing,
         Event::NoMicrophone => TestDictation::Failed {
             reason: Line::NoMicrophone.to_string(),
         },
         Event::Ended { ending, .. } => match ending {
-            Ending::Inserted(text) | Ending::NotInserted(text) => {
-                TestDictation::Heard { text: text.clone() }
-            }
+            Ending::Inserted(text)
+            | Ending::NotInserted(text)
+            | Ending::AdministratorWindow(text) => TestDictation::Heard { text: text.clone() },
             Ending::HeardNothing { microphone } => TestDictation::HeardNothing {
                 microphone: microphone.clone(),
             },
@@ -546,7 +557,11 @@ mod tests {
 
         assert!(!screen.apply(Event::Level(-20.0)).settings);
         assert!(!screen.apply(Event::State(State::default())).settings);
-        assert!(screen.apply(Event::ModelLoaded).settings);
+        assert!(
+            screen
+                .apply(Event::ModelLoaded(skald_engine::Compute::Metal))
+                .settings
+        );
     }
 
     #[test]
@@ -556,7 +571,7 @@ mod tests {
         let model = screen.settings(BTreeMap::new(), counter());
         assert!(model.tokens.is_none());
         assert_eq!(model.version, env!("CARGO_PKG_VERSION"));
-        screen.apply(Event::ModelLoaded);
+        screen.apply(Event::ModelLoaded(skald_engine::Compute::Metal));
         screen.apply(Event::Microphones(MicrophoneList {
             connected: vec!["Yeti".into()],
             in_use: Some("Yeti".into()),
@@ -593,7 +608,7 @@ mod tests {
     #[test]
     fn the_first_run_s_test_follows_the_take_from_the_key_to_its_text() {
         assert_eq!(
-            test_dictation(&Event::ModelLoaded),
+            test_dictation(&Event::ModelLoaded(skald_engine::Compute::Metal)),
             Some(TestDictation::Listening)
         );
         assert_eq!(

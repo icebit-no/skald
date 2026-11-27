@@ -61,6 +61,7 @@ enum State {
         microphone: String,
     },
     NotInserted,
+    AdministratorWindow,
     TranscriptionFailed,
     NoMicrophone,
 }
@@ -201,6 +202,10 @@ impl Pill {
         self.show(State::NotInserted, now);
     }
 
+    pub fn administrator_window(&mut self, now: Duration) {
+        self.show(State::AdministratorWindow, now);
+    }
+
     pub fn transcription_failed(&mut self, now: Duration) {
         self.show(State::TranscriptionFailed, now);
     }
@@ -282,6 +287,7 @@ impl Pill {
                 State::Inserted { .. } => message_ends(INSERTED_FOR),
                 State::HeardNothing { .. }
                 | State::NotInserted
+                | State::AdministratorWindow
                 | State::TranscriptionFailed
                 | State::NoMicrophone => message_ends(NOTICE_FOR),
                 State::MicrophoneChanged { .. } => message_ends(MICROPHONE_CHANGED_FOR),
@@ -392,6 +398,7 @@ pub(crate) enum Look<'a> {
         microphone: &'a str,
     },
     NotInserted,
+    AdministratorWindow,
     TranscriptionFailed,
     NoMicrophone,
 }
@@ -456,6 +463,7 @@ fn look(state: &State, now: Duration, still: bool) -> Look<'_> {
         State::HeardNothing { microphone } => Look::HeardNothing { microphone },
         State::MicrophoneChanged { microphone } => Look::MicrophoneChanged { microphone },
         State::NotInserted => Look::NotInserted,
+        State::AdministratorWindow => Look::AdministratorWindow,
         State::TranscriptionFailed => Look::TranscriptionFailed,
         State::NoMicrophone => Look::NoMicrophone,
     }
@@ -692,6 +700,7 @@ mod tests {
     #[test]
     fn a_text_not_inserted_or_a_failed_transcription_shows_two_seconds_and_leaves() {
         ends_with_a_message(Pill::not_inserted, &Look::NotInserted);
+        ends_with_a_message(Pill::administrator_window, &Look::AdministratorWindow);
         ends_with_a_message(Pill::transcription_failed, &Look::TranscriptionFailed);
     }
 

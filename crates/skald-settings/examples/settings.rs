@@ -20,7 +20,7 @@ use skald_core::history::Entry;
 use skald_core::state::State;
 use skald_models::Status;
 use skald_settings::{
-    Action, Microphones, ModelState, SettingsModel, SettingsWindow, Tab, TokenCounter,
+    Action, Compute, Microphones, ModelState, SettingsModel, SettingsWindow, Tab, TokenCounter,
 };
 
 const WHISPER: &str = "nb-whisper-large";
@@ -235,5 +235,6 @@ fn sample() -> SettingsModel {
                 .sum()
         })),
         version: env!("CARGO_PKG_VERSION").to_owned(),
+        compute: Some(Compute::Metal),
     }
 }

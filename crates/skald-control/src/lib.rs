@@ -17,6 +17,8 @@ mod cli;
 mod commands;
 pub mod mcp;
 mod offline;
+// Its line encoding serves the socket, which Windows does not have yet.
+#[cfg_attr(not(unix), allow(dead_code))]
 pub mod protocol;
 mod skald;
 mod skill;

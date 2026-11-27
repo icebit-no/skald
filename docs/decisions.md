@@ -5,6 +5,26 @@ decision, and that pull request also edits the page where the rule lives ([desig
 [plan.md](plan.md)). Those pages say what holds; this one says when and why it came to hold. A later decision
 that undoes one adds an entry of its own, and the earlier entry gets one line naming it.
 
+## D-46 — The tray on Linux is a StatusNotifierItem through ksni
+
+2026-11-27, Claude.
+
+Waybar and the other panels on Linux show a program's item through StatusNotifierItem, and its menu through
+dbusmenu, both over D-Bus. Skald speaks them through ksni 0.3.8 (Unlicense), on the zbus already in the tree
+through GPUI and with its executor, rather than an implementation of its own: the two specifications, the
+watcher that comes and goes with the panel, and the panels' differences are the hard part, and ksni has them.
+It adds five crates: ksni, arc-swap, crossbeam-queue, task-local and a second pastey. The rune is the menu
+bar icon's PNG drawn in bone, since a StatusNotifierItem has no template image the panel tints; the dot sits
+where it does on macOS. The menu is skald-tray's, entry for entry: ticks where an entry chooses one of many,
+the pinned microphone marked «festet» in words, and no shortcuts or tooltips, which dbusmenu panels do not
+show. A click on the rune opens the menu, as on macOS.
+
+ksni answers on a thread of its own, so the handler the app gives `Tray::new` is called from there on Linux,
+and the handler must be `Send` and `Sync` on every system; the app's sends each action to its inbox, which
+already was. Evidence: on a headless sway with Waybar, the item registers with Waybar's watcher, the bar
+shows the rune with the red dot while a take records, the menu read over D-Bus holds every entry, and
+«Avslutt Skald» clicked over D-Bus quits the app. Changed: [design.md](design.md#menu), [plan.md](plan.md) M5.
+
 ## D-44 — On Linux the overlay is a layer-shell surface, and the app's screen runs there
 
 2026-11-27, Claude; the layer-shell surface before the tray agreed with the lead.
@@ -25,6 +45,27 @@ to the hint rather than run under it.
 
 Evidence: the overlay on a headless sway with software Vulkan, photographed recording, hands-free, after a
 take that heard nothing, and in Kjedelig. Changed: [design.md](design.md#overlay), [plan.md](plan.md) M5.
+
+## D-43 — transcribe.cpp's backends are modules on Windows, so a machine without Vulkan starts on the CPU
+
+2026-11-27, Claude.
+
+On Windows skald-engine builds transcribe.cpp with its Vulkan backend, for NVIDIA, AMD and Intel GPUs alike,
+and with every backend as a module loaded at run time (transcribe.cpp's `dynamic-backends`): the Vulkan
+module beside one CPU module per instruction-set tier, chosen for the processor when Skald starts. Linked in,
+the Vulkan backend would keep Windows from starting Skald at all on a machine without the Vulkan loader,
+which a GPU driver installs; as a module it fails to load quietly there and the CPU carries on, the
+degradation transcribe.cpp designs for. The engine loads the modules once, before the first model, and says
+whether a GPU is among the devices; on macOS Metal is built in and the loading does nothing. When the model
+runs on the CPU for want of Vulkan, Skald says so. CUDA is not built: Vulkan reaches NVIDIA cards too, and
+CUDA's toolkit and runtime would add gigabytes to the build and to the download.
+
+The price is that Skald on Windows is `skald.exe` with transcribe.cpp's and ggml's DLLs beside it, which the
+zip for Scoop and winget must carry (M4's packaging). CI builds against LunarG's Vulkan SDK 1.4.350.0, the
+version transcribe.cpp's own Windows build uses, checked by its SHA-256. The runner has no GPU, so the tests
+there compute on the CPU module; the Vulkan path is tried on Thomas's RTX machine. Changed:
+[design.md](design.md#first-run), [research.md](research.md#stack).
+
 
 ## D-42 — On Wayland the clipboard goes through data-control in Skald itself, and Ctrl+V through wtype
 
@@ -52,6 +93,7 @@ layout. A Wayland program cannot see which keys are down, so the paste is sent a
 clipboard; the hold key is up by then, since its release ended the take. The insertion is tried in CI on a
 headless sway, with wl-clipboard and wev to look at the clipboard and the window in front. Changed:
 [design.md](design.md#insertion).
+
 
 ## D-41 — Ctrl+Win+X on Windows; the overlay names an administrator window; no UI Access yet
 
@@ -125,7 +167,7 @@ the key's real state, with `invalid`. They are no MCP tools, since an agent has 
 (the tray and the overlay, later in M5), `skald` there runs the loop in the terminal, as `--terminal` does,
 and text is not inserted: each take is kept in the history and printed. Changed:
 [design.md](design.md#recording) (Recording, Command line), [plan.md](plan.md) M5.
-Insertion on Linux: D-42. The screen on Linux: D-44.
+Insertion on Linux: D-42. The screen on Linux: D-44. The tray on Linux: D-46.
 
 
 ## D-38 — Right Ctrl, Ctrl+V and the clipboard on Windows; a window run as administrator is checked first

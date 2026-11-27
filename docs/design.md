@@ -152,6 +152,10 @@ unplugged stays listed, greyed, and «Bruk den første som er koblet til» is ti
 «Siste tekster» is greyed while it holds no text, and a long text is cut with «…» and shown whole as its
 tooltip.
 
+On Linux the item is a StatusNotifierItem, which Waybar shows: the rune in bone, for the dark panels Hyprland
+desktops have, with the same dots. A click on it opens the menu. The pinned microphone is marked «festet» in
+words, since the menu there has no pin, and the menu has no shortcuts and no tooltips.
+
 ## Settings
 
 | Tab | Holds |
@@ -184,6 +188,10 @@ comes back to the front. On macOS the step says that macOS may ask once whether 
 (Insertion). The test take is inserted into a field in the window, «Teksten settes inn her»; when it does
 not arrive there, the window shows «Skald hørte:» and the text. «Hopp over» leaves the test out and becomes
 «Ferdig» once a take was heard; both wait until the model is checked and the permissions are granted.
+
+On Windows the model computes on the GPU through Vulkan, on NVIDIA, AMD and Intel alike. A machine with no
+Vulkan driver runs it on the CPU, and Skald says so when the model loads: «Fant ingen skjermkortdriver med
+Vulkan, så talemodellen regner på prosessoren og bruker lengre tid.»
 
 ## Command line
 

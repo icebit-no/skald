@@ -141,6 +141,7 @@ mod mac {
     use std::cell::RefCell;
     use std::ptr::NonNull;
     use std::rc::Rc;
+    use std::sync::{Arc, Mutex};
 
     use block2::RcBlock;
     use objc2::MainThreadMarker;
@@ -157,11 +158,11 @@ mod mac {
         app.setActivationPolicy(NSApplicationActivationPolicy::Accessory);
 
         let model = Rc::new(RefCell::new(sample::model()));
-        let chosen = Rc::new(RefCell::new(Vec::new()));
+        let chosen = Arc::new(Mutex::new(Vec::new()));
         let inbox = chosen.clone();
         let tray = Tray::new(&model.borrow(), move |action| {
             println!("{action:?}");
-            inbox.borrow_mut().push(action);
+            inbox.lock().unwrap().push(action);
         })
         .expect("the item is made on the main thread");
         let tray = RefCell::new(tray);
@@ -170,7 +171,7 @@ mod mac {
         let takes = RefCell::new(Takes::new());
         let tick = RcBlock::new(move |_timer: NonNull<NSTimer>| {
             let mut model = model.borrow_mut();
-            let actions: Vec<Action> = chosen.borrow_mut().drain(..).collect();
+            let actions: Vec<Action> = chosen.lock().unwrap().drain(..).collect();
             for action in actions {
                 if sample::act(&mut model, action) {
                     NSApplication::sharedApplication(mtm).terminate(None);
@@ -189,9 +190,8 @@ mod mac {
 
 #[cfg(windows)]
 mod win {
-    use std::cell::RefCell;
     use std::ptr::null_mut;
-    use std::rc::Rc;
+    use std::sync::{Arc, Mutex};
 
     use skald_tray::{Action, Tray};
     use windows_sys::Win32::UI::WindowsAndMessaging::{
@@ -202,11 +202,11 @@ mod win {
 
     pub fn run() {
         let mut model = sample::model();
-        let chosen = Rc::new(RefCell::new(Vec::new()));
+        let chosen = Arc::new(Mutex::new(Vec::new()));
         let inbox = chosen.clone();
         let mut tray = Tray::new(&model, move |action| {
             println!("{action:?}");
-            inbox.borrow_mut().push(action);
+            inbox.lock().unwrap().push(action);
         })
         .expect("the notification area takes the icon");
         println!("Skald's icon is in the notification area; click it, «Avslutt Skald» ends.");
@@ -224,7 +224,7 @@ mod win {
             if message.message != WM_TIMER {
                 continue;
             }
-            let actions: Vec<Action> = chosen.borrow_mut().drain(..).collect();
+            let actions: Vec<Action> = chosen.lock().unwrap().drain(..).collect();
             for action in actions {
                 if sample::act(&mut model, action) {
                     return;

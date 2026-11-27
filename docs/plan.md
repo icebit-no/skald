@@ -106,7 +106,8 @@ Design: [Audio in](design.md#audio-in).
 ## M4 Windows
 
 - [ ] Right Ctrl hold; a Vulkan build that runs on NVIDIA, AMD and Intel, and says so plainly on a machine
-      without Vulkan. The hold is built in skald-input (#30); the Vulkan build is not.
+      without Vulkan. The hold (#30) and the Vulkan build (#34) are built; ticked once Vulkan has run on
+      NVIDIA, AMD and Intel GPUs.
 - [ ] Icon and menu in the notification area; the overlay as a topmost window that takes no focus.
 - [ ] Paste with Ctrl+V; windows running as administrator cannot receive it, and Skald says so. Built in
       skald-input (#30); ticked once the app runs on Windows and shows it.
@@ -118,8 +119,8 @@ Design: [Audio in](design.md#audio-in).
 - [ ] Hold-to-talk through the GlobalShortcuts portal, or Hyprland `bind`/`bindr` calling `skald start` and
       `skald stop`: built in #31; ticked once Thomas has held the key on Omarchy.
 - [ ] Overlay as a layer-shell surface, insertion with wtype, icon through StatusNotifierItem (Waybar):
-      insertion built in #33, the overlay in #35; ticked once the icon is built too and Thomas has tried
-      them on Omarchy.
+      insertion built in #33, the overlay in #35, the icon in #36; ticked once Thomas has tried them on
+      Omarchy.
 - [ ] Vulkan build; AUR package `skald-bin`.
 
 ## M6 Release and site

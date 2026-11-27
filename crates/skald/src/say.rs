@@ -334,7 +334,7 @@ pub(crate) enum Exit {
     KeysStopped,
     /// The dictation's thread ended without saying why.
     Stopped,
-    #[cfg(not(any(target_os = "macos", target_os = "linux")))]
+    #[cfg(not(any(target_os = "macos", target_os = "linux", windows)))]
     UnsupportedSystem,
 }
 
@@ -428,8 +428,10 @@ impl fmt::Display for Exit {
             Exit::CannotStart(reason) => write!(f, "Kunne ikke starte: {reason}"),
             Exit::KeysStopped => f.write_str("Tastelytteren stoppet uventet."),
             Exit::Stopped => f.write_str("Dikteringen stoppet uventet."),
-            #[cfg(not(any(target_os = "macos", target_os = "linux")))]
-            Exit::UnsupportedSystem => f.write_str("Skald kjører foreløpig bare på macOS og Linux."),
+            #[cfg(not(any(target_os = "macos", target_os = "linux", windows)))]
+            Exit::UnsupportedSystem => {
+                f.write_str("Skald kjører foreløpig bare på macOS, Windows og Linux.")
+            }
         }
     }
 }
@@ -441,13 +443,21 @@ fn write_fetch(f: &mut fmt::Formatter<'_>, pinned: &Model, path: &std::path::Pat
     };
     write!(
         f,
-        "Last ned {} ({}) og legg den der:\n  curl -L --create-dirs -o '{}' {}\nEller gi en annen fil med \
-         --model.",
+        "Last ned {} ({}) og legg den der:\n  {}\nEller gi en annen fil med --model.",
         pinned.name,
         gigabytes(file.size),
-        path.display(),
-        file.url
+        fetch_command(path, &file.url),
     )
+}
+
+/// curl with the path quoted for the system's shell. On Windows it is `curl.exe`, which PowerShell's own
+/// `curl` would otherwise stand in for, and the path takes double quotes, the only ones cmd.exe reads.
+fn fetch_command(path: &std::path::Path, url: &str) -> String {
+    if cfg!(windows) {
+        format!("curl.exe -L --create-dirs -o \"{}\" {url}", path.display())
+    } else {
+        format!("curl -L --create-dirs -o '{}' {url}", path.display())
+    }
 }
 
 /// Decimal gigabytes with one decimal and a decimal comma: «3,1 GB».
@@ -489,7 +499,7 @@ const HANDS_FREE_CHORD: &str = if cfg!(target_os = "macos") {
 };
 
 /// Why the item in the menu bar or the panel was not made, in the words of the line that says so.
-#[cfg(any(target_os = "macos", target_os = "linux"))]
+#[cfg(any(target_os = "macos", target_os = "linux", windows))]
 pub(crate) fn tray_reason(error: &skald_tray::TrayError) -> String {
     match error {
         skald_tray::TrayError::NotMainThread => "den kan bare lages på hovedtråden".into(),
@@ -729,11 +739,8 @@ mod tests {
         let path = PathBuf::from(
             "/Users/a/Library/Application Support/Skald/models/nb-whisper-large/ggml-model.bin",
         );
-        let fetch = format!(
-            "curl -L --create-dirs -o '{}' {}",
-            path.display(),
-            pinned.file().unwrap().url
-        );
+        let fetch = fetch_command(&path, &pinned.file().unwrap().url);
+        assert!(fetch.contains(&path.display().to_string()), "{fetch}");
         let shown = Exit::ModelMissing {
             path: path.clone(),
             pinned: Some(pinned),

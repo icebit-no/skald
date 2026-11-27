@@ -121,7 +121,8 @@ Design: [Audio in](design.md#audio-in).
 - [ ] Overlay as a layer-shell surface, insertion with wtype, icon through StatusNotifierItem (Waybar):
       insertion built in #33, the overlay in #35, the icon in #36; ticked once Thomas has tried them on
       Omarchy.
-- [ ] Vulkan build; AUR package `skald-bin`.
+- [ ] Vulkan build; AUR package `skald-bin`. The Vulkan build is built in #NN; the AUR package waits for M6's
+      release pipeline.
 
 ## M6 Release and site
 

@@ -1,6 +1,7 @@
 //! The compute backends transcribe.cpp computes on. On Windows they are modules loaded with the first
 //! model: the Vulkan one is skipped when the machine has no Vulkan driver, and the CPU carries on.
-//! Elsewhere they are built in, and loading them does nothing.
+//! Elsewhere they are built in, and loading them does nothing; on Linux the built-in Vulkan backend steps
+//! aside in the same way when there is no driver.
 
 use std::sync::OnceLock;
 
@@ -18,8 +19,8 @@ pub(crate) fn load() -> Result<(), String> {
         .clone()
 }
 
-/// Whether there is a GPU to compute on: Metal on a Mac, a GPU with a Vulkan driver on Windows. Without
-/// one the model runs on the CPU, several times slower.
+/// Whether there is a GPU to compute on: Metal on a Mac, a GPU with a Vulkan driver on Windows and Linux.
+/// Without one the model runs on the CPU, several times slower.
 pub fn gpu_available() -> bool {
     load().is_ok()
         && transcribe_cpp::devices()

@@ -29,7 +29,7 @@ use skald_input::{HoldKey, HoldListener, Inserter, ListenerEvent, Unavailable};
 use skald_models::Status;
 
 use crate::cli::Options;
-use crate::control::{Control, Settings};
+use crate::control::{Control, Settings, computes_on_vulkan};
 use crate::dictation::{Dictation, Microphones, SystemMicrophones, microphone_order};
 use crate::events::{Ending, Event, MicrophoneList};
 use crate::files::{self, ConfigFile};
@@ -467,6 +467,9 @@ impl Running<'_> {
         match event {
             WorkerEvent::Loaded { device, took } => {
                 self.out.say(Line::ModelLoaded { device, took });
+                if computes_on_vulkan() && !skald_engine::gpu_available() {
+                    self.out.say(Line::NoVulkan);
+                }
                 self.out.say(Line::Ready(self.keys.key));
                 self.out.show(Event::ModelLoaded);
             }

@@ -18,5 +18,10 @@ transcribe-cpp-sys = { version = "=0.5.1", default-features = false }
 [target.'cfg(windows)'.dependencies]
 transcribe-cpp = { version = "=0.5.1", default-features = false, features = ["vulkan", "dynamic-backends"] }
 
+# On Linux the Vulkan backend is linked in: the Vulkan loader is a package's dependency, a GPU driver is not,
+# and without a driver ggml's Vulkan backend steps aside and the CPU computes (D-50).
+[target.'cfg(target_os = "linux")'.dependencies]
+transcribe-cpp = { version = "=0.5.1", default-features = false, features = ["vulkan"] }
+
 [dev-dependencies]
 hound = "=3.5.1"

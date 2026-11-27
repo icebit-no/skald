@@ -1,0 +1,150 @@
+//! Puts Skald's item in the menu bar with sample data and prints each action its menu sends. A take
+//! plays on the icon every ten seconds: the red dot for four seconds, the gold dot for two, then a new
+//! text under «Siste tekster». Choosing a microphone, «Bruk den første som er koblet til» or a written
+//! standard changes the menu as the app would; «Avslutt Skald» ends the example. It needs no
+//! permissions.
+//!
+//! ```sh
+//! cargo run -p skald-tray --example menu
+//! ```
+
+#[cfg(target_os = "macos")]
+fn main() {
+    mac::run();
+}
+
+#[cfg(not(target_os = "macos"))]
+fn main() {
+    eprintln!("The menu bar item exists on macOS only so far.");
+}
+
+#[cfg(target_os = "macos")]
+mod mac {
+    use std::cell::RefCell;
+    use std::ptr::NonNull;
+    use std::rc::Rc;
+    use std::time::{Duration, Instant};
+
+    use block2::RcBlock;
+    use objc2::MainThreadMarker;
+    use objc2_app_kit::{NSApplication, NSApplicationActivationPolicy};
+    use objc2_foundation::NSTimer;
+    use skald_core::config::{HoldKey, Language};
+    use skald_tray::{Action, Activity, Microphone, Tray, TrayModel};
+
+    const TAKE_EVERY: Duration = Duration::from_secs(10);
+    const RECORDING_FROM: Duration = Duration::from_secs(4);
+    const TRANSCRIBING_FROM: Duration = Duration::from_secs(8);
+
+    const SAMPLE_TEXTS: [&str; 6] = [
+        "Hei, dette er en prøve.",
+        "Kan du merge pull-requesten etter lunsj?",
+        "Møtet er flyttet til torsdag klokka ti, og vi tar det på Teams i stedet for på kontoret.",
+        "Husk å kjøpe brød og melk på vei hjem.",
+        "Rettingen fra «mercha» til «merget» virker.",
+        "Ordskatten har plass til de viktigste navnene til slutt.",
+    ];
+
+    pub fn run() {
+        let mtm = MainThreadMarker::new().expect("main runs on the main thread");
+        let app = NSApplication::sharedApplication(mtm);
+        // A menu bar item with no Dock icon, as Skald runs.
+        app.setActivationPolicy(NSApplicationActivationPolicy::Accessory);
+
+        let model = Rc::new(RefCell::new(sample()));
+        let chosen = Rc::new(RefCell::new(Vec::new()));
+        let inbox = chosen.clone();
+        let tray = Tray::new(&model.borrow(), move |action| {
+            println!("{action:?}");
+            inbox.borrow_mut().push(action);
+        })
+        .expect("the item is made on the main thread");
+        let tray = RefCell::new(tray);
+        println!("Skald's item is in the menu bar; choose its entries, «Avslutt Skald» ends.");
+
+        let started = Instant::now();
+        let takes = RefCell::new(0usize);
+        let tick = RcBlock::new(move |_timer: NonNull<NSTimer>| {
+            let mut model = model.borrow_mut();
+            let actions: Vec<Action> = chosen.borrow_mut().drain(..).collect();
+            for action in actions {
+                act(&mut model, action, mtm);
+            }
+            let elapsed = started.elapsed();
+            let activity = activity_at(elapsed);
+            if model.activity == Activity::Transcribing && activity == Activity::Idle {
+                let mut takes = takes.borrow_mut();
+                let text = SAMPLE_TEXTS[*takes % SAMPLE_TEXTS.len()];
+                *takes += 1;
+                model.latest_texts.insert(0, text.to_owned());
+                model.latest_texts.truncate(5);
+            }
+            model.activity = activity;
+            tray.borrow_mut().update(&model);
+        });
+        // SAFETY: the block takes the timer it is given and nothing else; the run loop keeps the
+        // timer.
+        let _timer =
+            unsafe { NSTimer::scheduledTimerWithTimeInterval_repeats_block(0.1, true, &tick) };
+        app.run();
+    }
+
+    /// What a take is doing at this point of the ten-second cycle.
+    fn activity_at(elapsed: Duration) -> Activity {
+        let into_take = Duration::from_nanos((elapsed.as_nanos() % TAKE_EVERY.as_nanos()) as u64);
+        if into_take >= TRANSCRIBING_FROM {
+            Activity::Transcribing
+        } else if into_take >= RECORDING_FROM {
+            Activity::Recording
+        } else {
+            Activity::Idle
+        }
+    }
+
+    /// The AirPods are pinned but unplugged, so the order applies and the Shure is in use.
+    fn sample() -> TrayModel {
+        let microphone = |id: &str, name: &str, connected| Microphone {
+            id: id.to_owned(),
+            name: name.to_owned(),
+            connected,
+        };
+        TrayModel {
+            activity: Activity::Idle,
+            hold_key: HoldKey::RightCommand,
+            language: Language::Bokmal,
+            microphones: vec![
+                microphone("airpods", "AirPods Pro", false),
+                microphone("usb", "Shure MV7", true),
+                microphone("built-in", "MacBook Pro-mikrofon", true),
+            ],
+            in_use: Some("usb".to_owned()),
+            pinned: Some("airpods".to_owned()),
+            latest_texts: SAMPLE_TEXTS[..2]
+                .iter()
+                .rev()
+                .map(|&t| t.to_owned())
+                .collect(),
+        }
+    }
+
+    /// The app's part, roughly: a pin wins while its microphone is connected, else the first
+    /// connected one is used.
+    fn act(model: &mut TrayModel, action: Action, mtm: MainThreadMarker) {
+        match action {
+            Action::PinMicrophone(id) => model.pinned = Some(id),
+            Action::UnpinMicrophone => model.pinned = None,
+            Action::SetLanguage(language) => model.language = language,
+            Action::CopyText(text) => println!("  the app copies {text:?}"),
+            Action::OpenVocabulary | Action::OpenSettings => println!("  the app opens settings"),
+            Action::Quit => NSApplication::sharedApplication(mtm).terminate(None),
+        }
+        let connected = |id: &String| model.microphones.iter().any(|m| &m.id == id && m.connected);
+        model.in_use = model.pinned.clone().filter(connected).or_else(|| {
+            model
+                .microphones
+                .iter()
+                .find(|m| m.connected)
+                .map(|m| m.id.clone())
+        });
+    }
+}

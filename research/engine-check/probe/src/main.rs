@@ -55,7 +55,9 @@ fn tokens(args: &[String]) {
     let model = Model::load(&o.model).unwrap_or_else(|e| fail(&format!("model: {e}")));
     for file in &o.files {
         let text = std::fs::read_to_string(file).unwrap_or_else(|e| fail(&format!("{file}: {e}")));
-        let ids = model.tokenize(&format!(" {}", text.trim())).unwrap_or_else(|e| fail(&format!("tokenize: {e}")));
+        let ids = model
+            .tokenize(&format!(" {}", text.trim()))
+            .unwrap_or_else(|e| fail(&format!("tokenize: {e}")));
         let mut line = Json::new();
         line.str("file", &file_name(file));
         line.num("tokens", ids.len() as f64);
@@ -63,7 +65,11 @@ fn tokens(args: &[String]) {
     }
 }
 
-unsafe extern "C" fn log_warnings(level: sys::transcribe_log_level, msg: *const c_char, _: *mut c_void) {
+unsafe extern "C" fn log_warnings(
+    level: sys::transcribe_log_level,
+    msg: *const c_char,
+    _: *mut c_void,
+) {
     let shown = level == sys::transcribe_log_level::TRANSCRIBE_LOG_LEVEL_WARN
         || level == sys::transcribe_log_level::TRANSCRIBE_LOG_LEVEL_ERROR;
     if shown && !msg.is_null() {
@@ -107,7 +113,11 @@ fn parse(args: &[String]) -> Options {
     };
     let mut it = args.iter();
     while let Some(a) = it.next() {
-        let mut value = || it.next().cloned().unwrap_or_else(|| fail(&format!("{a} needs a value")));
+        let mut value = || {
+            it.next()
+                .cloned()
+                .unwrap_or_else(|| fail(&format!("{a} needs a value")))
+        };
         match a.as_str() {
             "--model" => o.model = value(),
             "--lang" => o.lang = value(),
@@ -147,7 +157,8 @@ fn asr(args: &[String]) {
         ext.initial_prompt = p.as_ptr();
     }
     if o.carry {
-        ext.prompt_condition = sys::transcribe_whisper_prompt_condition::TRANSCRIBE_WHISPER_PROMPT_ALL_SEGMENTS;
+        ext.prompt_condition =
+            sys::transcribe_whisper_prompt_condition::TRANSCRIBE_WHISPER_PROMPT_ALL_SEGMENTS;
     }
     ext.condition_on_prev_tokens = o.carry || o.condition;
     if let Some(tokens) = o.max_prev {
@@ -180,7 +191,9 @@ fn asr(args: &[String]) {
             status = run(session, &pcm, &params);
             runs.push(ms_since(t));
         }
-        let text = unsafe { CStr::from_ptr(sys::transcribe_full_text(session)) }.to_string_lossy().into_owned();
+        let text = unsafe { CStr::from_ptr(sys::transcribe_full_text(session)) }
+            .to_string_lossy()
+            .into_owned();
         let mut timings: sys::transcribe_timings = unsafe { std::mem::zeroed() };
         unsafe {
             sys::transcribe_timings_init(&mut timings);
@@ -222,7 +235,10 @@ fn load_model(path: &str, cpu: bool) -> *mut sys::transcribe_model {
         sys::transcribe_backend_request::TRANSCRIBE_BACKEND_METAL
     };
     let mut model = ptr::null_mut();
-    check(unsafe { sys::transcribe_model_load_file(c_path.as_ptr(), &load, &mut model) }, "model load");
+    check(
+        unsafe { sys::transcribe_model_load_file(c_path.as_ptr(), &load, &mut model) },
+        "model load",
+    );
     model
 }
 
@@ -230,13 +246,20 @@ fn new_session(model: *mut sys::transcribe_model) -> *mut sys::transcribe_sessio
     let mut params: sys::transcribe_session_params = unsafe { std::mem::zeroed() };
     unsafe { sys::transcribe_session_params_init(&mut params) };
     let mut session = ptr::null_mut();
-    check(unsafe { sys::transcribe_session_init(model, &params, &mut session) }, "session init");
+    check(
+        unsafe { sys::transcribe_session_init(model, &params, &mut session) },
+        "session init",
+    );
     session
 }
 
 /// Runs once. A decode the library cut short (budget reached, or stopped when
 /// it began repeating) keeps its partial text and is reported, not fatal.
-fn run(session: *mut sys::transcribe_session, pcm: &[f32], params: &sys::transcribe_run_params) -> &'static str {
+fn run(
+    session: *mut sys::transcribe_session,
+    pcm: &[f32],
+    params: &sys::transcribe_run_params,
+) -> &'static str {
     let status = unsafe { sys::transcribe_run(session, pcm.as_ptr(), pcm.len() as i32, params) };
     match status {
         sys::transcribe_status::TRANSCRIBE_ERR_OUTPUT_TRUNCATED => "truncated",
@@ -254,7 +277,10 @@ fn window_traces(session: *mut sys::transcribe_session) -> String {
     for i in 0..count {
         let mut t: sys::transcribe_whisper_chunk_trace = unsafe { std::mem::zeroed() };
         unsafe { sys::transcribe_whisper_chunk_trace_init(&mut t) };
-        check(unsafe { sys::transcribe_get_whisper_chunk_trace(session, i, &mut t) }, "chunk trace");
+        check(
+            unsafe { sys::transcribe_get_whisper_chunk_trace(session, i, &mut t) },
+            "chunk trace",
+        );
         let mut w = Json::new();
         w.num("t0_ms", t.t0_ms as f64);
         w.num("t1_ms", t.t1_ms as f64);
@@ -272,26 +298,45 @@ fn window_traces(session: *mut sys::transcribe_session) -> String {
 fn vad(args: &[String]) {
     let o = parse(args);
     let model = Model::load(&o.model).unwrap_or_else(|e| fail(&format!("vad model: {e}")));
-    let mut session = model.vad_session().unwrap_or_else(|e| fail(&format!("vad session: {e}")));
+    let mut session = model
+        .vad_session()
+        .unwrap_or_else(|e| fail(&format!("vad session: {e}")));
     let frame_samples = model.vad_info().map(|i| i.frame_samples).unwrap_or(512) as f64;
-    let options = VadOptions { threshold: o.threshold, min_speech_ms: o.min_speech_ms, ..VadOptions::default() };
+    let options = VadOptions {
+        threshold: o.threshold,
+        min_speech_ms: o.min_speech_ms,
+        ..VadOptions::default()
+    };
     for file in &o.files {
         let pcm = read_wav(file);
-        let result = session.run(&pcm, &options).unwrap_or_else(|e| fail(&format!("vad run: {e}")));
+        let result = session
+            .run(&pcm, &options)
+            .unwrap_or_else(|e| fail(&format!("vad run: {e}")));
         let to_ms = |samples: i64| samples as f64 * 1000.0 / SAMPLE_RATE as f64;
         let segments: Vec<String> = result
             .segments
             .iter()
             .map(|s| format!("[{:.0},{:.0}]", to_ms(s.start_sample), to_ms(s.end_sample)))
             .collect();
-        let speech_ms: f64 = result.segments.iter().map(|s| to_ms(s.end_sample - s.start_sample)).sum();
-        let frames_over = result.probs.iter().filter(|&&p| p as f64 >= o.threshold).count();
+        let speech_ms: f64 = result
+            .segments
+            .iter()
+            .map(|s| to_ms(s.end_sample - s.start_sample))
+            .sum();
+        let frames_over = result
+            .probs
+            .iter()
+            .filter(|&&p| p as f64 >= o.threshold)
+            .count();
         let max_prob = result.probs.iter().cloned().fold(0.0f32, f32::max);
         let mut line = Json::new();
         line.str("file", &file_name(file));
         line.num("audio_s", pcm.len() as f64 / SAMPLE_RATE as f64);
         line.num("speech_ms", speech_ms);
-        line.num("frames_over_threshold_ms", frames_over as f64 * frame_samples * 1000.0 / SAMPLE_RATE as f64);
+        line.num(
+            "frames_over_threshold_ms",
+            frames_over as f64 * frame_samples * 1000.0 / SAMPLE_RATE as f64,
+        );
         line.num("max_prob", max_prob as f64);
         line.raw("segments_ms", &format!("[{}]", segments.join(",")));
         println!("{}", line.finish());
@@ -302,12 +347,18 @@ fn read_wav(path: &str) -> Vec<f32> {
     let mut reader = hound::WavReader::open(path).unwrap_or_else(|e| fail(&format!("{path}: {e}")));
     let spec = reader.spec();
     if spec.channels != 1 || spec.sample_rate != SAMPLE_RATE {
-        fail(&format!("{path}: {} channels at {} Hz, expected mono 16 kHz", spec.channels, spec.sample_rate));
+        fail(&format!(
+            "{path}: {} channels at {} Hz, expected mono 16 kHz",
+            spec.channels, spec.sample_rate
+        ));
     }
     match spec.sample_format {
         hound::SampleFormat::Int => {
             let scale = (1i64 << (spec.bits_per_sample - 1)) as f32;
-            reader.samples::<i32>().map(|s| s.unwrap() as f32 / scale).collect()
+            reader
+                .samples::<i32>()
+                .map(|s| s.unwrap() as f32 / scale)
+                .collect()
         }
         hound::SampleFormat::Float => reader.samples::<f32>().map(Result::unwrap).collect(),
     }
@@ -326,7 +377,8 @@ fn fail(msg: &str) -> ! {
 }
 
 fn number<T: std::str::FromStr>(s: &str) -> T {
-    s.parse().unwrap_or_else(|_| fail(&format!("not a number: {s}")))
+    s.parse()
+        .unwrap_or_else(|_| fail(&format!("not a number: {s}")))
 }
 
 fn ms_since(t: Instant) -> f64 {
@@ -345,7 +397,10 @@ fn median(values: &[f64]) -> f64 {
 }
 
 fn file_name(path: &str) -> String {
-    Path::new(path).file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default()
+    Path::new(path)
+        .file_stem()
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_default()
 }
 
 /// A flat JSON object written field by field.
@@ -359,7 +414,11 @@ impl Json {
         self.0.push(format!("{}:{}", quote(key), quote(value)));
     }
     fn num(&mut self, key: &str, value: f64) {
-        let v = if value.is_finite() { format!("{value:.4}") } else { "null".into() };
+        let v = if value.is_finite() {
+            format!("{value:.4}")
+        } else {
+            "null".into()
+        };
         self.0.push(format!("{}:{v}", quote(key)));
     }
     fn nums(&mut self, key: &str, values: &[f64]) {

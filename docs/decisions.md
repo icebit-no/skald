@@ -5,6 +5,19 @@ decision, and that pull request also edits the page where the rule lives ([desig
 [plan.md](plan.md)). Those pages say what holds; this one says when and why it came to hold. A later decision
 that undoes one adds an entry of its own, and the earlier entry gets one line naming it.
 
+## D-22 — transcribe.cpp's own Rust crates as the binding
+
+2026-11-27, Claude.
+
+`skald-engine` binds transcribe.cpp through `transcribe-cpp` and `transcribe-cpp-sys`, the crates published from
+the transcribe.cpp repository with each release, pinned to the exact version of the library. transcribe-rs, the
+first candidate, does not use transcribe.cpp: it wraps whisper.cpp and ONNX Runtime and cannot run Bokfink. A
+binding of our own would redo what `transcribe-cpp-sys` already is: FFI generated from the same header and checked
+against its ABI hash. The safe crate lacks the Whisper extension's prompt placement and the per-window decoding
+trace; Skald uses `transcribe-cpp-sys` for those two and offers them upstream. The choice holds while
+transcribe.cpp is the only engine; a second engine for beam search would reopen it. Evidence:
+[research/engine-check.md](research/engine-check.md#4-the-rust-binding). Changed: [research.md](research.md#stack).
+
 ## D-20 — Microphone fallback, matching by name, a lost microphone and the menu pin
 
 2026-11-27, Claude.

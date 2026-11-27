@@ -37,8 +37,8 @@ Nordlyd can follow.
 - Downloading at first run from Hugging Face means Skald does not redistribute the model. Credit it in the
   About tab and on the site. A model we convert and host ourselves (Bokfink as GGUF) carries the licence text,
   the attribution and a note that it was converted.
-- whisper.cpp, OpenAI Whisper and transcribe.cpp are MIT; transcribe-rs and Handy are MIT; whisper-rs is
-  Unlicense. Their notices go in `THIRD-PARTY-NOTICES`.
+- whisper.cpp, OpenAI Whisper, transcribe.cpp and its Rust crates are MIT; transcribe-rs and Handy are MIT;
+  whisper-rs is Unlicense. Silero VAD is MIT. Their notices go in `THIRD-PARTY-NOTICES`.
 - VoiceInk and FluidVoice (GPL-3) and Whispering, Voquill and VoiceTypr (AGPL-3) can be read but not copied
   from.
 
@@ -70,7 +70,7 @@ app runs ([1281](https://github.com/cjpais/Handy/issues/1281)).
 |---|---|---|
 | Window and overlay | GPUI with gpui-kit, as Ferric | PopUp window: non-activating panel on macOS, topmost without activation on Windows, layer shell on Wayland. Click-through is set on the native window; windows without focus are capped near 30 fps until `inactive_frame_interval` is lifted |
 | Engine | [transcribe.cpp](https://github.com/handy-computer/transcribe.cpp) | Whisper as GGUF, Qwen3-ASR, Silero VAD v6.2; Metal, Vulkan, CUDA; MIT |
-| Binding | [transcribe-rs](https://github.com/cjpais/transcribe-rs) or our own | Decided in M1a |
+| Binding | [transcribe-cpp](https://crates.io/crates/transcribe-cpp) and `transcribe-cpp-sys`, transcribe.cpp's own crates | Released with the library, pinned to its exact version (D-22). transcribe-rs wraps whisper.cpp and ONNX Runtime, not transcribe.cpp |
 | Hotkey | [handy-keys](https://github.com/handy-computer/handy-keys) | Modifier-only hotkeys, left and right apart, press and release. global-hotkey cannot do a lone modifier; rdev is unmaintained |
 | Audio | cpal and rubato | WASAPI, CoreAudio, ALSA/PipeWire; 16 kHz mono |
 | Clipboard and paste | arboard, enigo as fallback | Paste after release; elevated windows on Windows refuse synthetic input |

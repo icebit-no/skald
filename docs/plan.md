@@ -23,13 +23,13 @@ by a script from a pinned source with SHA-256 checks, not committed.
 
 **NB-Whisper and VAD** (`docs/research/engine-check.md`):
 
-- [ ] Build transcribe.cpp with Metal. Convert NB-Whisper Large to GGUF with transcribe.cpp's converter and
+- [x] Build transcribe.cpp with Metal. Convert NB-Whisper Large to GGUF with transcribe.cpp's converter and
       check on 10 Norwegian clips that its text matches whisper.cpp with NbAiLab's `ggml-model.bin`.
-- [ ] Check that the vocabulary prompt works with NB-Whisper in transcribe.cpp: as initial prompt, and carried
+- [x] Check that the vocabulary prompt works with NB-Whisper in transcribe.cpp: as initial prompt, and carried
       into each 30-second window for a long take.
-- [ ] Run Silero VAD from transcribe.cpp on the same clips, including silent takes.
-- [ ] Choose the Rust binding: transcribe-rs, or our own over transcribe.cpp's C API. Say why.
-- [ ] Measure the time to transcribe 9 s of speech with NB-Whisper on Apple Silicon.
+- [x] Run Silero VAD from transcribe.cpp on the same clips, including silent takes.
+- [x] Choose the Rust binding: transcribe-rs, or our own over transcribe.cpp's C API. Say why.
+- [x] Measure the time to transcribe 9 s of speech with NB-Whisper on Apple Silicon.
 
 **Bokfink** (`docs/research/bokfink-gguf.md`):
 

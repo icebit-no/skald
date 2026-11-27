@@ -73,7 +73,7 @@ app runs ([1281](https://github.com/cjpais/Handy/issues/1281)).
 | Binding | [transcribe-rs](https://github.com/cjpais/transcribe-rs) or our own | Decided in M1a |
 | Hotkey | [handy-keys](https://github.com/handy-computer/handy-keys) | Modifier-only hotkeys, left and right apart, press and release. global-hotkey cannot do a lone modifier; rdev is unmaintained |
 | Audio | cpal and rubato | WASAPI, CoreAudio, ALSA/PipeWire; 16 kHz mono |
-| Clipboard and paste | arboard, enigo as fallback | Paste after release; elevated windows on Windows refuse synthetic input |
+| Clipboard and paste | NSPasteboard and CoreGraphics through objc2 on macOS (D-18) | Paste after release, once every modifier is up; the previous clipboard goes back with every type it held; elevated windows on Windows refuse synthetic input |
 | Tray | macOS status item through objc2 (as Ferric); notification area on Windows; StatusNotifierItem on Linux | |
 | macOS permissions | Accessibility (event tap and paste), Microphone | The grant follows the signature: unsigned builds lose it on every update |
 | Packaging | Developer ID and notarization; SignPath; tap, bucket, winget, AUR | Homebrew 6 disables casks that fail Gatekeeper in its own repository and asks users to trust third-party taps |

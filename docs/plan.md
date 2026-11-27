@@ -44,13 +44,13 @@ by a script from a pinned source with SHA-256 checks, not committed.
 - [x] Cargo workspace: `skald-core` (configuration, vocabulary, corrections, history; no I/O), `skald-engine`
       (transcribe.cpp), `skald-audio` (capture, resampling, levels), `skald-input` (hotkey and paste), and the
       `skald` binary.
-- [ ] Right ⌘ hold with handy-keys: arm after 200 ms, cancel when another key joins, a watchdog for a missed
+- [x] Right ⌘ hold with handy-keys: arm after 200 ms, cancel when another key joins, a watchdog for a missed
       release.
 - [ ] Capture with cpal, resampled to 16 kHz mono with rubato, level readings for the meter; the microphone
       chosen by the priority list.
 - [ ] The silence gate: level, VAD (at least 250 ms of speech), the no-speech threshold, known phrases.
 - [ ] Transcribe with NB-Whisper Large on Metal, loaded once, with beam search 5.
-- [ ] Insert by clipboard and ⌘V after the key is released; put the previous clipboard back unless the user
+- [x] Insert by clipboard and ⌘V after the key is released; put the previous clipboard back unless the user
       chose to copy the text.
 - [ ] Vocabulary prompt and corrections from a TOML configuration; history of the five latest texts.
 - [ ] Runs from a terminal and can replace diktafon for daily use.

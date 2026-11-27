@@ -5,6 +5,16 @@ decision, and that pull request also edits the page where the rule lives ([desig
 [plan.md](plan.md)). Those pages say what holds; this one says when and why it came to hold. A later decision
 that undoes one adds an entry of its own, and the earlier entry gets one line naming it.
 
+## D-18 — Clipboard and paste through NSPasteboard and CoreGraphics on macOS
+
+2026-11-27, proposed in the input pull request.
+
+The previous clipboard is put back as it was, every item with every type it held: rich text, images, files and
+types private to an app. arboard handles plain text, HTML and images, so Skald reads and writes NSPasteboard
+items itself through objc2, which handy-keys already brings in. The text that is on the clipboard only for the
+paste is marked transient, so clipboard history tools skip it. ⌘V is two CoreGraphics key events carrying the
+Command flag, which needs no dependency beyond those; enigo is not used. Changed: [research.md](research.md#stack).
+
 ## D-17 — The app icon is ᚨ cut in light granite
 
 2026-11-27, Thomas.

@@ -88,6 +88,14 @@ impl Skald for Offline<'_> {
     fn transcribe(&self, wav: &Path) -> Result<Transcribed, Error> {
         self.machine.transcribe(&self.config()?, wav)
     }
+
+    /// The hold key belongs to the running Skald's takes, so with none running there is nothing to press.
+    fn press_hold_key(&self, _down: bool) -> Result<(), Error> {
+        Err(Error::new(
+            ErrorCode::NotRunning,
+            "Skald kjører ikke. «skald start» og «skald stop» virker bare mens Skald kjører.",
+        ))
+    }
 }
 
 /// The configuration in the file, or the default when there is no file yet.

@@ -43,6 +43,11 @@ pub trait Skald {
     /// Transcribes a WAV file as a take, through the silence gate, with the configuration's language,
     /// ordskatt and known phrases. Corrections are not applied: the command applies them.
     fn transcribe(&self, wav: &Path) -> Result<Transcribed, Error>;
+
+    /// Presses the hold key (`down`) or releases it, for a key binding of the desktop where Skald cannot
+    /// hear the keyboard itself. A take follows the same rules as with a key Skald hears: it arms once the
+    /// key has been down for 200 ms and ends when it comes up.
+    fn press_hold_key(&self, down: bool) -> Result<(), Error>;
 }
 
 /// What the command line asks of this machine itself while Skald is not running. The binary implements

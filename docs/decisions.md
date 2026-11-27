@@ -5,6 +5,34 @@ decision, and that pull request also edits the page where the rule lives ([desig
 [plan.md](plan.md)). Those pages say what holds; this one says when and why it came to hold. A later decision
 that undoes one adds an entry of its own, and the earlier entry gets one line naming it.
 
+## D-38 — On Linux the desktop's key binding holds the key, through `skald start` and `skald stop`
+
+2026-11-27, Claude; the binding and the portal as the two ways in set by the lead's brief for M5.
+
+A Wayland compositor gives the keyboard to no program, so Skald on Linux cannot listen for right Ctrl as it
+does on macOS. The desktop holds the key instead: a key binding runs `skald start` as the key goes down and
+`skald stop` as it comes up, and each reaches the running Skald over its socket (D-28). On Hyprland the two
+lines are `bindn` and `bindrn`; the `n` lets right Ctrl through to the app in front, so right Ctrl+C still
+copies. A desktop with the GlobalShortcuts portal can report the key there instead: Skald registers the
+shortcut `hold` under `app.icebit.skald` (D-34), and the portal reports the key going down and coming up.
+ashpd, which GPUI already takes at the same version, speaks the portal; only its shortcuts feature is new.
+
+Both feed one listener, which applies the hold rules a key heard from the keyboard gets (skald-input's
+`HoldMachine`): a take arms after 200 ms and ends at the release, and a press or release reported twice
+counts once. What a binding cannot tell is lost. Another key pressed with right Ctrl does not cancel the
+take, so a shortcut held past 200 ms records, and the silence gate keeps it from becoming text unless the
+user speaks; a release the desktop never reports leaves the take running until the 120 s cap. Reading the
+keyboard from `/dev/input`, as handy-keys can on Linux and Voxtype does, would keep every rule, but only for
+a user in the `input` group, which gives each of their programs every keystroke, passwords included; that is
+the choice Wayland keeps from programs, and it is left to Thomas.
+
+The commands are answered only by a running Skald: without one they fail with the new error code
+`not_running`, and on macOS, where Skald hears the key itself and its watchdog reads the key's real state,
+with `invalid`. They are no MCP tools, since an agent has no reason to hold the key. Until Linux has a screen
+(the tray and the overlay, later in M5), `skald` there runs the loop in the terminal, as `--terminal` does,
+and text is not inserted: each take is kept in the history and printed. Changed:
+[design.md](design.md#recording) (Recording, Command line), [plan.md](plan.md) M5.
+
 ## D-37 — `skald bench record` takes the test set while Enter is held; 60 sentences written for it
 
 2026-11-27, Claude; «from a distance» as the built-in Mac microphone at 2 m, and Thomas looking through the

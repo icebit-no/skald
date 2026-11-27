@@ -21,8 +21,8 @@ The model mostly hears right. Where it does not, Skald has two remedies, and thi
 ## Reaching Skald
 
 Run `skald` in the shell with `--json` on every command, and read the JSON, never the text meant for a person.
-Every command works whether Skald is running or not. `running` in the answer says which; a change made while
-Skald is not running is written to its settings file and applies when it starts.
+Every command you need works whether Skald is running or not. `running` in the answer says which; a change
+made while Skald is not running is written to its settings file and applies when it starts.
 
 When Skald's MCP server is registered (`claude mcp add --scope user skald -- skald mcp`), its tools are the
 same commands with the same answers: the tool `fix_add` is `skald fix add`, and so on. Use either, not both

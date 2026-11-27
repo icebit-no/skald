@@ -7,6 +7,11 @@ own words.
 
 - Hold right ⌘ (macOS) or right Ctrl (Windows, Linux). The take arms after 200 ms; another key pressed while it
   is held cancels the take. A mouse click counts as another key, since ⌘-click is a shortcut.
+- On Linux a Wayland desktop gives the keyboard to no program, so the desktop's own key binding holds the key:
+  it runs `skald start` as right Ctrl goes down and `skald stop` as it comes up, or reports the key through the
+  GlobalShortcuts portal. Skald then knows that key alone, so another key does not cancel the take, and a
+  release the desktop never reports ends the take at the cap. The binding lines are in
+  [packaging/linux](../packaging/linux/README.md).
 - The microphone opens when the key goes down, so the words said before the take arms are kept. A press that
   does not arm, as in ⌘C, closes it again and throws its audio away.
 - So macOS shows its microphone indicator for a moment at each right-⌘ shortcut; that is accepted for the first words.
@@ -180,6 +185,7 @@ writes the configuration file directly. Every command takes `--json`.
 | `skald mic list\|use\|order` | Microphones and their order |
 | `skald model list\|use` | Models, and which are downloaded |
 | `skald transcribe <file.wav>` | Transcribe a file, so an agent can try a correction |
+| `skald start`, `skald stop` | Press and release the hold key, for a key binding of the desktop on Linux |
 | `skald bench <folder>` | Run a test set through the configurations and count errors |
 | `skald skill install\|uninstall [--dir DIR]` | Install the Claude skill that teaches an agent these commands, or take it out |
 | `skald mcp` | The same commands as MCP tools over standard input and output |

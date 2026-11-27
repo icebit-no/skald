@@ -57,6 +57,8 @@ pub fn execute(request: &Request, skald: &dyn Skald) -> Result<Output, Error> {
         Request::ModelList => model_list(skald),
         Request::ModelUse { id } => model_use(skald, id),
         Request::Transcribe { path } => transcribe(skald, path),
+        Request::Start => skald.press_hold_key(true).map(|()| Output::Pressed),
+        Request::Stop => skald.press_hold_key(false).map(|()| Output::Released),
     }
 }
 

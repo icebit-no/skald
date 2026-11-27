@@ -102,6 +102,38 @@ microphone change during a take waits until the take is done. With reduced motio
 still picture of the last 2.4 s, replaced once a second with the time, so the pill still shows that the
 microphone hears. Changed: [design.md](design.md#overlay), [plan.md](plan.md) M2.
 
+## D-29 — The microphone opens at the press; one Skald at a time
+
+2026-11-27, the lead (the press, the permission check, the sounds), Thomas (the indicator), Claude (the rest).
+
+The microphone opens when the hold key goes down rather than when the take arms 200 ms later, so the first
+words are kept. skald-input reports the press, and every press ends in either armed or not armed, so a
+microphone opened for a shortcut such as right ⌘C is closed again and its audio thrown away. The price is that
+macOS shows its microphone indicator for a moment at each right-⌘ shortcut, and a Bluetooth headset in use as
+the microphone drops to call quality for that moment; design.md already suggests putting headsets last. Thomas
+accepted the indicator to keep the first 200 ms.
+
+The start and end sounds are diktafon's: the system sound Tink when a take arms and Pop as its text is
+inserted, honouring the sounds setting. Each plays in an `afplay` process of its own, because diktafon found
+that a sound played on the main thread can stall it for ten seconds when an output will not start.
+
+macOS gives a program it refused the microphone digital silence rather than an error, so skald-audio asks
+AVFoundation whether access is granted, which never prompts. Without Accessibility or the microphone, Skald
+says which and where in System Settings to grant it, and stops.
+
+The terminal loop reads the model files where D-26 puts them, or where `--model` and `--vad` say.
+
+A lock beside the state file lets one Skald at a time take dictation, so a second one started by mistake says
+so and stops instead of pasting every take twice.
+
+The configuration is read again when the file changes. A file that cannot be read keeps the settings in use
+and says why, as does a file that disappears, since an editor may remove it for a moment while saving; a new
+model is used from the next start, since loading one takes seconds. While Skald takes dictation it answers the
+command line on its socket (D-28); a change made there is written to the file and taken in the same way within
+a tenth of a second. A socket that cannot be made leaves Skald taking dictation, and the commands work on the
+files. Changed: [design.md](design.md#recording),
+[plan.md](plan.md) M1b.
+
 ## D-28 — The command line's protocol, and the same commands whether Skald runs or not
 
 2026-11-27, Claude; skald-control depending on skald-core alone agreed with the lead.

@@ -86,8 +86,9 @@ Skald». Waybar needs its `tray` module, which Omarchy's bar has.
 ## The overlay
 
 The pill is a layer-shell surface named `skald`, at the bottom of the monitor with the focus. It takes no
-keyboard and lets every click through. The Kjedelig theme asks for a blurred background, which Hyprland gives a
-layer surface only through a rule:
+keyboard and lets every click through. It takes the desktop's accent colour and its wish for reduced motion
+from the Settings portal, where the desktop answers for them. The Kjedelig theme asks for a blurred
+background, which Hyprland gives a layer surface only through a rule:
 
 ```ini
 layerrule = blur, skald

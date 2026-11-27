@@ -494,6 +494,9 @@ fn insert_reason(error: &InsertError) -> &'static str {
         InsertError::ElevatedWindow => "vinduet foran kjører som administrator",
         InsertError::Clipboard => "utklippstavlen tok ikke imot teksten",
         InsertError::Paste if cfg!(target_os = "macos") => "⌘V kunne ikke sendes",
+        InsertError::Paste if cfg!(target_os = "linux") => {
+            "Ctrl+V kunne ikke sendes (er wtype installert?)"
+        }
         InsertError::Paste => "Ctrl+V kunne ikke sendes",
     }
 }

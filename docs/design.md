@@ -88,6 +88,12 @@ user says no, the text stays on the clipboard. Contents marked concealed or tran
 mark a secret, are never read or put back; the text stays on the clipboard instead, so the secret is not
 restored where the manager's own clearing can no longer reach it.
 
+On Linux the clipboard is read and set through Wayland's data-control protocol, and Ctrl+V comes from a virtual
+keyboard (wtype). Wayland keeps no copy of what is copied, so contents Skald put back stay on the clipboard
+while Skald runs and go when it quits, unless a clipboard manager keeps them. The text on the clipboard only for
+the paste is offered as a secret, the mark clipboard managers skip there, and contents a password manager
+marked the same way are neither read nor put back.
+
 ## Microphones
 
 The user orders the microphones in Generelt. Skald uses the first one that is connected and falls back to the

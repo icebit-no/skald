@@ -77,7 +77,7 @@ app runs ([1281](https://github.com/cjpais/Handy/issues/1281)).
 | Clipboard and paste | NSPasteboard and CoreGraphics through objc2 on macOS (D-21) | Paste after release, once every modifier is up; the previous clipboard goes back with every type it held; elevated windows on Windows refuse synthetic input |
 | Tray | macOS status item through objc2 (as Ferric); notification area on Windows; StatusNotifierItem on Linux | |
 | macOS permissions | Accessibility (event tap and paste), Microphone | The grant follows the signature: unsigned builds lose it on every update |
-| Packaging | Developer ID and notarization; SignPath; tap, bucket, winget, AUR | Homebrew 6 disables casks that fail Gatekeeper in its own repository and asks users to trust third-party taps |
+| Packaging | Developer ID and notarization; SignPath; tap, bucket, winget, AUR | Homebrew 6 disables casks that fail Gatekeeper in its own repository and asks users to trust third-party taps. macOS builds are for Apple Silicon only (D-34): NB-Whisper Large is slow on Intel Macs, and Metal hangs on Intel Macs with AMD GPUs |
 
 **Risks:** macOS permissions and signing; Vulkan loaded at start on Windows (a machine without a Vulkan driver
 must still start and say why); insertion into apps that refuse synthetic input; Bokfink's custom tokenizer and

@@ -24,10 +24,11 @@ installed on first use) and CMake for transcribe.cpp (`brew install cmake`).
 packaging/macos/bundle.sh
 ```
 
-This builds for the Mac's own architecture, writes `target/release/Skald.app` and signs it ad hoc with the hardened
-runtime and the microphone entitlement, so it runs as a released bundle does. macOS ties the microphone and
-Accessibility grants to the signature, and an ad hoc signature changes with every build, so macOS asks for both
-again after each one.
+This builds for the Mac's own architecture, writes `target/release/Skald.app` and signs it ad hoc with the
+hardened runtime and the microphone entitlement, so it runs as a released bundle does. macOS ties the microphone
+and Accessibility grants to the signature, and an ad hoc signature changes with every build, so macOS asks for
+both again after each one. Skald ships for Apple Silicon only (D-34), so a Developer ID build refuses any other
+architecture.
 
 ## 2. Sign with the Developer ID
 

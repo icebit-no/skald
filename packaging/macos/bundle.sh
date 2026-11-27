@@ -9,9 +9,9 @@
 #                                             below, from the login keychain, with a secure timestamp: ready for
 #                                             packaging/macos/notarize.sh
 #
-# The bundle lands in target/release/Skald.app, for this Mac's architecture. Microphone and Accessibility grants
-# follow the signature: an ad hoc bundle is asked for them again after every build, a Developer ID bundle keeps
-# them across builds and updates.
+# The bundle lands in target/release/Skald.app, for this Mac's architecture; Skald ships for Apple Silicon only
+# (D-34), so --developer-id refuses any other. Microphone and Accessibility grants follow the signature: an ad hoc
+# bundle is asked for them again after every build, a Developer ID bundle keeps them across builds and updates.
 set -eu
 
 # The grants follow the signing team, so every Developer ID build is signed by this one.
@@ -55,6 +55,10 @@ version=$(sed -n '/^\[workspace\.package\]/,/^\[/ s/^version = "\(.*\)"$/\1/p' C
 cargo build --release --locked -p skald
 binary=target/release/skald
 said=$("$binary" --version)
+architectures=$(lipo -archs "$binary")
+if $developer_id && [ "$architectures" != arm64 ]; then
+    fail "the binary is built for $architectures; Skald ships for Apple Silicon only (D-34)"
+fi
 [ "$said" = "skald $version" ] || fail "the binary says '$said', not 'skald $version'"
 # The oldest macOS the binary was linked for, which the bundle then promises.
 minimum=$(otool -l "$binary" | awk '$1 == "minos" { print $2; exit }')
@@ -106,4 +110,4 @@ said=$("$app/Contents/MacOS/skald" --version)
 
 # Gatekeeper accepts only a notarized Developer ID bundle; until notarize.sh has run it rejects this one.
 spctl --assess --type execute -vv "$app" 2>&1 || true
-echo "built $app, skald $version for macOS $minimum and later, signed by $signer"
+echo "built $app, skald $version for $architectures and macOS $minimum and later, signed by $signer"

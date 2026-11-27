@@ -3,7 +3,10 @@
 //!
 //! Start-up checks what can stop Skald before the model takes seconds to load: the files, Accessibility,
 //! then the microphone permission. The model loads on the pipeline's thread while the keys already work,
-//! so a take made meanwhile waits for it.
+//! so a take made meanwhile waits for it. The command line's socket answers for as long as the loop runs.
+
+#[cfg(unix)]
+use skald_control::{BindError, Server, Serving};
 
 use std::sync::Arc;
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError};
@@ -11,12 +14,13 @@ use std::time::{Duration, Instant};
 
 use skald_audio::MicrophoneAccess;
 use skald_core::config::HoldKey as ConfigHoldKey;
-use skald_core::paths::{Env, Os, Paths};
+use skald_core::paths::Paths;
 use skald_core::state::State;
 use skald_engine::Engine;
 use skald_input::{HoldKey, HoldListener, Inserter, ListenerEvent, Unavailable};
 
 use crate::cli::Options;
+use crate::control::{Control, Settings};
 use crate::dictation::{Dictation, Microphones, SystemMicrophones, microphone_order};
 use crate::files::{self, ConfigFile};
 use crate::models::ModelFiles;
@@ -55,10 +59,7 @@ fn run_until_stopped(options: Options) -> Result<(), Exit> {
         verbose: options.verbose,
     };
     out.say(Line::Version);
-    let paths = match &options.dir {
-        Some(dir) => Paths::in_one_folder(dir),
-        None => Paths::for_os(Os::CURRENT, &Env::from_process()).ok_or(Exit::NoHome)?,
-    };
+    let paths = files::paths(options.dir.as_deref())?;
     let _lock = files::lock(&paths.state_file().with_extension("lock"))?;
     let (config_file, config) = ConfigFile::open(paths.config_file()).map_err(Exit::Config)?;
     out.say(Line::ConfigFile {
@@ -76,7 +77,7 @@ fn run_until_stopped(options: Options) -> Result<(), Exit> {
         vad: models.vad.clone(),
     });
     out.say(Line::StateFile(paths.state_file()));
-    models.check(out)?;
+    models.check(|| out.say(Line::CheckingModel))?;
     let state = files::read_state(&paths.state_file()).unwrap_or_else(|reason| {
         out.say(Line::StateUnreadable {
             path: paths.state_file(),
@@ -115,7 +116,14 @@ fn run_until_stopped(options: Options) -> Result<(), Exit> {
         events,
     )
     .map_err(|error| Exit::CannotStart(error.to_string()))?;
-    let dictation = Dictation::new(microphones, chime, Arc::new(config));
+    let config = Arc::new(config);
+    let settings = Arc::new(Settings::new(Arc::clone(&config)));
+    let serving = serve(
+        &paths,
+        Control::new(paths.clone(), Arc::clone(&settings), worker.handle()),
+        out,
+    )?;
+    let dictation = Dictation::new(microphones, chime, config);
 
     let mut running = Running {
         keys,
@@ -123,19 +131,35 @@ fn run_until_stopped(options: Options) -> Result<(), Exit> {
         worker: &worker,
         worker_events,
         config_file,
+        settings,
         model_given: options.model.is_some(),
         out,
     };
     let result = running.listen();
-    // The event tap goes first, then the microphones; the worker finishes the takes it has and drops the
-    // model last.
+    // The event tap goes first, then the socket and the microphones; the worker finishes the takes it has
+    // and drops the model last.
     let Running {
         keys, dictation, ..
     } = running;
     drop(keys);
+    drop(serving);
     drop(dictation);
     worker.finish();
     result
+}
+
+/// Answers the command line on the socket. Without it Skald still takes dictation, and the commands work
+/// on the files, which the loop reads again when they change.
+#[cfg(unix)]
+fn serve(paths: &Paths, control: Control, out: Printer) -> Result<Option<Serving>, Exit> {
+    match Server::bind(&paths.socket()) {
+        Ok(server) => Ok(Some(server.serve(Arc::new(control)))),
+        Err(BindError::AlreadyRunning) => Err(Exit::AlreadyRunning),
+        Err(error) => {
+            out.say(Line::NoSocket(error.to_string()));
+            Ok(None)
+        }
+    }
 }
 
 struct Running<'w> {
@@ -144,6 +168,7 @@ struct Running<'w> {
     worker: &'w Worker,
     worker_events: Receiver<WorkerEvent>,
     config_file: ConfigFile,
+    settings: Arc<Settings>,
     model_given: bool,
     out: Printer,
 }
@@ -181,7 +206,7 @@ impl Running<'_> {
                     }
                 }
             }
-            if Instant::now() >= next_config_look {
+            if self.settings.take_written() || Instant::now() >= next_config_look {
                 next_config_look = Instant::now() + CONFIG_EVERY;
                 if let Some(key) = self.look_at_config() {
                     wanted_key = key;
@@ -227,7 +252,9 @@ impl Running<'_> {
             self.out.say(Line::ModelAtRestart);
         }
         let key = hold_key(&config.hold_key, self.out);
-        self.dictation.set_config(Arc::new(config));
+        let config = Arc::new(config);
+        self.settings.set(Arc::clone(&config));
+        self.dictation.set_config(config);
         Some(key)
     }
 }

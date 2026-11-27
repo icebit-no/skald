@@ -15,6 +15,7 @@ publish = false
 skald-core = { path = "crates/skald-core" }
 skald-engine = { path = "crates/skald-engine" }
 skald-audio = { path = "crates/skald-audio" }
+skald-control = { path = "crates/skald-control" }
 skald-input = { path = "crates/skald-input" }
 skald-models = { path = "crates/skald-models" }
 skald-tray = { path = "crates/skald-tray" }

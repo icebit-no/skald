@@ -77,6 +77,7 @@ pub(crate) enum Line {
     ModelAtRestart,
     ListenerFailed(String),
     ListenerBack,
+    NoSocket(String),
     Stopping,
 }
 
@@ -194,6 +195,10 @@ impl fmt::Display for Line {
                 write!(f, "Får ikke lyttet på tasten ({reason}); prøver igjen.")
             }
             Line::ListenerBack => f.write_str("Lytter på tasten igjen."),
+            Line::NoSocket(reason) => write!(
+                f,
+                "Kommandolinjen når ikke denne Skald ({reason}); skald-kommandoer skriver rett i filene."
+            ),
             Line::Stopping => f.write_str("Avslutter …"),
         }
     }
@@ -249,7 +254,6 @@ pub(crate) fn report_lines(report: &Report) -> Vec<Line> {
 #[derive(Debug, PartialEq)]
 pub(crate) enum Exit {
     Usage(String),
-    UnknownCommand(String),
     NoHome,
     AlreadyRunning,
     Lock(String),
@@ -285,7 +289,7 @@ impl Exit {
     /// 2 for a command line Skald does not understand, 1 for everything else.
     pub(crate) fn code(&self) -> u8 {
         match self {
-            Exit::Usage(_) | Exit::UnknownCommand(_) => 2,
+            Exit::Usage(_) => 2,
             _ => 1,
         }
     }
@@ -304,10 +308,6 @@ impl fmt::Display for Exit {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Exit::Usage(message) => write!(f, "{message}\nSe skald --help."),
-            Exit::UnknownCommand(command) => write!(
-                f,
-                "Kommandoen «{command}» finnes ikke ennå. Uten kommando tar skald imot diktering."
-            ),
             Exit::NoHome => f.write_str(
                 "Fant ikke hjemmemappen, så Skald vet ikke hvor filene skal ligge. Gi en mappe med --dir.",
             ),
@@ -421,7 +421,7 @@ pub(crate) fn key_name(key: HoldKey) -> &'static str {
     }
 }
 
-fn capture_reason(error: &CaptureError) -> String {
+pub(crate) fn capture_reason(error: &CaptureError) -> String {
     match error {
         CaptureError::NotConnected => "mikrofonen er ikke koblet til".into(),
         CaptureError::PermissionDenied => "Skald har ikke tilgang til mikrofonen".into(),
@@ -689,7 +689,6 @@ mod tests {
     #[test]
     fn only_a_command_line_mistake_exits_with_2() {
         assert_eq!(Exit::Usage("x".into()).code(), 2);
-        assert_eq!(Exit::UnknownCommand("last".into()).code(), 2);
         assert_eq!(Exit::NoAccessibility.code(), 1);
     }
 }

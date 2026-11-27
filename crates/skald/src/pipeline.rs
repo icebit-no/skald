@@ -1,6 +1,8 @@
 //! What happens to a recording once the take has ended: the silence gate and the model, the corrections,
 //! the insertion and the history. It runs on a thread of its own, which holds the model for as long as Skald
 //! runs, so the keys stay live while the model works and takes are inserted in the order they were made.
+//! The command line's questions that need the model, the ordskatt meter and a file to transcribe, are
+//! answered on the same thread, between takes.
 
 use std::io;
 use std::path::PathBuf;
@@ -15,16 +17,20 @@ use skald_core::history::Entry;
 use skald_core::silence::Silence;
 use skald_core::silence_gate::{Decision, Reason};
 use skald_core::state::State;
+use skald_core::vocabulary::{CountTokens, Prompt};
 use skald_engine::{Decoding, Engine, Take, TakeOptions};
 use skald_input::{InsertError, InsertOptions, Inserted};
 
 use crate::files;
 use crate::sounds::{Chime, Sound};
+use crate::wav;
 
 /// The speech model and the silence gate around it.
 pub(crate) trait Transcribe {
     /// Where the model computes, such as «MTL0».
     fn device(&self) -> String;
+    /// The tokens a text takes for the model, as the ordskatt meter counts them.
+    fn count_tokens(&self, text: &str) -> usize;
     fn take(
         &mut self,
         samples: &[f32],
@@ -37,6 +43,10 @@ pub(crate) trait Transcribe {
 impl Transcribe for Engine {
     fn device(&self) -> String {
         self.transcriber().device()
+    }
+
+    fn count_tokens(&self, text: &str) -> usize {
+        CountTokens::count_tokens(self, text)
     }
 
     fn take(
@@ -225,6 +235,31 @@ impl<T: Transcribe, I: Insert> Pipeline<T, I> {
     }
 }
 
+impl<T: Transcribe, I> Pipeline<T, I> {
+    pub(crate) fn count_tokens(&self, prompt: &Prompt) -> usize {
+        prompt.tokens(&|text: &str| self.transcriber.count_tokens(text))
+    }
+
+    /// Transcribes a file's samples as a take, through the silence gate, with the configuration's language,
+    /// ordskatt and known phrases; nothing is corrected, inserted or kept.
+    pub(crate) fn transcribe(&mut self, samples: &[f32], config: &Config) -> Result<Take, String> {
+        let prompt = config.vocabulary.prompt();
+        let options = TakeOptions {
+            language: config.language,
+            prompt: &prompt,
+            decoding: Decoding::Greedy,
+        };
+        self.transcriber
+            .take(
+                samples,
+                wav::loudest_dbfs(samples),
+                &options,
+                &config.silence,
+            )
+            .map_err(|error| error.to_string())
+    }
+}
+
 #[derive(Debug)]
 pub(crate) enum WorkerEvent {
     Loaded { device: String, took: Duration },
@@ -232,15 +267,30 @@ pub(crate) enum WorkerEvent {
     Done(Report),
 }
 
-/// The thread that loads the model, then takes the jobs one at a time.
+/// What the worker is asked to do, in the order it was asked.
+enum Work {
+    Take(Job),
+    CountTokens {
+        prompt: Prompt,
+        answer: Sender<usize>,
+    },
+    Transcribe {
+        samples: Vec<f32>,
+        config: Arc<Config>,
+        answer: Sender<Result<Take, String>>,
+    },
+    Stop,
+}
+
+/// The thread that loads the model, then does the work handed to it one piece at a time.
 pub(crate) struct Worker {
-    jobs: Option<Sender<Job>>,
+    work: Sender<Work>,
     thread: Option<JoinHandle<()>>,
 }
 
 impl Worker {
     /// Starts the thread, which reports on `events` when the model has loaded or could not, then once per
-    /// job.
+    /// take.
     pub(crate) fn spawn<T, I, L>(
         load: L,
         inserter: I,
@@ -254,11 +304,12 @@ impl Worker {
         I: Insert + Send + 'static,
         L: FnOnce() -> Result<T, String> + Send + 'static,
     {
-        let (jobs, inbox) = mpsc::channel::<Job>();
+        let (work, inbox) = mpsc::channel::<Work>();
         let thread = thread::Builder::new()
             .name("skald-pipeline".into())
             .spawn(move || {
-                // A send fails only once the loop has stopped listening, and then no one needs to know.
+                // A send fails only once the one asking has stopped listening, and then no one needs to
+                // know.
                 let started = Instant::now();
                 let transcriber = match load() {
                     Ok(transcriber) => transcriber,
@@ -272,31 +323,51 @@ impl Worker {
                     took: started.elapsed(),
                 });
                 let mut pipeline = Pipeline::new(transcriber, inserter, chime, state, state_file);
-                for job in inbox {
-                    let _ = events.send(WorkerEvent::Done(pipeline.process(job)));
+                for work in inbox {
+                    match work {
+                        Work::Take(job) => {
+                            let _ = events.send(WorkerEvent::Done(pipeline.process(job)));
+                        }
+                        Work::CountTokens { prompt, answer } => {
+                            let _ = answer.send(pipeline.count_tokens(&prompt));
+                        }
+                        Work::Transcribe {
+                            samples,
+                            config,
+                            answer,
+                        } => {
+                            let _ = answer.send(pipeline.transcribe(&samples, &config));
+                        }
+                        Work::Stop => break,
+                    }
                 }
             })?;
         Ok(Self {
-            jobs: Some(jobs),
+            work,
             thread: Some(thread),
         })
     }
 
     pub(crate) fn submit(&self, job: Job) {
-        if let Some(jobs) = &self.jobs {
-            // Fails only when the model could not load, which ends Skald.
-            let _ = jobs.send(job);
+        // Fails only when the model could not load, which ends Skald.
+        let _ = self.work.send(Work::Take(job));
+    }
+
+    /// For the command line's questions, from any thread.
+    pub(crate) fn handle(&self) -> WorkerHandle {
+        WorkerHandle {
+            work: self.work.clone(),
         }
     }
 
-    /// Finishes the jobs already handed over, then waits until the thread has dropped the model, which
-    /// must happen before the process exits.
+    /// Finishes the takes already handed over, then waits until the thread has dropped the model, which
+    /// must happen before the process exits. A question asked after this gets no answer.
     pub(crate) fn finish(mut self) {
         self.join();
     }
 
     fn join(&mut self) {
-        self.jobs = None;
+        let _ = self.work.send(Work::Stop);
         if let Some(thread) = self.thread.take() {
             let _ = thread.join();
         }
@@ -309,8 +380,41 @@ impl Drop for Worker {
     }
 }
 
+/// Asks the worker what needs the model. Each question waits behind the work handed over before it, a
+/// take being transcribed included.
+#[derive(Clone)]
+pub(crate) struct WorkerHandle {
+    work: Sender<Work>,
+}
+
+impl WorkerHandle {
+    /// `None` once the worker has stopped.
+    pub(crate) fn count_tokens(&self, prompt: Prompt) -> Option<usize> {
+        let (answer, answered) = mpsc::channel();
+        self.work.send(Work::CountTokens { prompt, answer }).ok()?;
+        answered.recv().ok()
+    }
+
+    pub(crate) fn transcribe(
+        &self,
+        samples: Vec<f32>,
+        config: Arc<Config>,
+    ) -> Result<Take, String> {
+        let stopped = || "Talemodellen er ikke lastet.".to_owned();
+        let (answer, answered) = mpsc::channel();
+        self.work
+            .send(Work::Transcribe {
+                samples,
+                config,
+                answer,
+            })
+            .map_err(|_| stopped())?;
+        answered.recv().map_err(|_| stopped())?
+    }
+}
+
 #[cfg(test)]
-mod tests {
+pub(crate) mod tests {
     use std::collections::VecDeque;
     use std::sync::Mutex;
     use std::sync::atomic::{AtomicBool, Ordering};
@@ -325,11 +429,11 @@ mod tests {
     use crate::files::tests::Scratch;
     use crate::sounds::tests::Played;
 
-    fn quiet() -> Arc<dyn Chime> {
+    pub(crate) fn quiet() -> Arc<dyn Chime> {
         Arc::new(Played::default())
     }
 
-    fn heard(text: &str) -> Take {
+    pub(crate) fn heard(text: &str) -> Take {
         Take {
             decision: Decision::Insert,
             speech: Speech::new(std::iter::once(0..16_000).collect()),
@@ -347,7 +451,7 @@ mod tests {
         }
     }
 
-    fn silent(reason: Reason) -> Take {
+    pub(crate) fn silent(reason: Reason) -> Take {
         Take {
             decision: Decision::HeardNothing(reason),
             speech: Speech::default(),
@@ -363,14 +467,16 @@ mod tests {
         loudest: Option<f32>,
     }
 
-    struct FakeModel {
+    pub(crate) struct FakeModel {
         takes: VecDeque<Result<Take, skald_engine::Error>>,
         seen: Arc<Mutex<Seen>>,
         dropped: Arc<AtomicBool>,
     }
 
     impl FakeModel {
-        fn new(takes: impl IntoIterator<Item = Result<Take, skald_engine::Error>>) -> Self {
+        pub(crate) fn new(
+            takes: impl IntoIterator<Item = Result<Take, skald_engine::Error>>,
+        ) -> Self {
             Self {
                 takes: takes.into_iter().collect(),
                 seen: Arc::default(),
@@ -382,6 +488,10 @@ mod tests {
     impl Transcribe for FakeModel {
         fn device(&self) -> String {
             "FAKE0".into()
+        }
+
+        fn count_tokens(&self, text: &str) -> usize {
+            text.split_whitespace().count()
         }
 
         fn take(
@@ -406,13 +516,13 @@ mod tests {
     }
 
     #[derive(Clone)]
-    struct FakeInserter {
+    pub(crate) struct FakeInserter {
         result: Result<Inserted, InsertError>,
         calls: Arc<Mutex<Vec<(String, bool)>>>,
     }
 
     impl FakeInserter {
-        fn answering(result: Result<Inserted, InsertError>) -> Self {
+        pub(crate) fn answering(result: Result<Inserted, InsertError>) -> Self {
             Self {
                 result,
                 calls: Arc::default(),
@@ -776,6 +886,40 @@ mod tests {
             })
         ));
         assert_eq!(events.len(), 3);
+    }
+
+    #[test]
+    fn the_worker_answers_the_command_line_between_takes() {
+        let scratch = Scratch::new("worker-questions");
+        let model = FakeModel::new([Ok(heard("Hei.")), Ok(silent(Reason::TooLittleSpeech))]);
+        let seen = Arc::clone(&model.seen);
+        let (events, _received) = mpsc::channel();
+        let worker = Worker::spawn(
+            move || Ok(model),
+            FakeInserter::answering(Ok(Inserted::PreviousRestored)),
+            quiet(),
+            State::default(),
+            scratch.0.join("state.toml"),
+            events,
+        )
+        .unwrap();
+        let handle = worker.handle();
+        let config = config();
+        assert_eq!(handle.count_tokens(config.vocabulary.prompt()), Some(4));
+
+        let mut nynorsk = config.clone();
+        nynorsk.language = Language::Nynorsk;
+        let take = handle
+            .transcribe(vec![0.5; 1600], Arc::new(nynorsk))
+            .unwrap();
+        assert_eq!(take.text(), Some("Hei."));
+        assert_eq!(seen.lock().unwrap().language, Some(Language::Nynorsk));
+        assert!(!scratch.0.join("state.toml").exists(), "nothing is kept");
+
+        worker.submit(job(config.clone()));
+        worker.finish();
+        assert_eq!(handle.count_tokens(config.vocabulary.prompt()), None);
+        assert!(handle.transcribe(Vec::new(), Arc::new(config)).is_err());
     }
 
     #[test]

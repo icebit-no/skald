@@ -8,7 +8,18 @@ use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
 use skald_core::Config;
+use skald_core::paths::{Env, Os, Paths};
 use skald_core::state::State;
+
+use crate::say::Exit;
+
+/// The folder given on the command line, else the system's own folders.
+pub(crate) fn paths(dir: Option<&Path>) -> Result<Paths, Exit> {
+    match dir {
+        Some(dir) => Ok(Paths::in_one_folder(dir)),
+        None => Paths::for_os(Os::CURRENT, &Env::from_process()).ok_or(Exit::NoHome),
+    }
+}
 
 /// A configuration file that could not be read, with the file and the reason, the line among it.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -89,6 +100,27 @@ impl ConfigFile {
     }
 }
 
+/// The configuration in the file as it is now; a missing file is the default.
+pub(crate) fn read_config(path: &Path) -> Result<Config, ConfigError> {
+    let error = |reason: &dyn fmt::Display| ConfigError {
+        path: path.to_owned(),
+        reason: reason.to_string(),
+    };
+    match fs::read_to_string(path) {
+        Ok(text) => Config::from_toml(&text).map_err(|reason| error(&reason)),
+        Err(reason) if reason.kind() == ErrorKind::NotFound => Ok(Config::default()),
+        Err(reason) => Err(error(&reason)),
+    }
+}
+
+/// Writes the configuration, for a change the command line asked for. The error names the file.
+pub(crate) fn write_config(path: &Path, config: &Config) -> Result<(), String> {
+    let text = config
+        .to_toml()
+        .map_err(|error| format!("{}: {error}", path.display()))?;
+    replace(path, &text)
+}
+
 /// The history and correction counts. A missing file is an empty state.
 pub(crate) fn read_state(path: &Path) -> Result<State, String> {
     match fs::read_to_string(path) {
@@ -101,14 +133,21 @@ pub(crate) fn read_state(path: &Path) -> Result<State, String> {
 /// Writes the state through a file beside it that then takes its place, so a reader never meets half a
 /// file. The error names the file.
 pub(crate) fn write_state(path: &Path, state: &State) -> Result<(), String> {
-    let failed = |error: &dyn fmt::Display| format!("{}: {error}", path.display());
-    let text = state.to_toml().map_err(|error| failed(&error))?;
+    let text = state
+        .to_toml()
+        .map_err(|error| format!("{}: {error}", path.display()))?;
+    replace(path, &text)
+}
+
+/// Writes `text` to a file beside `path` that then takes its place. The error names the file.
+fn replace(path: &Path, text: &str) -> Result<(), String> {
+    let failed = |error: std::io::Error| format!("{}: {error}", path.display());
     if let Some(dir) = path.parent() {
-        fs::create_dir_all(dir).map_err(|error| failed(&error))?;
+        fs::create_dir_all(dir).map_err(failed)?;
     }
     let beside = path.with_extension("toml.new");
-    fs::write(&beside, text).map_err(|error| failed(&error))?;
-    fs::rename(&beside, path).map_err(|error| failed(&error))
+    fs::write(&beside, text).map_err(failed)?;
+    fs::rename(&beside, path).map_err(failed)
 }
 
 /// Held while Skald takes dictation, so a second Skald started by mistake does not paste every take a

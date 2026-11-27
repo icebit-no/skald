@@ -1,5 +1,5 @@
-//! The command line. With no command, `skald` takes dictation. A command (`skald last`, `skald vocab add`,
-//! …) is recognised and refused, since this build has none.
+//! The command line. With no command, `skald` takes dictation; with one (`skald last`, `skald vocab add`, …)
+//! the arguments go to skald-control (D-25), with the folder `--dir` names.
 
 use std::ffi::OsString;
 use std::path::PathBuf;
@@ -19,13 +19,18 @@ pub(crate) enum Invocation {
     Dictate(Options),
     Help,
     Version,
-    /// A command this build does not have yet.
-    Command(String),
+    /// The command and everything after it, and the options before it this binary does not take, such as
+    /// `--json`.
+    Command {
+        dir: Option<PathBuf>,
+        args: Vec<OsString>,
+    },
 }
 
 /// Reads the arguments after the program's name. The error is the line to show the user.
 pub(crate) fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Invocation, String> {
     let mut options = Options::default();
+    let mut theirs = Vec::new();
     let mut args = args.into_iter();
     while let Some(arg) = args.next() {
         let Some(flag) = arg.to_str() else {
@@ -43,11 +48,21 @@ pub(crate) fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Invocati
             "-v" | "--verbose" => options.verbose = true,
             "-h" | "--help" => return Ok(Invocation::Help),
             "-V" | "--version" => return Ok(Invocation::Version),
-            flag if flag.starts_with('-') => return Err(format!("Ukjent valg: {flag}.")),
-            command => return Ok(Invocation::Command(command.to_owned())),
+            flag if flag.starts_with('-') => theirs.push(arg),
+            _ => {
+                theirs.push(arg);
+                theirs.extend(args);
+                return Ok(Invocation::Command {
+                    dir: options.dir,
+                    args: theirs,
+                });
+            }
         }
     }
-    Ok(Invocation::Dictate(options))
+    match theirs.first() {
+        Some(flag) => Err(format!("Ukjent valg: {}.", flag.display())),
+        None => Ok(Invocation::Dictate(options)),
+    }
 }
 
 pub(crate) const HELP: &str = "\
@@ -64,7 +79,9 @@ Valg:
   --vad <fil>      Silero VAD (ellers <modeller>/silero-vad-v6.2-F32.gguf)
   -v, --verbose    vis tider for hvert opptak
   -h, --help       vis denne hjelpen
-  -V, --version    vis versjonen";
+  -V, --version    vis versjonen
+
+Kommandoene for ordskatt, rettinger, innstillinger og historikk: skald help";
 
 #[cfg(test)]
 mod tests {
@@ -114,15 +131,27 @@ mod tests {
         assert_eq!(parse(&["-V"]), Ok(Invocation::Version));
     }
 
+    fn command(dir: Option<&str>, args: &[&str]) -> Result<Invocation, String> {
+        Ok(Invocation::Command {
+            dir: dir.map(PathBuf::from),
+            args: args.iter().map(OsString::from).collect(),
+        })
+    }
+
     #[test]
-    fn a_command_is_named_and_not_run() {
+    fn a_command_goes_on_with_everything_but_the_folder() {
         assert_eq!(
             parse(&["last", "--json"]),
-            Ok(Invocation::Command("last".into()))
+            command(None, &["last", "--json"])
         );
         assert_eq!(
-            parse(&["-v", "vocab", "add", "merget"]),
-            Ok(Invocation::Command("vocab".into()))
+            parse(&["--dir", "/tmp/s", "--json", "vocab", "add", "--dir"]),
+            command(Some("/tmp/s"), &["--json", "vocab", "add", "--dir"])
+        );
+        assert_eq!(
+            parse(&["help"]),
+            command(None, &["help"]),
+            "the commands' own help"
         );
     }
 
@@ -130,5 +159,6 @@ mod tests {
     fn mistakes_say_what_is_wrong_in_bokmål() {
         assert_eq!(parse(&["--model"]), Err("--model trenger en sti.".into()));
         assert_eq!(parse(&["--fast"]), Err("Ukjent valg: --fast.".into()));
+        assert_eq!(parse(&["--json"]), Err("Ukjent valg: --json.".into()));
     }
 }

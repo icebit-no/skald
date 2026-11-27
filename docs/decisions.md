@@ -31,7 +31,10 @@ so and stops instead of pasting every take twice.
 
 The configuration is read again when the file changes. A file that cannot be read keeps the settings in use
 and says why, as does a file that disappears, since an editor may remove it for a moment while saving; a new
-model is used from the next start, since loading one takes seconds. Changed: [design.md](design.md#recording),
+model is used from the next start, since loading one takes seconds. While Skald takes dictation it answers the
+command line on its socket (D-28); a change made there is written to the file and taken in the same way within
+a tenth of a second. A socket that cannot be made leaves Skald taking dictation, and the commands work on the
+files. Changed: [design.md](design.md#recording),
 [plan.md](plan.md) M1b.
 
 ## D-28 — The command line's protocol, and the same commands whether Skald runs or not

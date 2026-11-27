@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 use skald_core::paths::Paths;
 use skald_models::{Cancel, Model, Status};
 
-use crate::say::{Exit, Line, Printer};
+use crate::say::Exit;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ModelFiles {
@@ -49,10 +49,10 @@ impl ModelFiles {
     }
 
     /// Fails before anything else starts when a file is missing or is not the pinned one. A pinned file that
-    /// was never checked is read once to check it, which takes a few seconds.
-    pub(crate) fn check(&self, out: Printer) -> Result<(), Exit> {
+    /// was never checked is read once to check it, which takes a few seconds; `checking` is called first.
+    pub(crate) fn check(&self, checking: impl FnOnce()) -> Result<(), Exit> {
         match self.pinned {
-            Some(pinned) => check_pinned(pinned, &self.model, out)?,
+            Some(pinned) => check_pinned(pinned, &self.model, checking)?,
             None if !self.model.is_file() => {
                 return Err(Exit::ModelMissing {
                     path: self.model.clone(),
@@ -70,7 +70,7 @@ impl ModelFiles {
     }
 }
 
-fn check_pinned(pinned: &'static Model, path: &Path, out: Printer) -> Result<(), Exit> {
+fn check_pinned(pinned: &'static Model, path: &Path, checking: impl FnOnce()) -> Result<(), Exit> {
     let (Some(file), Some(dir)) = (pinned.file(), path.parent()) else {
         return Err(Exit::ModelNotOffered(pinned.name));
     };
@@ -87,7 +87,7 @@ fn check_pinned(pinned: &'static Model, path: &Path, out: Printer) -> Result<(),
         Status::Missing | Status::Partial { .. } => Err(missing()),
         Status::Other { .. } => Err(wrong()),
         Status::Unchecked => {
-            out.say(Line::CheckingModel);
+            checking();
             match skald_models::verify(file, dir, &Cancel::new()) {
                 Ok(true) => Ok(()),
                 Ok(false) => Err(wrong()),
@@ -107,7 +107,7 @@ mod tests {
     use super::*;
     use crate::files::tests::Scratch;
 
-    const QUIET: Printer = Printer { verbose: false };
+    fn quiet() {}
 
     #[test]
     fn the_files_sit_where_skald_models_puts_them_unless_given() {
@@ -154,7 +154,7 @@ mod tests {
         let paths = Paths::in_one_folder(&scratch.0);
         let files = ModelFiles::locate(&paths, DEFAULT_MODEL, None, None).unwrap();
         assert!(matches!(
-            files.check(QUIET),
+            files.check(quiet),
             Err(Exit::ModelMissing { ref path, pinned: Some(_) }) if *path == files.model
         ));
 
@@ -162,7 +162,7 @@ mod tests {
         fs::create_dir_all(files.model.parent().unwrap()).unwrap();
         fs::write(&files.model, b"not a model").unwrap();
         assert!(matches!(
-            files.check(QUIET),
+            files.check(quiet),
             Err(Exit::ModelWrongFile { ref path, .. }) if *path == files.model
         ));
     }
@@ -181,17 +181,17 @@ mod tests {
         )
         .unwrap();
         assert!(matches!(
-            files.check(QUIET),
+            files.check(quiet),
             Err(Exit::ModelMissing { ref path, pinned: None }) if *path == model
         ));
 
         fs::write(&model, b"any model").unwrap();
         assert!(matches!(
-            files.check(QUIET),
+            files.check(quiet),
             Err(Exit::VadMissing { ref path }) if *path == vad
         ));
 
         fs::write(&vad, b"vad").unwrap();
-        assert_eq!(files.check(QUIET), Ok(()));
+        assert_eq!(files.check(quiet), Ok(()));
     }
 }

@@ -38,5 +38,5 @@ To check a change, render to another folder with `--out DIR` and compare.
 The stone, the red, the light and the rune's proportions at the large sizes are settled in D-17. The numbers
 for them are in the section «The drawing» of `render.py`; changing them is a decision, not a tweak.
 
-Packing these into an `.icns` and wiring the bundle is part of the `.app` bundle item in
-[plan.md](../../docs/plan.md).
+`packaging/macos/bundle.sh` packs them into the app bundle's `AppIcon.icns` with `iconutil` on every build
+([packaging/macos](../../packaging/macos/README.md)).

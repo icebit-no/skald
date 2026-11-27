@@ -150,7 +150,7 @@ reads «Hold høyre Ctrl for å snakke». «Skriftspråk» holds «Bokmål» and
 In «Mikrofon» the microphone in use is ticked and the pinned one carries a pin; a pinned microphone that is
 unplugged stays listed, greyed, and «Bruk den første som er koblet til» is ticked while nothing is pinned.
 «Siste tekster» is greyed while it holds no text, and a long text is cut with «…» and shown whole as its
-tooltip.
+tooltip; Windows' menus have no tooltips, so there it shows its start and copies whole.
 
 On Linux the item is a StatusNotifierItem, which Waybar shows: the rune in bone, for the dark panels Hyprland
 desktops have, with the same dots. A click on it opens the menu. The pinned microphone is marked «festet» in

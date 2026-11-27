@@ -75,7 +75,7 @@ overlay has set GPUI up). The binary joins them.
       settings, quit.
 - [ ] Settings window with the tabs Generelt, Ordskatt, Historikk and Om.
 - [ ] First run: model download with progress (pinned revision, SHA-256), permissions, a test dictation.
-- [ ] `skald` command line over a local socket only the user can open; `--json` on every command; writes the
+- [x] `skald` command line over a local socket only the user can open; `--json` on every command; writes the
       configuration file directly when the app is not running.
 - [ ] Claude skill in `packaging/skills/skald/`, installed with `skald skill install`; `skald mcp`.
 - [x] App icon in granite: 1024, 512, 256, 128 and 64 px from the chosen drawing, own drawings for 32 and

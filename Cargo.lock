@@ -1134,6 +1134,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "skald-control"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "skald-core",
+ "toml",
+]
+
+[[package]]
 name = "skald-core"
 version = "0.1.0"
 dependencies = [

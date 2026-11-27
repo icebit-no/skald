@@ -16,20 +16,27 @@ Design: [Recording](design.md#recording), [Silence](design.md#silence), [Inserti
 
 ### M1a Engine check
 
-One pull request with a report in `docs/research/engine-check.md`. Nothing else in M1 starts before it is
-merged, because it decides the binding and which models Skald can offer.
+Two pull requests, each with a report in `docs/research/`; they can run side by side. Nothing else in M1 starts
+before both are merged, because they decide the binding and which models Skald can offer. Test clips are fetched
+by a script from a pinned source with SHA-256 checks, not committed.
+
+**NB-Whisper and VAD** (`docs/research/engine-check.md`):
 
 - [ ] Build transcribe.cpp with Metal. Convert NB-Whisper Large to GGUF with transcribe.cpp's converter and
       check on 10 Norwegian clips that its text matches whisper.cpp with NbAiLab's `ggml-model.bin`.
 - [ ] Check that the vocabulary prompt works with NB-Whisper in transcribe.cpp: as initial prompt, and carried
       into each 30-second window for a long take.
-- [ ] Convert NB-ASR Bokfink02 (Qwen3-ASR 0.6B with NbAiLab's own tokenizer) to GGUF. Check that its text
-      matches NbAiLab's `inference.py` on 20 clips, run where CUDA is available. Find out whether
-      transcribe.cpp takes the custom tokenizer, the language prefixes (`language Norwegian<asr_text>` and
-      `language Norwegian Nynorsk<asr_text>`) and keyword context, and what is missing if not.
 - [ ] Run Silero VAD from transcribe.cpp on the same clips, including silent takes.
 - [ ] Choose the Rust binding: transcribe-rs, or our own over transcribe.cpp's C API. Say why.
-- [ ] Measure the time to transcribe 9 s of speech with each model on Apple Silicon.
+- [ ] Measure the time to transcribe 9 s of speech with NB-Whisper on Apple Silicon.
+
+**Bokfink** (`docs/research/bokfink-gguf.md`):
+
+- [ ] Convert NB-ASR Bokfink02 (Qwen3-ASR 0.6B with NbAiLab's own tokenizer) to GGUF. Check that its text
+      matches NbAiLab's `inference.py` on 20 clips. Find out whether transcribe.cpp takes the custom tokenizer,
+      the language prefixes (`language Norwegian<asr_text>` and `language Norwegian Nynorsk<asr_text>`) and
+      keyword context, and what is missing if not.
+- [ ] Measure the time to transcribe 9 s of speech with Bokfink on Apple Silicon.
 
 ### M1b The core
 

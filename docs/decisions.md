@@ -18,8 +18,8 @@ Vulkan backend catches the failure as it registers, steps aside, and the CPU com
 Linux stays one binary, with no rpath and no modules to ship beside it. lavapipe, Mesa's Vulkan on the
 processor, counts as no GPU, since it is a CPU that speaks Vulkan.
 
-When the model loads on the CPU for want of Vulkan, the app says so on Linux as on Windows (design.md, First
-run); the line was said only by `skald transcribe` before. CI builds against Ubuntu's Vulkan headers and
+When the model loads on the CPU for want of Vulkan, Skald says so on Linux as on Windows (design.md, First
+run): the first-run window's «Talemodell» step, the line printed as the model loads, and `skald transcribe`. CI builds against Ubuntu's Vulkan headers and
 glslc, and has no GPU, so its tests compute on the CPU. Evidence: in a container, the engine's tests and
 Skald with NB-Whisper loaded pass with lavapipe and with no Vulkan driver at all, and the binary links
 `libvulkan.so.1`. Changed: [design.md](design.md#first-run), [plan.md](plan.md) M5.

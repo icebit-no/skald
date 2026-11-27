@@ -1,0 +1,303 @@
+diff --git a/scripts/convert-qwen3_asr.py b/scripts/convert-qwen3_asr.py
+index 16f9abb0..587b36a7 100755
+--- a/scripts/convert-qwen3_asr.py
++++ b/scripts/convert-qwen3_asr.py
+@@ -466,7 +466,9 @@ def compute_size_label(total_params: int) -> str:
+ # ---------------------------------------------------------------------------
+ 
+ 
+-def convert(model_dir: Path, out_path: Path, variant: str, repo_id: str | None = None) -> None:
++def convert(model_dir: Path, out_path: Path, variant: str, repo_id: str | None = None,
++            identity: dict | None = None,
++            language_names: list[tuple[str, str]] | None = None) -> None:
+     print(f"Output dtype: {REFERENCE_DTYPE_LABEL} (source/reference dtype)")
+ 
+     config_path     = model_dir / "config.json"
+@@ -491,8 +493,12 @@ def convert(model_dir: Path, out_path: Path, variant: str, repo_id: str | None =
+     if chat_template_path.is_file():
+         with chat_template_path.open() as f:
+             chat_template = json.load(f).get("chat_template")
++    elif (model_dir / "chat_template.jinja").is_file():
++        chat_template = (model_dir / "chat_template.jinja").read_text(encoding="utf-8")
+ 
+     hp = read_hparams(config, preproc)
++    if language_names:
++        hp["languages"] = [code for code, _ in language_names]
+     print(f"Audio encoder: {hp['enc_n_layers']} layers, d_model={hp['enc_d_model']}")
+     print(f"Text LM: {hp['dec_n_layers']} layers, hidden={hp['dec_hidden']}, "
+           f"heads={hp['dec_n_heads']}/{hp['dec_n_kv_heads']}")
+@@ -529,22 +535,27 @@ def convert(model_dir: Path, out_path: Path, variant: str, repo_id: str | None =
+         writer = gguf_writer(str(out_path), "qwen3_asr")
+ 
+         # ---- general.* ----
++        identity = identity or {}
++        stock_names = {
++            "qwen3-asr-0.6b": "Qwen3-ASR 0.6B",
++            "qwen3-asr-1.7b": "Qwen3-ASR 1.7B",
++        }
++        if not identity.get("name") and variant not in stock_names:
++            raise ValueError(f"variant {variant!r} is not a Qwen release; pass --name")
+         add_general_identity(
+             writer,
+-            name={
+-                "qwen3-asr-0.6b": "Qwen3-ASR 0.6B",
+-                "qwen3-asr-1.7b": "Qwen3-ASR 1.7B",
+-            }[variant],
++            name=identity.get("name") or stock_names[variant],
+             basename="qwen3-asr",
+             size_label=size_label,
+             file_type=REFERENCE_FILE_TYPE,
+             languages=hp["languages"],
+-            author="Alibaba Qwen Team",
+-            organization="Qwen",
++            author=identity.get("author") or "Alibaba Qwen Team",
++            organization=identity.get("organization") or "Qwen",
+             license="apache-2.0",
+             license_name="Apache License 2.0",
+             license_link="https://www.apache.org/licenses/LICENSE-2.0",
+             repo_url=(f"https://huggingface.co/{repo_id}" if repo_id else None),
++            description=identity.get("description"),
+         )
+ 
+         # ---- stt.variant ----
+@@ -614,6 +625,10 @@ def convert(model_dir: Path, out_path: Path, variant: str, repo_id: str | None =
+                         hp["dec_tie_embeddings"])
+         writer.add_uint32("stt.qwen3_asr.decoder.vocab_size",    hp["dec_vocab_size"])
+ 
++        # ---- prompt language names (one per general.languages entry) ----
++        if language_names:
++            writer.add_array("stt.qwen3_asr.language_names", [name for _, name in language_names])
++
+         # ---- audio fusion tokens ----
+         writer.add_uint32("stt.qwen3_asr.audio_token_id",       hp["audio_token_id"])
+         writer.add_uint32("stt.qwen3_asr.audio_start_token_id", hp["audio_start_token_id"])
+@@ -785,7 +800,22 @@ def main(argv: list[str]) -> int:
+                         "a local directory.")
+     p.add_argument("--variant", type=str, default=None,
+                    help="stt.variant string (default: derived from slug)")
++    p.add_argument("--language", action="append", default=[], metavar="CODE=NAME",
++                   help="language the model is prompted with, as a BCP-47 code and "
++                        "the name its 'language {Name}<asr_text>' prefix uses "
++                        "(repeatable; replaces config.json support_languages)")
++    p.add_argument("--name", type=str, default=None, help="general.name")
++    p.add_argument("--author", type=str, default=None, help="general.author")
++    p.add_argument("--organization", type=str, default=None, help="general.organization")
++    p.add_argument("--description", type=str, default=None, help="general.description")
+     args = p.parse_args(argv[1:])
++    language_names = []
++    for entry in args.language:
++        code, sep, name = entry.partition("=")
++        if not sep or not code or not name:
++            print(f"error: --language expects CODE=NAME, got {entry!r}", file=sys.stderr)
++            return 2
++        language_names.append((code, name))
+ 
+     if looks_like_repo_id(args.model):
+         repo_id = args.repo_id or args.model
+@@ -832,7 +862,10 @@ def main(argv: list[str]) -> int:
+                     break
+             variant = stripped
+ 
+-    convert(model_dir, out_path, variant, repo_id=repo_id)
++    identity = {"name": args.name, "author": args.author,
++                "organization": args.organization, "description": args.description}
++    convert(model_dir, out_path, variant, repo_id=repo_id,
++            identity=identity, language_names=language_names or None)
+     return 0
+ 
+ 
+diff --git a/src/arch/qwen3_asr/model.cpp b/src/arch/qwen3_asr/model.cpp
+index db14e80f..bcd620b9 100644
+--- a/src/arch/qwen3_asr/model.cpp
++++ b/src/arch/qwen3_asr/model.cpp
+@@ -113,6 +113,31 @@ int64_t qwen3_max_audio_ms(const QwenAsrHParams & hp) {
+ // Forward declarations for helpers defined further down in this file.
+ transcribe_status resolve_chat_tokens(const transcribe::Tokenizer & tok, ChatTokens & out);
+ 
++// Optional stt.qwen3_asr.language_names: one prompt name per general.languages
++// entry, in the same order ("Norwegian" for "nb"). Absent keeps the static map.
++transcribe_status read_language_names_kv(const gguf_context * gguf, QwenAsrModel & m) {
++    std::vector<std::string> names;
++    switch (read_string_array_kv(gguf, "stt.qwen3_asr.language_names", names)) {
++        case KvResult::Absent:
++            return TRANSCRIBE_OK;
++        case KvResult::BadType:
++            return TRANSCRIBE_ERR_GGUF;
++        case KvResult::Ok:
++            break;
++    }
++    std::vector<std::string> codes;
++    if (read_string_array_kv(gguf, "general.languages", codes) != KvResult::Ok || codes.size() != names.size()) {
++        log_msg(TRANSCRIBE_LOG_LEVEL_ERROR,
++                "qwen3_asr: stt.qwen3_asr.language_names needs one name per general.languages entry");
++        return TRANSCRIBE_ERR_GGUF;
++    }
++    m.language_names.clear();
++    for (size_t i = 0; i < codes.size(); ++i) {
++        m.language_names.emplace_back(codes[i], names[i]);
++    }
++    return TRANSCRIBE_OK;
++}
++
+ transcribe_status load(Loader & loader, const transcribe_model_load_params * params, transcribe_model ** out_model) {
+     const int64_t t_load_start = ggml_time_us();
+ 
+@@ -132,6 +157,9 @@ transcribe_status load(Loader & loader, const transcribe_model_load_params * par
+     if (const transcribe_status st = read_languages_kv(loader.gguf(), *m); st != TRANSCRIBE_OK) {
+         return st;
+     }
++    if (const transcribe_status st = read_language_names_kv(loader.gguf(), *m); st != TRANSCRIBE_OK) {
++        return st;
++    }
+ 
+     // Tokenizer (byte-level BPE; loader handles the "gpt2" model tag).
+     if (const transcribe_status st = m->tok.load(loader.gguf()); st != TRANSCRIBE_OK) {
+@@ -497,14 +525,23 @@ constexpr LangNameEntry k_qwen3_asr_language_names[] = {
+ // code here means converter/map drift — surface as UNSUPPORTED_LANGUAGE.
+ transcribe_status encode_language_prefix(const transcribe::Tokenizer & tok,
+                                          const char *                  bcp47,
+-                                         std::vector<int32_t> &        out_ids) {
++                                         std::vector<int32_t> &        out_ids,
++                                         const LanguageNames *         declared) {
+     out_ids.clear();
+     if (bcp47 == nullptr || bcp47[0] == '\0') {
+         return TRANSCRIBE_ERR_INVALID_ARG;
+     }
+     const char * pub_name = nullptr;
++    if (declared != nullptr) {
++        for (const auto & [code, name] : *declared) {
++            if (code == bcp47) {
++                pub_name = name.c_str();
++                break;
++            }
++        }
++    }
+     for (const auto & e : k_qwen3_asr_language_names) {
+-        if (std::strcmp(e.bcp47, bcp47) == 0) {
++        if (pub_name == nullptr && std::strcmp(e.bcp47, bcp47) == 0) {
+             pub_name = e.pub_name;
+             break;
+         }
+@@ -540,6 +577,22 @@ transcribe_status encode_language_prefix(const transcribe::Tokenizer & tok,
+ 
+ namespace {  // reopen anon for the rest of the file's helpers.
+ 
++// Reverse of the prompt-name lookup: the GGUF's declared names first, then the
++// static map. Null when the model named a language neither knows.
++const char * bcp47_for_prompt_name(const QwenAsrModel & m, const std::string & name) {
++    for (const auto & [code, declared_name] : m.language_names) {
++        if (name == declared_name) {
++            return code.c_str();
++        }
++    }
++    for (const auto & e : k_qwen3_asr_language_names) {
++        if (name == e.pub_name) {
++            return e.bcp47;
++        }
++    }
++    return nullptr;
++}
++
+ // Host-side pack [n_mels, T_mel] mel into batched chunks
+ // [mel_per_chunk, n_mels, 1, n_chunks]. Chunks shorter than
+ // mel_per_chunk are zero-padded.
+@@ -644,7 +697,8 @@ transcribe_status run(transcribe_session *          session,
+     std::vector<int32_t>         lang_prefix_ids;
+     const std::vector<int32_t> * lang_prefix_ptr = nullptr;
+     if (params != nullptr && params->language != nullptr && params->language[0] != '\0') {
+-        if (const transcribe_status st = encode_language_prefix(cm->tok, params->language, lang_prefix_ids);
++        if (const transcribe_status st =
++                encode_language_prefix(cm->tok, params->language, lang_prefix_ids, &cm->language_names);
+             st != TRANSCRIBE_OK) {
+             return st;
+         }
+@@ -1141,11 +1195,8 @@ transcribe_status run(transcribe_session *          session,
+                 while (!name.empty() && (name.back() == ' ' || name.back() == '\t' || name.back() == '\n')) {
+                     name.pop_back();
+                 }
+-                for (const auto & e : k_qwen3_asr_language_names) {
+-                    if (name == e.pub_name) {
+-                        cc->detected_language = e.bcp47;
+-                        break;
+-                    }
++                if (const char * code = bcp47_for_prompt_name(*cm, name); code != nullptr) {
++                    cc->detected_language = code;
+                 }
+             }
+         }
+@@ -1587,11 +1638,8 @@ transcribe_session::ResultSet finalize_utterance(QwenAsrModel *               cm
+                 while (!name.empty() && (name.back() == ' ' || name.back() == '\t' || name.back() == '\n')) {
+                     name.pop_back();
+                 }
+-                for (const auto & e : k_qwen3_asr_language_names) {
+-                    if (name == e.pub_name) {
+-                        rs.detected_language = e.bcp47;
+-                        break;
+-                    }
++                if (const char * code = bcp47_for_prompt_name(*cm, name); code != nullptr) {
++                    rs.detected_language = code;
+                 }
+             }
+         }
+@@ -1654,7 +1702,7 @@ transcribe_status run_batch(transcribe_session *          session,
+     std::vector<int32_t>         lang_prefix_ids;
+     const std::vector<int32_t> * lang_prefix_ptr = nullptr;
+     if (params != nullptr && params->language != nullptr && params->language[0] != '\0') {
+-        if (encode_language_prefix(cm->tok, params->language, lang_prefix_ids) != TRANSCRIBE_OK) {
++        if (encode_language_prefix(cm->tok, params->language, lang_prefix_ids, &cm->language_names) != TRANSCRIBE_OK) {
+             return TRANSCRIBE_ERR_UNSUPPORTED_LANGUAGE;
+         }
+         lang_prefix_ptr = &lang_prefix_ids;
+diff --git a/src/arch/qwen3_asr/qwen3_asr.h b/src/arch/qwen3_asr/qwen3_asr.h
+index 73b5634b..d2cf84ff 100644
+--- a/src/arch/qwen3_asr/qwen3_asr.h
++++ b/src/arch/qwen3_asr/qwen3_asr.h
+@@ -20,6 +20,7 @@
+ #include <cstdint>
+ #include <optional>
+ #include <string>
++#include <utility>
+ #include <vector>
+ 
+ struct ggml_context;
+@@ -43,17 +44,24 @@ void apply_family_invariants(transcribe_model & model);
+ // Returns:
+ //   TRANSCRIBE_OK                     on success, out_ids populated.
+ //   TRANSCRIBE_ERR_INVALID_ARG        bcp47 null or empty.
+-//   TRANSCRIBE_ERR_UNSUPPORTED_LANGUAGE  bcp47 not in the publisher's
+-//                                     support list (the static map
+-//                                     in model.cpp is the source of
+-//                                     truth; drift vs. caps.languages
++//   TRANSCRIBE_ERR_UNSUPPORTED_LANGUAGE  bcp47 in neither `declared`
++//                                     nor the publisher's support list
++//                                     (the static map in model.cpp;
++//                                     drift vs. caps.languages
+ //                                     surfaces here).
+ //   TRANSCRIBE_ERR_GGUF               tokenizer has no encoder
+ //                                     (missing merges) or vocab
+ //                                     missing <asr_text> special.
++//
++// `declared` is the GGUF's own code -> name list (stt.qwen3_asr.language_names),
++// looked up before the static map so a fine-tune can name languages the
++// publisher's list lacks.
++using LanguageNames = std::vector<std::pair<std::string, std::string>>;
++
+ transcribe_status encode_language_prefix(const transcribe::Tokenizer & tok,
+                                          const char *                  bcp47,
+-                                         std::vector<int32_t> &        out_ids);
++                                         std::vector<int32_t> &        out_ids,
++                                         const LanguageNames *         declared = nullptr);
+ 
+ // ---------------------------------------------------------------------------
+ // Model / Context
+@@ -89,6 +97,10 @@ struct QwenAsrModel final : public transcribe_model {
+     // Resolved chat-template token ids (see resolve_chat_tokens in model.cpp).
+     ChatTokens chat_tokens;
+ 
++    // Prompt names for the codes in general.languages, from the optional
++    // stt.qwen3_asr.language_names KV (empty == the static map only).
++    LanguageNames language_names;
++
+     QwenAsrModel() = default;
+     ~QwenAsrModel() override;
+ 

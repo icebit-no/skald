@@ -1,0 +1,13 @@
+# Top-level packages for the Bokfink reference run and GGUF conversion.
+# requirements.txt is compiled from this file with uv and pins every package.
+qwen-asr==0.0.6
+transformers==4.57.6
+torch==2.11.0
+accelerate==1.12.0
+numpy==2.4.4
+scipy==1.17.1
+soundfile==0.13.1
+librosa==0.11.0
+safetensors==0.7.0
+gguf==0.18.0
+huggingface-hub==0.36.2

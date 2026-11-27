@@ -88,8 +88,9 @@ overlay has set GPUI up). The binary joins them.
 
 Design: [Audio in](design.md#audio-in).
 
-- [ ] Test set: the same sentences read with a good USB microphone, with the built-in Mac microphone and from
-      a distance, with references in bokmål.
+- [x] Test set: 60 sentences with references in bokmål (`research/test-set/`), and `skald bench record` to read
+      them into a folder `skald bench` reads.
+- [ ] Test set read with a good USB microphone, with the built-in Mac microphone and from a distance.
 - [x] `skald bench`: word error rate and spacing errors (split or joined compounds), per configuration.
 - [ ] Compare greedy and beam 5, level normalisation, an 80 Hz high-pass, RNNoise, cutting the silence around
       the speech or not, and NB-Whisper against Bokfink as BF16 and as Q8_0 (Q5_K_M changed 9 of 48 texts in
@@ -123,6 +124,7 @@ Design: [Site](design.md#site).
 
 ## Waiting on Thomas
 
+- The test set: three runs of `skald bench record`, about ten minutes each, as research/test-set/README.md says.
 - The hero of the site: concept A, «Skalden i stamnen», is chosen; it needs final polish and a bokmål version.
 - Nordlyd: access to `NbAiLab/nordlyd-asr-qwen06B-nov26preview` must be requested on Hugging Face before it
   can be evaluated.

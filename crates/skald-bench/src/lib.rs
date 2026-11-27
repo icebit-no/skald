@@ -4,7 +4,8 @@
 //!
 //! The test set's layout is in the `set` module, the configurations in `configuration`, how words are
 //! compared in `normalise` and `score`. A run writes into its own folder: `takes.jsonl`, one JSON line
-//! per take and configuration, and `summary.md`, the tables.
+//! per take and configuration, and `summary.md`, the tables. `skald bench record` (the `record` module)
+//! records a test set.
 
 use std::collections::BTreeMap;
 use std::ffi::OsString;
@@ -22,6 +23,7 @@ use skald_core::vocabulary::Vocabulary;
 mod audio;
 mod configuration;
 mod normalise;
+mod record;
 mod report;
 mod runner;
 mod score;
@@ -53,6 +55,9 @@ Valg:
   --nynorsk        Transkriber til nynorsk i stedet for bokmål.
   --out MAPPE      Hvor resultatene skrives. Ellers <mappe>/bench-results/<UTC-tid>.
   --json           Skriv sammendraget, eller feilen, som JSON i stedet for Markdown.
+
+Et testsett tas opp med «skald bench record <mappe> --microphone <merkelapp>»; se
+«skald bench record --help». Heter mappen record, skriv ./record.
 ";
 
 /// What kind of failure ended a run, as the command line's other commands name them (D-28).
@@ -84,6 +89,9 @@ impl Failure {
 /// `{"error": {"code", "message"}}` on standard output.
 pub fn run(args: impl IntoIterator<Item = OsString>) -> ExitCode {
     let args: Vec<OsString> = args.into_iter().collect();
+    if args.first().is_some_and(|arg| arg == "record") {
+        return record::run(args.into_iter().skip(1));
+    }
     let json = args.iter().any(|arg| arg == "--json");
     let result = match Args::parse(args) {
         Ok(Some(args)) => bench(args),
@@ -93,6 +101,12 @@ pub fn run(args: impl IntoIterator<Item = OsString>) -> ExitCode {
         }
         Err(message) => Err(Failure::new(Code::Usage)(message)),
     };
+    exit(result, json, "skald bench")
+}
+
+/// The exit code for how a command ended, with its failure written out: on standard error, followed by a
+/// pointer to `<command> --help` for arguments it does not take, or as JSON on standard output.
+fn exit(result: Result<bool, Failure>, json: bool, command: &str) -> ExitCode {
     match result {
         Ok(true) => ExitCode::SUCCESS,
         Ok(false) => ExitCode::FAILURE,
@@ -102,7 +116,7 @@ pub fn run(args: impl IntoIterator<Item = OsString>) -> ExitCode {
             } else {
                 eprintln!("{}", failure.message);
                 if failure.code == Code::Usage {
-                    eprintln!("Se «skald bench --help».");
+                    eprintln!("Se «{command} --help».");
                 }
             }
             ExitCode::from(if failure.code == Code::Usage { 2 } else { 1 })

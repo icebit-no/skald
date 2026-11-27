@@ -5,6 +5,38 @@ decision, and that pull request also edits the page where the rule lives ([desig
 [plan.md](plan.md)). Those pages say what holds; this one says when and why it came to hold. A later decision
 that undoes one adds an entry of its own, and the earlier entry gets one line naming it.
 
+## D-33 — The settings window draws gpui-kit's headless controls and sends each change to the app
+
+2026-11-27, Claude; the light colours, the type, what «Bytt» keeps and the settings' names settled by the lead
+in review.
+
+`skald-settings` takes GPUI through gpui-kit at the overlay's revision and draws gpui-kit's headless
+controls (`gpui_kit::base`: the text input, switch, checkbox and button) in Skald's colours. They come with
+gpui-kit whatever its features, so the crate adds no dependency. gpui-kit's styled component library is left
+out: turned on for one crate it is built into the binary for all of them, with a file watcher, a translation
+crate and an icon set, and its own words, such as the text field's menu, are English and Chinese.
+
+The window is a view over a model the app hands it, and each change goes back as an action. A change to the
+configuration is applied by the function the tests run, and the app writes the file (D-19); the window shows
+the change at once and takes the app's next model as the truth. Every change has a `skald` command that makes
+the same change. Downloading a model is not a setting and has none yet. «Kopier» and the links in Om are the
+window's own.
+
+Dark mode gives the identity's colours their roles. The identity names no light ground, so light mode turns
+bone and soot around, keeps gold for buttons and what is chosen, and writes links in soot and warnings in the
+darker ochre, since gold does not read as text on light ground. Text is the system's UI font, at 12 to 13 pt
+among the system's own windows. A model can be chosen once it is downloaded and checked, as with
+`skald model use`. On macOS the hold key is right ⌘ or right Control; elsewhere only right Ctrl is offered.
+The engine's credits in Om (transcribe.cpp, ggml, Silero VAD) are kept in `skald-settings` beside the
+models' credits from `skald-models`.
+
+In Historikk, a click picks a word and a shift-click takes in the words up to it, so a phrase the model split,
+as «Post gres SQL», can be corrected. «Bytt» replaces the words in the history entry, which the app keeps
+with `History::replace`, so «Kopier» and «Siste tekster» give the corrected text; it also sends a correction
+and a word as the two boxes ask. «Rett dette automatisk neste gang» starts ticked, since a word that broke in
+a real dictation is the evidence a correction needs, and «Legg … i ordskatten» unticked. Changed:
+[design.md](design.md#settings), [plan.md](plan.md) M2.
+
 ## D-32 — `skald bench` reads spacing errors from the word alignment; RNNoise through nnnoiseless
 
 2026-11-27, Claude; hyphen differences as a count of their own, nnnoiseless as a plain dependency and the

@@ -17,7 +17,7 @@ pub struct History {
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Entry {
-    /// The text as it was inserted, after corrections.
+    /// The text as it was inserted, after corrections, or as the user corrected it afterwards.
     pub text: String,
     /// When the take ended, in milliseconds since 1970-01-01 00:00 UTC.
     #[serde(default)]
@@ -41,6 +41,23 @@ impl History {
 
     pub fn latest(&self) -> Option<&Entry> {
         self.texts.first()
+    }
+
+    /// Gives the entry that ended at `unix_ms` with the text `before` the text `after`, as when a word in
+    /// it is corrected. The entry is found by both, so a take that arrived meanwhile is never the one
+    /// changed. Returns whether there was such an entry.
+    pub fn replace(&mut self, unix_ms: i64, before: &str, after: &str) -> bool {
+        match self
+            .texts
+            .iter_mut()
+            .find(|entry| entry.unix_ms == unix_ms && entry.text == before)
+        {
+            Some(entry) => {
+                entry.text = after.to_owned();
+                true
+            }
+            None => false,
+        }
     }
 
     /// Reads a history in the order it was written, keeping the first five. An empty text is an empty
@@ -82,6 +99,24 @@ mod tests {
             ["Tekst 7", "Tekst 6", "Tekst 5", "Tekst 4", "Tekst 3"]
         );
         assert_eq!(history.latest().unwrap().unix_ms, 7);
+    }
+
+    #[test]
+    fn replaces_the_text_of_the_entry_named_by_its_time_and_text() {
+        let mut history = History::default();
+        history.push(entry("Vi mercha den.", 1));
+        history.push(entry("Vi mercha den.", 2));
+        assert!(history.replace(1, "Vi mercha den.", "Vi merget den."));
+        let texts: Vec<&str> = history.entries().iter().map(|e| e.text.as_str()).collect();
+        assert_eq!(texts, ["Vi mercha den.", "Vi merget den."]);
+        assert_eq!(history.entries()[1].unix_ms, 1, "the entry keeps its place");
+
+        assert!(
+            !history.replace(1, "Vi mercha den.", "Noe annet."),
+            "the text has changed since"
+        );
+        assert!(!history.replace(3, "Vi mercha den.", "Noe annet."));
+        assert_eq!(history.entries()[1].text, "Vi merget den.");
     }
 
     #[test]

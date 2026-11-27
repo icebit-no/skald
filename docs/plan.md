@@ -74,7 +74,7 @@ overlay has set GPUI up). The binary joins them.
 - [x] Carving paced by the measured seconds of work per second of audio on this machine.
 - [x] Menu bar item with the ᚨ template icon: microphone, latest texts, bokmål or nynorsk, ordskatt,
       settings, quit.
-- [ ] Settings window with the tabs Generelt, Ordskatt, Historikk and Om.
+- [x] Settings window with the tabs Generelt, Ordskatt, Historikk and Om.
 - [ ] First run: model download with progress (pinned revision, SHA-256), permissions, a test dictation.
 - [x] `skald` command line over a local socket only the user can open; `--json` on every command; writes the
       configuration file directly when the app is not running.

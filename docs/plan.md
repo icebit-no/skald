@@ -46,7 +46,7 @@ by a script from a pinned source with SHA-256 checks, not committed.
       `skald` binary.
 - [ ] Right ⌘ hold with handy-keys: arm after 200 ms, cancel when another key joins, a watchdog for a missed
       release.
-- [ ] Capture with cpal, resampled to 16 kHz mono with rubato, level readings for the meter; the microphone
+- [x] Capture with cpal, resampled to 16 kHz mono with rubato, level readings for the meter; the microphone
       chosen by the priority list.
 - [ ] The silence gate: level, VAD (at least 250 ms of speech), the no-speech threshold, known phrases.
 - [ ] Transcribe with NB-Whisper Large on Metal, loaded once, with beam search 5.

@@ -7,13 +7,18 @@ that undoes one adds an entry of its own, and the earlier entry gets one line na
 
 ## D-29 — The microphone opens at the press; one Skald at a time
 
-2026-11-27, the lead (the press, the permission check), Claude (the rest).
+2026-11-27, the lead (the press, the permission check, the sounds), Thomas (the indicator), Claude (the rest).
 
 The microphone opens when the hold key goes down rather than when the take arms 200 ms later, so the first
 words are kept. skald-input reports the press, and every press ends in either armed or not armed, so a
 microphone opened for a shortcut such as right ⌘C is closed again and its audio thrown away. The price is that
 macOS shows its microphone indicator for a moment at each right-⌘ shortcut, and a Bluetooth headset in use as
-the microphone drops to call quality for that moment; design.md already suggests putting headsets last.
+the microphone drops to call quality for that moment; design.md already suggests putting headsets last. Thomas
+accepted the indicator to keep the first 200 ms.
+
+The start and end sounds are diktafon's: the system sound Tink when a take arms and Pop as its text is
+inserted, honouring the sounds setting. Each plays in an `afplay` process of its own, because diktafon found
+that a sound played on the main thread can stall it for ten seconds when an output will not start.
 
 macOS gives a program it refused the microphone digital silence rather than an error, so skald-audio asks
 AVFoundation whether access is granted, which never prompts. Without Accessibility or the microphone, Skald

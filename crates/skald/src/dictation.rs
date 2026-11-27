@@ -21,6 +21,7 @@ use skald_input::HoldEvent;
 
 use crate::pipeline::Job;
 use crate::say::{Exit, Line};
+use crate::sounds::{Chime, Sound};
 
 pub(crate) trait Microphones {
     type Take: RunningTake;
@@ -81,6 +82,7 @@ enum Unopened {
 
 pub(crate) struct Dictation<M: Microphones> {
     microphones: M,
+    chime: Arc<dyn Chime>,
     hold: Hold<M::Take>,
     config: Arc<Config>,
     order: Vec<Microphone>,
@@ -90,9 +92,10 @@ pub(crate) struct Dictation<M: Microphones> {
 
 impl<M: Microphones> Dictation<M> {
     /// `microphones` already follows the order the configuration gives.
-    pub(crate) fn new(microphones: M, config: Arc<Config>) -> Self {
+    pub(crate) fn new(microphones: M, chime: Arc<dyn Chime>, config: Arc<Config>) -> Self {
         Self {
             microphones,
+            chime,
             hold: Hold::Idle,
             order: microphone_order(&config),
             config,
@@ -138,6 +141,9 @@ impl<M: Microphones> Dictation<M> {
                 };
                 match opened {
                     Ok(take) => {
+                        if self.config.sounds {
+                            self.chime.play(Sound::Armed);
+                        }
                         self.lines
                             .push(Line::Recording(take.microphone().name.clone()));
                         self.hold = Hold::Recording(take);
@@ -290,6 +296,7 @@ mod tests {
     use skald_audio::Ending;
 
     use super::*;
+    use crate::sounds::tests::Played;
 
     fn mic(name: &str) -> Microphone {
         Microphone {
@@ -387,6 +394,7 @@ mod tests {
 
     struct Setup {
         dictation: Dictation<FakeMicrophones>,
+        played: Played,
         events: Rc<RefCell<Vec<TakeEvent>>>,
         log: Rc<RefCell<Log>>,
     }
@@ -402,8 +410,14 @@ mod tests {
             events: Rc::clone(&events),
             log: Rc::clone(&log),
         };
+        let played = Played::default();
         Setup {
-            dictation: Dictation::new(microphones, Arc::new(Config::default())),
+            dictation: Dictation::new(
+                microphones,
+                Arc::new(played.clone()),
+                Arc::new(Config::default()),
+            ),
+            played,
             events,
             log,
         }
@@ -452,6 +466,31 @@ mod tests {
         assert_eq!(log.borrow().opened.len(), 1, "opened once");
         assert_eq!(log.borrow().stopped, 1);
         assert!(dictation.is_idle());
+    }
+
+    #[test]
+    fn tink_plays_when_a_take_arms_and_only_with_sounds_on() {
+        let Setup {
+            mut dictation,
+            played,
+            ..
+        } = setup();
+        hold(&mut dictation, &[pressed()]);
+        assert!(played.sounds().is_empty(), "not at the press");
+        hold(&mut dictation, &[armed(), HoldEvent::Released]);
+        assert_eq!(played.sounds(), [Sound::Armed]);
+
+        hold(&mut dictation, &[pressed(), HoldEvent::NotArmed]);
+        dictation.microphones.active = None;
+        hold(&mut dictation, &[pressed(), armed(), HoldEvent::Released]);
+        assert_eq!(played.sounds(), [Sound::Armed], "no take, no sound");
+
+        dictation.microphones.active = Some(mic("Shure MV7"));
+        let mut quiet = Config::default();
+        quiet.sounds = false;
+        dictation.set_config(Arc::new(quiet));
+        hold(&mut dictation, &[pressed(), armed(), HoldEvent::Released]);
+        assert_eq!(played.sounds(), [Sound::Armed]);
     }
 
     #[test]

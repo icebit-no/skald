@@ -23,6 +23,7 @@ use crate::models::ModelFiles;
 use crate::pipeline::{Worker, WorkerEvent};
 use crate::say::{Exit, Line, Printer, report_lines};
 use crate::signals;
+use crate::sounds::{Afplay, Chime};
 
 /// The longest the loop waits for a key before it looks at everything else.
 const TICK: Duration = Duration::from_millis(100);
@@ -69,13 +70,13 @@ fn run_until_stopped(options: Options) -> Result<(), Exit> {
         &config.model,
         options.model.clone(),
         options.vad.clone(),
-    );
+    )?;
     out.say(Line::ModelFiles {
         model: models.model.clone(),
         vad: models.vad.clone(),
     });
     out.say(Line::StateFile(paths.state_file()));
-    models.check(&config.model)?;
+    models.check(out)?;
     let state = files::read_state(&paths.state_file()).unwrap_or_else(|reason| {
         out.say(Line::StateUnreadable {
             path: paths.state_file(),
@@ -99,20 +100,22 @@ fn run_until_stopped(options: Options) -> Result<(), Exit> {
     out.say(Line::Microphone(microphones.active().map(|m| m.name)));
 
     out.say(Line::LoadingModel);
+    let chime: Arc<dyn Chime> = Arc::new(Afplay);
     let (events, worker_events) = mpsc::channel();
-    let ModelFiles { model, vad } = models;
+    let ModelFiles { model, vad, .. } = models;
     let worker = Worker::spawn(
         move || {
             skald_engine::route_logs_to_log_crate();
             Engine::load(&model, &vad).map_err(|error| error.to_string())
         },
         Inserter::new(),
+        Arc::clone(&chime),
         state,
         paths.state_file(),
         events,
     )
     .map_err(|error| Exit::CannotStart(error.to_string()))?;
-    let dictation = Dictation::new(microphones, Arc::new(config));
+    let dictation = Dictation::new(microphones, chime, Arc::new(config));
 
     let mut running = Running {
         keys,

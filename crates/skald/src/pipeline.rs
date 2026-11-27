@@ -19,6 +19,7 @@ use skald_engine::{Decoding, Engine, Take, TakeOptions};
 use skald_input::{InsertError, InsertOptions, Inserted};
 
 use crate::files;
+use crate::sounds::{Chime, Sound};
 
 /// The speech model and the silence gate around it.
 pub(crate) trait Transcribe {
@@ -112,15 +113,23 @@ pub(crate) struct Report {
 pub(crate) struct Pipeline<T, I> {
     transcriber: T,
     inserter: I,
+    chime: Arc<dyn Chime>,
     state: State,
     state_file: PathBuf,
 }
 
 impl<T: Transcribe, I: Insert> Pipeline<T, I> {
-    pub(crate) fn new(transcriber: T, inserter: I, state: State, state_file: PathBuf) -> Self {
+    pub(crate) fn new(
+        transcriber: T,
+        inserter: I,
+        chime: Arc<dyn Chime>,
+        state: State,
+        state_file: PathBuf,
+    ) -> Self {
         Self {
             transcriber,
             inserter,
+            chime,
             state,
             state_file,
         }
@@ -185,6 +194,9 @@ impl<T: Transcribe, I: Insert> Pipeline<T, I> {
         // The silence gate's rule for a text without a word, applied again after the corrections.
         if text.chars().any(char::is_alphanumeric) {
             report.timings.ready = Some(ended_at.elapsed());
+            if config.sounds {
+                self.chime.play(Sound::Inserted);
+            }
             let options = InsertOptions {
                 keep_text_on_clipboard: config.copy_to_clipboard,
                 ..InsertOptions::default()
@@ -232,6 +244,7 @@ impl Worker {
     pub(crate) fn spawn<T, I, L>(
         load: L,
         inserter: I,
+        chime: Arc<dyn Chime>,
         state: State,
         state_file: PathBuf,
         events: Sender<WorkerEvent>,
@@ -258,7 +271,7 @@ impl Worker {
                     device: transcriber.device(),
                     took: started.elapsed(),
                 });
-                let mut pipeline = Pipeline::new(transcriber, inserter, state, state_file);
+                let mut pipeline = Pipeline::new(transcriber, inserter, chime, state, state_file);
                 for job in inbox {
                     let _ = events.send(WorkerEvent::Done(pipeline.process(job)));
                 }
@@ -310,6 +323,11 @@ mod tests {
 
     use super::*;
     use crate::files::tests::Scratch;
+    use crate::sounds::tests::Played;
+
+    fn quiet() -> Arc<dyn Chime> {
+        Arc::new(Played::default())
+    }
 
     fn heard(text: &str) -> Take {
         Take {
@@ -449,7 +467,13 @@ mod tests {
         let seen = Arc::clone(&model.seen);
         let inserter = FakeInserter::answering(Ok(Inserted::PreviousRestored));
         let calls = Arc::clone(&inserter.calls);
-        let mut pipeline = Pipeline::new(model, inserter, State::default(), state_file.clone());
+        let mut pipeline = Pipeline::new(
+            model,
+            inserter,
+            quiet(),
+            State::default(),
+            state_file.clone(),
+        );
 
         let report = pipeline.process(job(config()));
 
@@ -489,6 +513,34 @@ mod tests {
     }
 
     #[test]
+    fn pop_plays_as_text_is_inserted_and_only_with_sounds_on() {
+        let scratch = Scratch::new("pipeline-pop");
+        let state_file = scratch.0.join("state.toml");
+        let played = Played::default();
+        let model = FakeModel::new([
+            Ok(heard("Hei.")),
+            Ok(silent(Reason::TooLittleSpeech)),
+            Ok(heard("Hei igjen.")),
+        ]);
+        let inserter = FakeInserter::answering(Ok(Inserted::PreviousRestored));
+        let mut pipeline = Pipeline::new(
+            model,
+            inserter,
+            Arc::new(played.clone()),
+            State::default(),
+            state_file,
+        );
+        pipeline.process(job(config()));
+        pipeline.process(job(config()));
+        assert_eq!(played.sounds(), [Sound::Inserted], "not for silence");
+
+        let mut quiet = config();
+        quiet.sounds = false;
+        pipeline.process(job(quiet));
+        assert_eq!(played.sounds(), [Sound::Inserted]);
+    }
+
+    #[test]
     fn silence_inserts_nothing_and_leaves_the_state_alone() {
         let scratch = Scratch::new("pipeline-silence");
         let state_file = scratch.0.join("state.toml");
@@ -501,7 +553,13 @@ mod tests {
             let inserter = FakeInserter::answering(Ok(Inserted::PreviousRestored));
             let calls = Arc::clone(&inserter.calls);
             let model = FakeModel::new([Ok(silent(reason))]);
-            let mut pipeline = Pipeline::new(model, inserter, State::default(), state_file.clone());
+            let mut pipeline = Pipeline::new(
+                model,
+                inserter,
+                quiet(),
+                State::default(),
+                state_file.clone(),
+            );
             let report = pipeline.process(job(config()));
             assert_eq!(report.outcome, Outcome::HeardNothing(reason));
             assert_eq!(report.microphone, "Shure MV7");
@@ -519,6 +577,7 @@ mod tests {
         let mut pipeline = Pipeline::new(
             model,
             inserter,
+            quiet(),
             State::default(),
             scratch.0.join("state.toml"),
         );
@@ -534,7 +593,13 @@ mod tests {
         let state_file = scratch.0.join("state.toml");
         let model = FakeModel::new([Ok(heard("Vi mercha den."))]);
         let inserter = FakeInserter::answering(Err(InsertError::KeysHeld));
-        let mut pipeline = Pipeline::new(model, inserter, State::default(), state_file.clone());
+        let mut pipeline = Pipeline::new(
+            model,
+            inserter,
+            quiet(),
+            State::default(),
+            state_file.clone(),
+        );
         let report = pipeline.process(job(config()));
         assert_eq!(
             report.outcome,
@@ -557,7 +622,13 @@ mod tests {
         let model = FakeModel::new([Ok(heard("Øh."))]);
         let inserter = FakeInserter::answering(Ok(Inserted::PreviousRestored));
         let calls = Arc::clone(&inserter.calls);
-        let mut pipeline = Pipeline::new(model, inserter, State::default(), state_file.clone());
+        let mut pipeline = Pipeline::new(
+            model,
+            inserter,
+            quiet(),
+            State::default(),
+            state_file.clone(),
+        );
         let report = pipeline.process(job(config));
         assert_eq!(report.outcome, Outcome::HeardNothing(Reason::NoWords));
         assert!(calls.lock().unwrap().is_empty(), "«.» is not inserted");
@@ -576,6 +647,7 @@ mod tests {
         let mut pipeline = Pipeline::new(
             model,
             inserter,
+            quiet(),
             State::default(),
             scratch.0.join("state.toml"),
         );
@@ -602,6 +674,7 @@ mod tests {
         let mut pipeline = Pipeline::new(
             model,
             inserter,
+            quiet(),
             State::default(),
             scratch.0.join("state.toml"),
         );
@@ -621,7 +694,13 @@ mod tests {
         let state_file = scratch.0.join("state.toml");
         let model = FakeModel::new([Ok(heard("Vi mercha den.")), Ok(heard("Hei."))]);
         let inserter = FakeInserter::answering(Ok(Inserted::PreviousRestored));
-        let mut pipeline = Pipeline::new(model, inserter, State::default(), state_file.clone());
+        let mut pipeline = Pipeline::new(
+            model,
+            inserter,
+            quiet(),
+            State::default(),
+            state_file.clone(),
+        );
         pipeline.process(job(config()));
         assert_eq!(
             files::read_state(&state_file).unwrap().counts.get("mercha"),
@@ -644,7 +723,13 @@ mod tests {
         let model = FakeModel::new([Ok(heard("Hei."))]);
         let inserter = FakeInserter::answering(Ok(Inserted::PreviousRestored));
         let state_file = blocker.join("state.toml");
-        let mut pipeline = Pipeline::new(model, inserter, State::default(), state_file.clone());
+        let mut pipeline = Pipeline::new(
+            model,
+            inserter,
+            quiet(),
+            State::default(),
+            state_file.clone(),
+        );
         let report = pipeline.process(job(config()));
         assert!(matches!(report.outcome, Outcome::Inserted { .. }));
         let error = report.state_error.unwrap();
@@ -663,6 +748,7 @@ mod tests {
         let worker = Worker::spawn(
             move || Ok(model),
             FakeInserter::answering(Ok(Inserted::PreviousRestored)),
+            quiet(),
             State::default(),
             scratch.0.join("state.toml"),
             events,
@@ -698,6 +784,7 @@ mod tests {
         let worker = Worker::spawn(
             || Err::<FakeModel, _>("could not load /m.bin: file not found".to_owned()),
             FakeInserter::answering(Ok(Inserted::PreviousRestored)),
+            quiet(),
             State::default(),
             PathBuf::from("/nonexistent/state.toml"),
             events,

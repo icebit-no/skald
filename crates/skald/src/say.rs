@@ -8,15 +8,12 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 use skald_audio::{CaptureError, TAKE_CAP};
-use skald_core::config::DEFAULT_MODEL;
 use skald_core::silence_gate::{HEARD_NOTHING, MIN_SPEECH, Reason};
 use skald_input::{HoldKey, InsertError, Inserted};
+use skald_models::Model;
 
 use crate::files::{ConfigError, LockError};
 use crate::pipeline::{Outcome, Report, Timings};
-
-/// NbAiLab's `ggml-model.bin` for NB-Whisper Large at the revision docs/research/engine-check.md checked.
-const WHISPER_URL: &str = "https://huggingface.co/NbAiLab/nb-whisper-large/resolve/8c6249fdeeb4dcd05e5735a4c39640607eb6e4ac/ggml-model.bin";
 
 /// Silero VAD v6.2 as GGUF, at the revision docs/research/engine-check.md checked.
 const VAD_URL: &str = "https://huggingface.co/handy-computer/silero-vad-v6.2-gguf/resolve/a9b2d61c20ae4ddf3644edb34969e8185a485448/silero-vad-v6.2-F32.gguf";
@@ -42,6 +39,7 @@ pub(crate) enum Line {
     UnknownHoldKey(String),
     MicrophoneNotAsked,
     Microphone(Option<String>),
+    CheckingModel,
     LoadingModel,
     ModelLoaded {
         device: String,
@@ -136,6 +134,9 @@ impl fmt::Display for Line {
             Line::Microphone(Some(name)) => write!(f, "Mikrofon: {name}"),
             Line::Microphone(None) | Line::MicrophoneChanged(None) | Line::NoMicrophone => {
                 f.write_str("Ingen mikrofon er koblet til.")
+            }
+            Line::CheckingModel => {
+                f.write_str("Sjekker talemodellen mot sjekksummen, én gang for denne filen …")
             }
             Line::LoadingModel => f.write_str("Laster talemodellen …"),
             Line::ModelLoaded { device, took } => {
@@ -253,10 +254,19 @@ pub(crate) enum Exit {
     AlreadyRunning,
     Lock(String),
     Config(ConfigError),
+    UnknownModel(String),
+    /// A model in the registry with no file Skald can fetch yet, by its name.
+    ModelNotOffered(&'static str),
+    /// `pinned` is the registry's entry when the file is the one it pins, so where to get it can be said.
     ModelMissing {
         path: PathBuf,
-        id: String,
+        pinned: Option<&'static Model>,
     },
+    ModelWrongFile {
+        path: PathBuf,
+        pinned: &'static Model,
+    },
+    ModelUnreadable(String),
     VadMissing {
         path: PathBuf,
     },
@@ -307,18 +317,34 @@ impl fmt::Display for Exit {
             ),
             Exit::Lock(reason) => write!(f, "Kunne ikke låse {reason}"),
             Exit::Config(error) => write!(f, "{error}\nRett filen og start Skald igjen."),
-            Exit::ModelMissing { path, id } if id == DEFAULT_MODEL => write!(
+            Exit::UnknownModel(id) => write!(
                 f,
-                "Fant ikke talemodellen: {path}\nLast ned NbAiLab sin ggml-model.bin for NB-Whisper Large \
-                 (3,1 GB) og legg den der:\n  curl -L --create-dirs -o '{path}' {WHISPER_URL}\nEller gi \
-                 stien med --model.",
-                path = path.display()
+                "Kjenner ikke talemodellen «{id}» fra innstillingene. Gi en modellfil med --model."
             ),
-            Exit::ModelMissing { path, id } => write!(
+            Exit::ModelNotOffered(name) => write!(
                 f,
-                "Fant ikke talemodellen «{id}»: {}\nLegg modellfilen der, eller gi stien med --model.",
-                path.display()
+                "{name} har ingen fil Skald kan hente ennå. Gi en modellfil med --model."
             ),
+            Exit::ModelMissing {
+                path,
+                pinned: Some(pinned),
+            } => {
+                writeln!(f, "Fant ikke talemodellen: {}", path.display())?;
+                write_fetch(f, pinned, path)
+            }
+            Exit::ModelMissing { path, pinned: None } => {
+                write!(f, "Fant ikke talemodellen: {}", path.display())
+            }
+            Exit::ModelWrongFile { path, pinned } => {
+                writeln!(
+                    f,
+                    "{} er ikke filen Skald venter for {}: sjekksummen stemmer ikke.",
+                    path.display(),
+                    pinned.name
+                )?;
+                write_fetch(f, pinned, path)
+            }
+            Exit::ModelUnreadable(reason) => write!(f, "Kunne ikke lese talemodellen: {reason}"),
             Exit::VadMissing { path } => write!(
                 f,
                 "Fant ikke Silero VAD: {path}\nLast ned silero-vad-v6.2-F32.gguf (1,2 MB) og legg den \
@@ -350,6 +376,27 @@ impl fmt::Display for Exit {
             Exit::UnsupportedSystem => f.write_str("Skald kjører foreløpig bare på macOS."),
         }
     }
+}
+
+/// Where to get the pinned file and how to put it at `path`, then the way round it.
+fn write_fetch(f: &mut fmt::Formatter<'_>, pinned: &Model, path: &std::path::Path) -> fmt::Result {
+    let Some(file) = pinned.file() else {
+        return f.write_str("Gi en modellfil med --model.");
+    };
+    write!(
+        f,
+        "Last ned {} ({}) og legg den der:\n  curl -L --create-dirs -o '{}' {}\nEller gi en annen fil med \
+         --model.",
+        pinned.name,
+        gigabytes(file.size),
+        path.display(),
+        file.url
+    )
+}
+
+/// Decimal gigabytes with one decimal and a decimal comma: «3,1 GB».
+fn gigabytes(bytes: u64) -> String {
+    format!("{:.1} GB", bytes as f64 / 1e9).replace('.', ",")
 }
 
 /// Prints each line as it happens, the verbose ones only when asked for.
@@ -585,23 +632,38 @@ mod tests {
 
     #[test]
     fn a_missing_model_says_where_it_goes_and_where_to_get_it() {
+        let pinned = skald_models::find("nb-whisper-large").unwrap();
+        let path = PathBuf::from(
+            "/Users/a/Library/Application Support/Skald/models/nb-whisper-large/ggml-model.bin",
+        );
+        let fetch = format!(
+            "curl -L --create-dirs -o '{}' {}",
+            path.display(),
+            pinned.file().unwrap().url
+        );
         let shown = Exit::ModelMissing {
-            path: PathBuf::from(
-                "/Users/a/Library/Application Support/Skald/models/nb-whisper-large/ggml-model.bin",
-            ),
-            id: DEFAULT_MODEL.into(),
+            path: path.clone(),
+            pinned: Some(pinned),
         }
         .to_string();
-        assert!(shown.contains("curl -L --create-dirs -o '/Users/a/Library/Application Support/Skald/models/nb-whisper-large/ggml-model.bin' https://huggingface.co/NbAiLab/nb-whisper-large/resolve/"), "{shown}");
+        assert!(shown.contains(&fetch), "{shown}");
+        assert!(shown.contains("NB-Whisper Large (3,1 GB)"), "{shown}");
         assert!(shown.contains("--model"), "{shown}");
 
-        let other = Exit::ModelMissing {
-            path: PathBuf::from("/m/x/ggml-model.bin"),
-            id: "nb-asr-bokfink".into(),
+        let wrong = Exit::ModelWrongFile {
+            path: path.clone(),
+            pinned,
         }
         .to_string();
-        assert!(!other.contains("curl"), "{other}");
-        assert!(other.contains("«nb-asr-bokfink»"), "{other}");
+        assert!(wrong.contains("sjekksummen stemmer ikke"), "{wrong}");
+        assert!(wrong.contains(&fetch), "{wrong}");
+
+        let given = Exit::ModelMissing {
+            path: PathBuf::from("/m/x.bin"),
+            pinned: None,
+        }
+        .to_string();
+        assert_eq!(given, "Fant ikke talemodellen: /m/x.bin");
 
         let vad = Exit::VadMissing {
             path: PathBuf::from("/m/silero-vad-v6.2-F32.gguf"),

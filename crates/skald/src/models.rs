@@ -1,46 +1,65 @@
-//! Where the speech model and Silero VAD are found: given on the command line, or in the models folder,
-//! the speech model in a folder named after its id. A missing file stops Skald at start, with where it
-//! goes and where to get it.
+//! Where the speech model and Silero VAD are found, and whether they are there: the files given on the
+//! command line, or those the models folder holds by skald-models' layout (D-26). A model file put in the
+//! folder by hand is checked against its pinned SHA-256 once, as a downloaded one was; a missing or wrong
+//! file stops Skald at start, with where it goes and where to get it.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use skald_core::paths::Paths;
+use skald_models::{Cancel, Model, Status};
 
-use crate::say::Exit;
-
-/// NbAiLab's own file name for NB-Whisper in whisper.cpp's format, which the engine loads as it is.
-pub(crate) const WHISPER_FILE: &str = "ggml-model.bin";
-
-pub(crate) const VAD_FILE: &str = "silero-vad-v6.2-F32.gguf";
+use crate::say::{Exit, Line, Printer};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) struct ModelFiles {
     pub(crate) model: PathBuf,
     pub(crate) vad: PathBuf,
+    /// The registry's entry when the model file is the one it pins, so it is checked against it; `None` for
+    /// a file given on the command line.
+    pinned: Option<&'static Model>,
 }
 
 impl ModelFiles {
-    /// The files given, else `<models>/<id>/ggml-model.bin` and `<models>/silero-vad-v6.2-F32.gguf`.
+    /// The files given, else the configured model's file and Silero VAD in the models folder.
     pub(crate) fn locate(
         paths: &Paths,
         model_id: &str,
         model: Option<PathBuf>,
         vad: Option<PathBuf>,
-    ) -> Self {
-        let models = paths.models_dir();
-        Self {
-            model: model.unwrap_or_else(|| models.join(model_id).join(WHISPER_FILE)),
-            vad: vad.unwrap_or_else(|| models.join(VAD_FILE)),
+    ) -> Result<Self, Exit> {
+        let models_dir = paths.models_dir();
+        let vad = vad.unwrap_or_else(|| skald_models::vad_path(&models_dir));
+        if let Some(model) = model {
+            return Ok(Self {
+                model,
+                vad,
+                pinned: None,
+            });
         }
+        let pinned =
+            skald_models::find(model_id).ok_or_else(|| Exit::UnknownModel(model_id.to_owned()))?;
+        let model = pinned
+            .path(&models_dir)
+            .ok_or(Exit::ModelNotOffered(pinned.name))?;
+        Ok(Self {
+            model,
+            vad,
+            pinned: Some(pinned),
+        })
     }
 
-    /// Fails before anything else starts when a file is missing, saying where it goes.
-    pub(crate) fn check(&self, model_id: &str) -> Result<(), Exit> {
-        if !self.model.is_file() {
-            return Err(Exit::ModelMissing {
-                path: self.model.clone(),
-                id: model_id.to_owned(),
-            });
+    /// Fails before anything else starts when a file is missing or is not the pinned one. A pinned file that
+    /// was never checked is read once to check it, which takes a few seconds.
+    pub(crate) fn check(&self, out: Printer) -> Result<(), Exit> {
+        match self.pinned {
+            Some(pinned) => check_pinned(pinned, &self.model, out)?,
+            None if !self.model.is_file() => {
+                return Err(Exit::ModelMissing {
+                    path: self.model.clone(),
+                    pinned: None,
+                });
+            }
+            None => {}
         }
         if !self.vad.is_file() {
             return Err(Exit::VadMissing {
@@ -51,18 +70,49 @@ impl ModelFiles {
     }
 }
 
+fn check_pinned(pinned: &'static Model, path: &Path, out: Printer) -> Result<(), Exit> {
+    let (Some(file), Some(dir)) = (pinned.file(), path.parent()) else {
+        return Err(Exit::ModelNotOffered(pinned.name));
+    };
+    let missing = || Exit::ModelMissing {
+        path: path.to_owned(),
+        pinned: Some(pinned),
+    };
+    let wrong = || Exit::ModelWrongFile {
+        path: path.to_owned(),
+        pinned,
+    };
+    match skald_models::status(file, dir) {
+        Status::Ready => Ok(()),
+        Status::Missing | Status::Partial { .. } => Err(missing()),
+        Status::Other { .. } => Err(wrong()),
+        Status::Unchecked => {
+            out.say(Line::CheckingModel);
+            match skald_models::verify(file, dir, &Cancel::new()) {
+                Ok(true) => Ok(()),
+                Ok(false) => Err(wrong()),
+                Err(error) => Err(Exit::ModelUnreadable(error.to_string())),
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::fs;
     use std::path::Path;
 
+    use skald_core::config::DEFAULT_MODEL;
+
     use super::*;
     use crate::files::tests::Scratch;
 
+    const QUIET: Printer = Printer { verbose: false };
+
     #[test]
-    fn the_files_sit_in_the_models_folder_unless_given() {
+    fn the_files_sit_where_skald_models_puts_them_unless_given() {
         let paths = Paths::in_one_folder(Path::new("/skald"));
-        let files = ModelFiles::locate(&paths, "nb-whisper-large", None, None);
+        let files = ModelFiles::locate(&paths, DEFAULT_MODEL, None, None).unwrap();
         assert_eq!(
             files.model,
             Path::new("/skald/models/nb-whisper-large/ggml-model.bin")
@@ -71,35 +121,77 @@ mod tests {
             files.vad,
             Path::new("/skald/models/silero-vad-v6.2-F32.gguf")
         );
+        assert_eq!(files.pinned.map(|m| m.id), Some(DEFAULT_MODEL));
 
         let given = ModelFiles::locate(
             &paths,
-            "nb-whisper-large",
+            "nb-asr-bokfink",
             Some("/m.bin".into()),
             Some("/v.gguf".into()),
-        );
+        )
+        .unwrap();
         assert_eq!(given.model, Path::new("/m.bin"));
         assert_eq!(given.vad, Path::new("/v.gguf"));
+        assert_eq!(given.pinned, None);
     }
 
     #[test]
-    fn a_missing_file_is_named_the_model_first() {
+    fn a_model_without_a_file_to_fetch_or_unknown_needs_one_given() {
+        let paths = Paths::in_one_folder(Path::new("/skald"));
+        assert_eq!(
+            ModelFiles::locate(&paths, "nb-asr-bokfink", None, None).unwrap_err(),
+            Exit::ModelNotOffered("NB-ASR Bokfink")
+        );
+        assert_eq!(
+            ModelFiles::locate(&paths, "nb-whisper-tiny", None, None).unwrap_err(),
+            Exit::UnknownModel("nb-whisper-tiny".into())
+        );
+    }
+
+    #[test]
+    fn a_missing_or_wrong_file_is_named_the_model_first() {
         let scratch = Scratch::new("models");
         let paths = Paths::in_one_folder(&scratch.0);
-        let files = ModelFiles::locate(&paths, "nb-whisper-large", None, None);
+        let files = ModelFiles::locate(&paths, DEFAULT_MODEL, None, None).unwrap();
         assert!(matches!(
-            files.check("nb-whisper-large"),
-            Err(Exit::ModelMissing { ref path, ref id }) if *path == files.model && id == "nb-whisper-large"
+            files.check(QUIET),
+            Err(Exit::ModelMissing { ref path, pinned: Some(_) }) if *path == files.model
         ));
 
+        // Not the pinned size: another file, never read.
         fs::create_dir_all(files.model.parent().unwrap()).unwrap();
-        fs::write(&files.model, b"model").unwrap();
+        fs::write(&files.model, b"not a model").unwrap();
         assert!(matches!(
-            files.check("nb-whisper-large"),
-            Err(Exit::VadMissing { ref path }) if *path == files.vad
+            files.check(QUIET),
+            Err(Exit::ModelWrongFile { ref path, .. }) if *path == files.model
+        ));
+    }
+
+    #[test]
+    fn a_file_given_on_the_command_line_is_taken_as_it_is() {
+        let scratch = Scratch::new("models-given");
+        let model = scratch.0.join("model.bin");
+        let vad = scratch.0.join("vad.gguf");
+        let paths = Paths::in_one_folder(&scratch.0);
+        let files = ModelFiles::locate(
+            &paths,
+            DEFAULT_MODEL,
+            Some(model.clone()),
+            Some(vad.clone()),
+        )
+        .unwrap();
+        assert!(matches!(
+            files.check(QUIET),
+            Err(Exit::ModelMissing { ref path, pinned: None }) if *path == model
         ));
 
-        fs::write(&files.vad, b"vad").unwrap();
-        assert!(files.check("nb-whisper-large").is_ok());
+        fs::write(&model, b"any model").unwrap();
+        assert!(matches!(
+            files.check(QUIET),
+            Err(Exit::VadMissing { ref path }) if *path == vad
+        ));
+
+        fs::write(&vad, b"vad").unwrap();
+        assert_eq!(files.check(QUIET), Ok(()));
     }
 }

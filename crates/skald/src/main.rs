@@ -13,6 +13,7 @@ mod models;
 mod pipeline;
 mod say;
 mod signals;
+mod sounds;
 
 use std::process::ExitCode;
 

@@ -60,7 +60,7 @@ impl Machine for LocalMachine {
         route_engine_logs();
         let mut engine = Engine::load(&files.model, &files.vad)
             .map_err(|error| stopped(Exit::ModelLoad(error.to_string())))?;
-        if cfg!(windows) && !skald_engine::gpu_available() {
+        if computes_on_vulkan() && !skald_engine::gpu_available() {
             eprintln!("{}", Line::NoVulkan);
         }
         let prompt = config.vocabulary.prompt();
@@ -79,6 +79,12 @@ impl Machine for LocalMachine {
         take.map(transcribed)
             .map_err(|error| failed(error.to_string()))
     }
+}
+
+/// Whether this system's GPU is reached through Vulkan, so a machine without a Vulkan driver computes on the
+/// CPU and is told so; a Mac has Metal.
+pub(crate) fn computes_on_vulkan() -> bool {
+    cfg!(any(windows, target_os = "linux"))
 }
 
 /// The settings in use. The loop puts each configuration it reads here; the socket reads them, and tells

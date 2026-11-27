@@ -1,5 +1,5 @@
-//! Hold right ⌘ and see what each hold means: pressed, armed or not armed, released, cancelled. ⌃⌘X
-//! starts and stops a hands-free take.
+//! Hold right ⌘ (macOS) or right Ctrl (Windows) and see what each hold means: pressed, armed or not
+//! armed, released, cancelled. On macOS ⌃⌘X starts and stops a hands-free take.
 //!
 //! ```sh
 //! cargo run -p skald-input --example hold                      # print only
@@ -7,22 +7,27 @@
 //! cargo run -p skald-input --example hold -- --insert --keep   # and leave it on the clipboard
 //! ```
 //!
-//! The terminal running it needs Accessibility (System Settings › Privacy & Security › Accessibility).
+//! On macOS the terminal running it needs Accessibility (System Settings › Privacy & Security ›
+//! Accessibility). On Windows a window run as administrator neither shows the key to it nor takes its
+//! paste.
 
 fn main() {
-    #[cfg(target_os = "macos")]
-    macos::main();
-    #[cfg(not(target_os = "macos"))]
-    eprintln!("This example runs on macOS only.");
+    #[cfg(any(target_os = "macos", windows))]
+    listen::main();
+    #[cfg(not(any(target_os = "macos", windows)))]
+    eprintln!("This example runs on macOS and Windows only.");
 }
 
-#[cfg(target_os = "macos")]
-mod macos {
+#[cfg(any(target_os = "macos", windows))]
+mod listen {
     use std::time::Instant;
 
-    use skald_input::{
-        HoldEvent, HoldKey, HoldListener, InsertOptions, Inserter, ListenerEvent,
-        open_accessibility_settings,
+    use skald_input::{HoldEvent, HoldKey, HoldListener, InsertOptions, Inserter, ListenerEvent};
+
+    const KEY: &str = if cfg!(target_os = "macos") {
+        "right ⌘"
+    } else {
+        "right Ctrl"
     };
 
     const TEST_TEXT: &str = "Hei, dette er en prøve.";
@@ -38,7 +43,7 @@ mod macos {
         let listener = HoldListener::start(HoldKey::PLATFORM_DEFAULT).expect("start the listener");
         let mut inserter = Inserter::new();
         let start = Instant::now();
-        println!("Hold right ⌘; press any other key while holding to cancel. Ctrl-C quits.");
+        println!("Hold {KEY}; press any other key while holding to cancel. Ctrl-C quits.");
         if insert {
             println!("On release, «{TEST_TEXT}» is inserted where the cursor is.");
         }
@@ -53,7 +58,8 @@ mod macos {
                         println!(
                             "          grant Accessibility to this terminal; listening resumes by itself"
                         );
-                        let _ = open_accessibility_settings();
+                        #[cfg(target_os = "macos")]
+                        let _ = skald_input::open_accessibility_settings();
                     }
                 }
                 ListenerEvent::Hold(HoldEvent::Pressed { .. }) => println!("{at}  pressed"),

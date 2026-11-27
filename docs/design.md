@@ -153,11 +153,15 @@ writes the configuration file directly. Every command takes `--json`.
 | `skald model list\|use` | Models, and which are downloaded |
 | `skald transcribe <file.wav>` | Transcribe a file, so an agent can try a correction |
 | `skald bench <folder>` | Run a test set through the configurations and count errors |
-| `skald skill install` | Install the Claude skill that teaches an agent these commands |
-| `skald mcp` | The same actions as MCP tools |
+| `skald skill install\|uninstall [--dir DIR]` | Install the Claude skill that teaches an agent these commands, or take it out |
+| `skald mcp` | The same commands as MCP tools over standard input and output |
 
 An exchange it is made for: «Skald skrev "mercha", det skal være "merget"» → `skald fix add "mercha" "merget"`
 and `skald vocab add merget`.
+
+The skill goes into Claude Code's own skills, `~/.claude/skills/skald`, or the folder named; an install replaces
+Skald's files and leaves anything else in the folder alone. Each MCP tool is a command named as it is on the
+socket (`fix_add`, `mic_use`), takes the same arguments and answers with the same JSON as `--json`.
 
 ## Audio in
 

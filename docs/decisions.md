@@ -5,6 +5,34 @@ decision, and that pull request also edits the page where the rule lives ([desig
 [plan.md](plan.md)). Those pages say what holds; this one says when and why it came to hold. A later decision
 that undoes one adds an entry of its own, and the earlier entry gets one line naming it.
 
+## D-31 — `skald mcp` written by hand on MCP 2025-11-25, and the skill installed file by file
+
+2026-11-27, Claude.
+
+`skald mcp` speaks the Model Context Protocol over standard input and output through a JSON-RPC layer of its
+own on serde_json, which skald-control uses already, rather than the rmcp SDK. It needs four methods and the
+notifications it ignores, and the commands it calls are synchronous; rmcp would bring tokio, schemars and
+their trees, and macros that describe each tool a second time beside the command it calls. Each tool is a
+command, named as its request on the socket (`fix_add`), taking the request's fields as its arguments, and
+carried out by the code that carries out the command line's command, through the running Skald or on the
+files, so it answers with the object `--json` prints. Arguments are checked against the tool's own list
+first: a misspelt optional argument is refused rather than read as left out, since `mic_use` without `name`
+removes the pin. A tool that fails answers with the command's error and `isError`, so the agent reads it; only
+a call to a tool that does not exist is an error of the protocol.
+
+It speaks 2025-11-25, the newest revision that opens with `initialize`, and answers a client that asks for
+2025-06-18, 2025-03-26 or 2024-11-05 in that one, since they differ in nothing these tools use; Ferric's server
+answers the same way through rmcp. 2026-07-28 replaces the handshake with metadata on every request, which a
+local server started for one client gains nothing from; a client that speaks only that revision is not served
+until it is added.
+
+The skill is SKILL.md and a reference of every command, held in the binary, so the skill installed is the one
+written for the commands beside it. `skald skill install` writes them into the skills folder of Claude Code's
+configuration, `~/.claude` or `CLAUDE_CONFIG_DIR` when it is set, or the folder named with `--dir`. As
+Ferric's install does, it writes and removes Skald's files one by one, so a folder that holds anything else
+keeps it, and it refuses a folder whose SKILL.md is another skill's. Changed: [design.md](design.md#command-line),
+[plan.md](plan.md) M2.
+
 ## D-30 — The overlay window opens per appearance; the runes show once the text has arrived
 
 2026-11-27, Claude; the runes, how long the two messages stand and the bars under reduced motion settled by the

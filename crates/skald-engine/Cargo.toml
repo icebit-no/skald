@@ -7,3 +7,11 @@ repository.workspace = true
 publish.workspace = true
 
 [dependencies]
+skald-core.workspace = true
+# transcribe.cpp's own binding (D-22). The sys crate is Skald's patched copy (see the root Cargo.toml).
+# The metal feature builds the Metal backend on Apple and nothing elsewhere.
+transcribe-cpp = { version = "=0.5.1", default-features = false, features = ["metal"] }
+transcribe-cpp-sys = { version = "=0.5.1", default-features = false }
+
+[dev-dependencies]
+hound = "=3.5.1"

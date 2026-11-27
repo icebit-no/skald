@@ -5,7 +5,7 @@
 //! set. A socket left by a Skald that crashed accepts no connection; binding finds that and replaces it.
 
 use std::fs;
-use std::io::{self, BufRead, BufReader, Read, Write};
+use std::io::{self, BufReader, Write};
 use std::os::unix::fs::{FileTypeExt, PermissionsExt};
 use std::os::unix::net::{UnixListener, UnixStream};
 use std::path::{Path, PathBuf};
@@ -15,7 +15,7 @@ use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
 use crate::commands;
-use crate::protocol::{self, Error, ErrorCode, MAX_LINE, Output, Request};
+use crate::protocol::{self, Error, ErrorCode, Output, Request, read_line};
 use crate::skald::Skald;
 
 /// How long a connection may sit idle before the server closes it.
@@ -179,26 +179,6 @@ fn answer(stream: UnixStream, skald: &dyn Skald) {
             return;
         }
     }
-}
-
-/// One line without its line break; `None` at the end of the stream. A line over [`MAX_LINE`] is an
-/// error.
-fn read_line(reader: &mut impl BufRead) -> io::Result<Option<String>> {
-    let mut line = String::new();
-    let read = reader
-        .by_ref()
-        .take(MAX_LINE as u64 + 1)
-        .read_line(&mut line)?;
-    if read == 0 {
-        return Ok(None);
-    }
-    if line.len() > MAX_LINE {
-        return Err(io::Error::new(io::ErrorKind::InvalidData, "line too long"));
-    }
-    if line.ends_with('\n') {
-        line.pop();
-    }
-    Ok(Some(line))
 }
 
 /// A connection to the running Skald.

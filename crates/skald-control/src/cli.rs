@@ -3,7 +3,7 @@
 
 use std::ffi::OsString;
 use std::io::Write;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 
 use skald_core::paths::Paths;
@@ -14,10 +14,11 @@ use crate::protocol::{
     Error, ErrorCode, HeardNothing, MicrophoneList, Output, Request, Text, Tokens, VocabularyList,
 };
 use crate::skald::Machine;
+use crate::skill::{self, Status};
 
 /// Every command with its arguments and what it does, for the help and for a command given the wrong
 /// arguments.
-const COMMANDS: [(&str, &str); 18] = [
+pub(crate) const COMMANDS: [(&str, &str); 21] = [
     ("last", "Den siste teksten"),
     ("history", "De fem siste tekstene"),
     ("fix list", "Rettingene, og hvor ofte hver er brukt"),
@@ -53,6 +54,15 @@ const COMMANDS: [(&str, &str); 18] = [
     (
         "transcribe <fil.wav>",
         "Skriv ut teksten i en lydfil, med rettingene brukt",
+    ),
+    (
+        "skill install [--dir <mappe>]",
+        "Installer Claude-skillen som lærer en agent disse kommandoene",
+    ),
+    ("skill uninstall [--dir <mappe>]", "Fjern Claude-skillen"),
+    (
+        "mcp",
+        "De samme kommandoene som MCP-verktøy, over standard inn og ut",
     ),
 ];
 
@@ -100,8 +110,9 @@ fn misuse(words: &[&str]) -> Error {
         .unwrap_or_default();
     if lines.is_empty() {
         lines = usages(command);
-        if lines.len() > 1 {
-            let sub = words.get(1).copied().unwrap_or_default();
+        if lines.len() > 1
+            && let Some(sub) = words.get(1)
+        {
             return usage(format!("«skald {command}» har ingen kommando «{sub}»."));
         }
     }
@@ -148,6 +159,32 @@ pub fn run_with(
             let _ = write!(out, "{}", help());
             return 0;
         }
+        Invocation::Skill { install, dir } => {
+            return match skill_command(install, dir.as_deref()) {
+                Ok(report) => {
+                    let text = if json {
+                        format!(
+                            "{}\n",
+                            serde_json::to_value(&report).expect("a report always serialises")
+                        )
+                    } else {
+                        skill_text(&report)
+                    };
+                    let _ = out.write_all(text.as_bytes());
+                    0
+                }
+                Err(error) => fail(&error, json, out, err),
+            };
+        }
+        Invocation::Mcp => {
+            return match crate::mcp::serve(std::io::stdin().lock(), out, paths, machine) {
+                Ok(()) => 0,
+                Err(error) => {
+                    let _ = writeln!(err, "skald mcp: {error}");
+                    1
+                }
+            };
+        }
         Invocation::Command(request) => request,
     };
     let request = match absolute(request) {
@@ -172,7 +209,7 @@ pub fn run_with(
 
 /// Sends the request to the running Skald, or carries it out here when Skald is not running. Returns
 /// whether Skald was running.
-fn send(
+pub(crate) fn send(
     request: &Request,
     paths: &Paths,
     machine: &dyn Machine,
@@ -213,32 +250,66 @@ fn fail(error: &Error, json: bool, out: &mut dyn Write, err: &mut dyn Write) -> 
 enum Invocation {
     Help,
     Command(Request),
+    /// `skald skill install` when `install`, else `skald skill uninstall`.
+    Skill {
+        install: bool,
+        dir: Option<PathBuf>,
+    },
+    Mcp,
 }
 
 fn parse(args: &[OsString]) -> Result<Invocation, Error> {
     let mut words: Vec<String> = Vec::new();
     let mut help = false;
     let mut first = false;
+    let mut dir: Option<PathBuf> = None;
     let mut options_end = false;
-    for arg in args {
-        let arg = arg
-            .to_str()
-            .ok_or_else(|| usage("Argumentene må være gyldig UTF-8."))?;
-        if options_end || !arg.starts_with('-') || arg == "-" {
-            words.push(arg.to_owned());
+    let mut args = args.iter();
+    let text = |arg: &OsString| -> Result<String, Error> {
+        arg.to_str()
+            .map(str::to_owned)
+            .ok_or_else(|| usage("Argumentene må være gyldig UTF-8."))
+    };
+    while let Some(arg) = args.next() {
+        if options_end || !arg.to_string_lossy().starts_with('-') || arg == "-" {
+            words.push(text(arg)?);
             continue;
         }
-        match arg {
+        match text(arg)?.as_str() {
             "--" => options_end = true,
             "--json" => {}
             "-h" | "--help" => help = true,
             "--first" => first = true,
-            _ => return Err(usage(format!("Ukjent valg «{arg}»."))),
+            // A folder's name need not be UTF-8.
+            "--dir" => match args.next() {
+                Some(folder) => dir = Some(PathBuf::from(folder)),
+                None => return Err(usage("--dir trenger en mappe.")),
+            },
+            other => return Err(usage(format!("Ukjent valg «{other}»."))),
         }
     }
     let words: Vec<&str> = words.iter().map(String::as_str).collect();
     if help || matches!(words.first(), None | Some(&"help")) {
         return Ok(Invocation::Help);
+    }
+    if first && !matches!(words.as_slice(), ["mic", "use", ..]) {
+        return Err(usage("--first hører til «skald mic use»."));
+    }
+    let invocation = match words.as_slice() {
+        ["skill", verb @ ("install" | "uninstall")] => Some(Invocation::Skill {
+            install: *verb == "install",
+            dir: dir.take(),
+        }),
+        ["mcp"] => Some(Invocation::Mcp),
+        _ => None,
+    };
+    if dir.is_some() && words.first() != Some(&"skill") {
+        return Err(usage(
+            "--dir hører til «skald skill install» og «skald skill uninstall».",
+        ));
+    }
+    if let Some(invocation) = invocation {
+        return Ok(invocation);
     }
     let request = match words.as_slice() {
         ["last"] => Request::Last,
@@ -304,15 +375,12 @@ fn parse(args: &[OsString]) -> Result<Invocation, Error> {
         },
         _ => return Err(misuse(&words)),
     };
-    if first && !matches!(request, Request::MicUse { name: None }) {
-        return Err(usage("--first hører til «skald mic use»."));
-    }
     Ok(Invocation::Command(request))
 }
 
 /// Gives a file to transcribe its full path, which the running Skald needs, and finds out here whether
 /// it exists.
-fn absolute(request: Request) -> Result<Request, Error> {
+pub(crate) fn absolute(request: Request) -> Result<Request, Error> {
     match request {
         Request::Transcribe { path } => match std::fs::canonicalize(&path) {
             Ok(path) => Ok(Request::Transcribe { path }),
@@ -334,7 +402,7 @@ fn usage(message: impl Into<String>) -> Error {
 }
 
 /// The output's fields with `running`, as one JSON object.
-fn to_json(output: &Output, running: bool) -> serde_json::Value {
+pub(crate) fn to_json(output: &Output, running: bool) -> serde_json::Value {
     let mut value = serde_json::to_value(output).expect("an output always serialises");
     let object = value.as_object_mut().expect("an output is an object");
     object.remove("output");
@@ -484,6 +552,56 @@ fn render(output: &Output, request: &Request, running: bool) -> String {
     }
     if changed && !running {
         text.push_str("Skald kjører ikke. Endringen gjelder når Skald starter.\n");
+    }
+    text
+}
+
+fn skill_command(install: bool, named: Option<&Path>) -> Result<skill::Report, Error> {
+    let dir = skill::dir(named)?;
+    if install {
+        skill::install(&dir)
+    } else {
+        skill::uninstall(&dir)
+    }
+}
+
+fn skill_text(report: &skill::Report) -> String {
+    let mut text = String::new();
+    let mut line = |line: &str| {
+        text.push_str(line);
+        text.push('\n');
+    };
+    let dir = report.dir.display();
+    for file in &report.files {
+        let path = report.dir.join(file.name);
+        let path = path.display();
+        match file.status {
+            Status::Written => line(&format!("Skrev {path}")),
+            Status::Unchanged => line(&format!("{path} var oppdatert fra før")),
+            Status::Removed => line(&format!("Fjernet {path}")),
+            Status::Missing => {}
+        }
+    }
+    match report.dir_removed {
+        None => {
+            line(&format!("Claude-skillen «{}» ligger i {dir}.", skill::NAME));
+            line("En agent som bruker MCP, får de samme kommandoene som verktøy med:");
+            line("  claude mcp add --scope user skald -- skald mcp");
+        }
+        Some(_)
+            if report
+                .files
+                .iter()
+                .all(|file| file.status == Status::Missing) =>
+        {
+            line(&format!(
+                "Fant ingen Claude-skill fra Skald i {dir}. Ingenting ble fjernet."
+            ));
+        }
+        Some(false) => line(&format!(
+            "{dir} har andre filer også, så mappen står igjen."
+        )),
+        Some(true) => {}
     }
     text
 }

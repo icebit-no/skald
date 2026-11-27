@@ -7,7 +7,8 @@ that undoes one adds an entry of its own, and the earlier entry gets one line na
 
 ## D-33 — The settings window draws gpui-kit's headless controls and sends each change to the app
 
-2026-11-27, Claude; the light colours, the type and what «Bytt» keeps wait on Thomas.
+2026-11-27, Claude; the light colours, the type, what «Bytt» keeps and the settings' names settled by the lead
+in review.
 
 `skald-settings` takes GPUI through gpui-kit at the overlay's revision and draws gpui-kit's headless
 controls (`gpui_kit::base`: the text input, switch, checkbox and button) in Skald's colours. They come with
@@ -18,7 +19,7 @@ crate and an icon set, and its own words, such as the text field's menu, are Eng
 The window is a view over a model the app hands it, and each change goes back as an action. A change to the
 configuration is applied by the function the tests run, and the app writes the file (D-19); the window shows
 the change at once and takes the app's next model as the truth. Every change has a `skald` command that makes
-the same change. Downloading a model is not a setting and has none. «Kopier» and the links in Om are the
+the same change. Downloading a model is not a setting and has none yet. «Kopier» and the links in Om are the
 window's own.
 
 Dark mode gives the identity's colours their roles. The identity names no light ground, so light mode turns
@@ -30,9 +31,38 @@ The engine's credits in Om (transcribe.cpp, ggml, Silero VAD) are kept in `skald
 models' credits from `skald-models`.
 
 In Historikk, a click picks a word and a shift-click takes in the words up to it, so a phrase the model split,
-as «Post gres SQL», can be corrected. «Bytt» sends the entry with the words replaced, for the app to keep in
-the history, and a correction and a word as the two boxes ask. «Rett dette automatisk neste gang» starts
-ticked: a word that broke in a real dictation is the evidence a correction needs. Changed:
+as «Post gres SQL», can be corrected. «Bytt» replaces the words in the history entry, which the app keeps
+with `History::replace`, so «Kopier» and «Siste tekster» give the corrected text; it also sends a correction
+and a word as the two boxes ask. «Rett dette automatisk neste gang» starts ticked, since a word that broke in
+a real dictation is the evidence a correction needs, and «Legg … i ordskatten» unticked. Changed:
+[design.md](design.md#settings), [plan.md](plan.md) M2.
+
+## D-31 — `skald mcp` written by hand on MCP 2025-11-25, and the skill installed file by file
+
+2026-11-27, Claude.
+
+`skald mcp` speaks the Model Context Protocol over standard input and output through a JSON-RPC layer of its
+own on serde_json, which skald-control uses already, rather than the rmcp SDK. It needs four methods and the
+notifications it ignores, and the commands it calls are synchronous; rmcp would bring tokio, schemars and
+their trees, and macros that describe each tool a second time beside the command it calls. Each tool is a
+command, named as its request on the socket (`fix_add`), taking the request's fields as its arguments, and
+carried out by the code that carries out the command line's command, through the running Skald or on the
+files, so it answers with the object `--json` prints. Arguments are checked against the tool's own list
+first: a misspelt optional argument is refused rather than read as left out, since `mic_use` without `name`
+removes the pin. A tool that fails answers with the command's error and `isError`, so the agent reads it; only
+a call to a tool that does not exist is an error of the protocol.
+
+It speaks 2025-11-25, the newest revision that opens with `initialize`, and answers a client that asks for
+2025-06-18, 2025-03-26 or 2024-11-05 in that one, since they differ in nothing these tools use; Ferric's server
+answers the same way through rmcp. 2026-07-28 replaces the handshake with metadata on every request, which a
+local server started for one client gains nothing from; a client that speaks only that revision is not served
+until it is added.
+
+The skill is SKILL.md and a reference of every command, held in the binary, so the skill installed is the one
+written for the commands beside it. `skald skill install` writes them into the skills folder of Claude Code's
+configuration, `~/.claude` or `CLAUDE_CONFIG_DIR` when it is set, or the folder named with `--dir`. As
+Ferric's install does, it writes and removes Skald's files one by one, so a folder that holds anything else
+keeps it, and it refuses a folder whose SKILL.md is another skill's. Changed: [design.md](design.md#command-line),
 [plan.md](plan.md) M2.
 
 ## D-30 — The overlay window opens per appearance; the runes show once the text has arrived

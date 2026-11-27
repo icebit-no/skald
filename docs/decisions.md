@@ -23,6 +23,29 @@ run); the line was said only by `skald transcribe` before. CI builds against Ubu
 glslc, and has no GPU, so its tests compute on the CPU. Evidence: in a container, the engine's tests and
 Skald with NB-Whisper loaded pass with lavapipe and with no Vulkan driver at all, and the binary links
 `libvulkan.so.1`. Changed: [design.md](design.md#first-run), [plan.md](plan.md) M5.
+
+## D-48 — Skald's item on Windows is an icon in the notification area with the rune drawn at its size
+
+2026-11-27, Claude.
+
+On Windows skald-tray shows the item as an icon in the notification area through `Shell_NotifyIconW`, with a
+hidden window of its own for the icon's messages. The window is made on the thread that makes the item, so
+that thread's message loop dispatches them; in the app that is GPUI's. A click with either button, or Enter
+on the icon, opens the menu, which is built each time from the shared entries (D-27), as on macOS: a tick for
+the microphone in use and the written standard, greyed entries for an unplugged microphone and an empty
+«Siste tekster», and the pinned microphone marked with 📌, since Windows' menus have no pin symbol of their
+own. They have no tooltip per entry, so a long text shows its first 50 characters and copies whole. Shortcuts
+belong to macOS's menu bar and are left out. The icon's tooltip reads «Skald», «Skald · Opptak» or «Skald ·
+Rister», as VoiceOver reads the macOS item.
+
+Windows takes an icon as a bitmap at the notification area's size, which grows with the display's scale. The
+rune is drawn anew at that size from the strokes the menu bar icon is rendered from (`assets/icon/render.py`),
+rather than scaled from the 18 and 36 px files, so it stays sharp at 125 % and 150 %. It is white on a dark
+taskbar and black on a light one, as the system's own icons are, read from Windows' setting for the system's
+colours and drawn again when it changes; the dot takes the identity's ochre or gold, the lighter on a dark
+taskbar (D-27). The icon comes back when Explorer restarts. windows-sys, already in the tree, is the only
+crate used. Changed: [design.md](design.md#menu).
+
 ## D-47 — Linux in the system's own words, by bindings only, with autostart, sounds and the portal's settings
 
 2026-11-27, the lead, from the list of what was left of M5; Claude for how each is done.
@@ -45,6 +68,7 @@ Kjedelig reads the accent colour and reduced motion from the Settings portal thr
 of its own. X11 is out of scope for now, and the README says so. The first-run and settings windows name
 themselves `app.icebit.skald`, the bundle identifier on macOS (D-34), so a Hyprland window rule can float
 them; the README gives the rule. Changed: [design.md](design.md#recording) (Recording).
+
 
 ## D-46 — The tray on Linux is a StatusNotifierItem through ksni
 

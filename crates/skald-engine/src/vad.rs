@@ -27,6 +27,10 @@ impl Vad {
             path: path.to_owned(),
             reason: error.to_string(),
         };
+        crate::backends::load().map_err(|reason| Error::Load {
+            path: path.to_owned(),
+            reason,
+        })?;
         let model = Model::load(path).map_err(load_error)?;
         let session = model.vad_session().map_err(load_error)?;
         Ok(Self { session })

@@ -28,12 +28,14 @@ impl Drop for Model {
 }
 
 impl Model {
-    /// Loads the model on the best backend the build has: Metal on a Mac.
+    /// Loads the model on the best backend the build has: Metal on a Mac, Vulkan on Windows when the
+    /// machine has a driver for it, otherwise the CPU.
     pub(crate) fn load(path: &Path) -> Result<Self, Error> {
         let load_error = |reason: String| Error::Load {
             path: path.to_owned(),
             reason,
         };
+        crate::backends::load().map_err(load_error)?;
         let c_path = CString::new(path.as_os_str().as_encoded_bytes())
             .map_err(|_| load_error("the path holds a NUL byte".into()))?;
         let mut params: sys::transcribe_model_load_params = unsafe { std::mem::zeroed() };

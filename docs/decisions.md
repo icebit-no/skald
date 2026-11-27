@@ -46,6 +46,27 @@ to the hint rather than run under it.
 Evidence: the overlay on a headless sway with software Vulkan, photographed recording, hands-free, after a
 take that heard nothing, and in Kjedelig. Changed: [design.md](design.md#overlay), [plan.md](plan.md) M5.
 
+## D-43 — transcribe.cpp's backends are modules on Windows, so a machine without Vulkan starts on the CPU
+
+2026-11-27, Claude.
+
+On Windows skald-engine builds transcribe.cpp with its Vulkan backend, for NVIDIA, AMD and Intel GPUs alike,
+and with every backend as a module loaded at run time (transcribe.cpp's `dynamic-backends`): the Vulkan
+module beside one CPU module per instruction-set tier, chosen for the processor when Skald starts. Linked in,
+the Vulkan backend would keep Windows from starting Skald at all on a machine without the Vulkan loader,
+which a GPU driver installs; as a module it fails to load quietly there and the CPU carries on, the
+degradation transcribe.cpp designs for. The engine loads the modules once, before the first model, and says
+whether a GPU is among the devices; on macOS Metal is built in and the loading does nothing. When the model
+runs on the CPU for want of Vulkan, Skald says so. CUDA is not built: Vulkan reaches NVIDIA cards too, and
+CUDA's toolkit and runtime would add gigabytes to the build and to the download.
+
+The price is that Skald on Windows is `skald.exe` with transcribe.cpp's and ggml's DLLs beside it, which the
+zip for Scoop and winget must carry (M4's packaging). CI builds against LunarG's Vulkan SDK 1.4.350.0, the
+version transcribe.cpp's own Windows build uses, checked by its SHA-256. The runner has no GPU, so the tests
+there compute on the CPU module; the Vulkan path is tried on Thomas's RTX machine. Changed:
+[design.md](design.md#first-run), [research.md](research.md#stack).
+
+
 ## D-42 — On Wayland the clipboard goes through data-control in Skald itself, and Ctrl+V through wtype
 
 2026-11-27, Claude; data-control or wl-clipboard, and wtype, offered by the lead's brief for M5.
@@ -72,6 +93,7 @@ layout. A Wayland program cannot see which keys are down, so the paste is sent a
 clipboard; the hold key is up by then, since its release ended the take. The insertion is tried in CI on a
 headless sway, with wl-clipboard and wev to look at the clipboard and the window in front. Changed:
 [design.md](design.md#insertion).
+
 
 ## D-41 — Ctrl+Win+X on Windows; the overlay names an administrator window; no UI Access yet
 

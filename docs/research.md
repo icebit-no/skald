@@ -80,5 +80,5 @@ app runs ([1281](https://github.com/cjpais/Handy/issues/1281)).
 | Packaging | Developer ID and notarization; SignPath; tap, bucket, winget, AUR | Homebrew 6 disables casks that fail Gatekeeper in its own repository and asks users to trust third-party taps. macOS builds are for Apple Silicon only (D-34): NB-Whisper Large is slow on Intel Macs, and Metal hangs on Intel Macs with AMD GPUs |
 
 **Risks:** macOS permissions and signing; Vulkan loaded at start on Windows (a machine without a Vulkan driver
-must still start and say why); insertion into apps that refuse synthetic input; Bokfink's custom tokenizer and
+must still start and say why; the backends are modules loaded at run time for that, D-43); insertion into apps that refuse synthetic input; Bokfink's custom tokenizer and
 prompt in transcribe.cpp (M1a).

@@ -15,9 +15,11 @@ use skald_core::silence::Silence;
 use skald_core::silence_gate::{self, Decision};
 use skald_core::vocabulary::{CountTokens, Fitted, Prompt};
 
+mod backends;
 mod vad;
 mod whisper;
 
+pub use backends::gpu_available;
 pub use vad::{Speech, TRIM_MARGIN, Vad};
 
 /// The rate of the samples every take is given in.

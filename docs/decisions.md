@@ -5,6 +5,31 @@ decision, and that pull request also edits the page where the rule lives ([desig
 [plan.md](plan.md)). Those pages say what holds; this one says when and why it came to hold. A later decision
 that undoes one adds an entry of its own, and the earlier entry gets one line naming it.
 
+## D-49 — Skald runs its screen on Windows; the overlay lets clicks through as a layered window
+
+2026-11-27, Claude; the administrator window's words settled by the lead.
+
+`skald` on Windows runs as on macOS and Linux (D-44): GPUI on the main thread with the icon in the
+notification area (D-48), the overlay, the first-run window while the model is missing and the settings
+window, and the dictation loop on a thread of its own; `--terminal` keeps the loop alone.
+
+The overlay is GPUI's pop-up, a topmost tool window shown without activation. GPUI has no option for
+click-through, so the overlay makes the native window layered, transparent to the mouse and never activated,
+which is what Windows needs to pass a click to the window below; a layered window shows only once its opacity
+is set, here whole, so the drawing's own alpha applies. It goes to the monitor of the window in front, where
+the text lands; GPUI names a monitor by its handle. Kjedelig's acrylic, GPUI's blur behind the whole window,
+is cut to the pill by a window region. The accent colour is Windows' own, and «Animation effects» turned off
+counts as reduced motion.
+
+When the window in front runs as administrator, the overlay says «Administratorvindu · ligger i Siste
+tekster» (D-41), and the text is in «Siste tekster». The pill's fit test allows 0.6 em a letter, a third
+above what Alegreya Sans and SF Pro measure, so Segoe UI in Kjedelig has room.
+
+`skald.exe` stays a console program, so a console window opens beside the app when it starts from the Start
+menu or at login; making it a windowed program whose command line writes to the console it was started from
+belongs with M4's packaging. The line for a model on the CPU (D-43) is printed in the terminal; the app shows
+it nowhere yet.
+
 ## D-48 — Skald's item on Windows is an icon in the notification area with the rune drawn at its size
 
 2026-11-27, Claude.
@@ -66,6 +91,8 @@ The console's Ctrl-C and Ctrl-Break end the loop as the signals do on Unix, so t
 process exits, and a second one ends the process at once. Closing the console window gives the loop four
 seconds before Windows ends the process. The command the terminal prints for a missing model is `curl.exe`
 with the path in double quotes on Windows, which PowerShell and cmd.exe both read.
+
+Windows runs its screen from D-49.
 
 
 ## D-44 — On Linux the overlay is a layer-shell surface, and the app's screen runs there

@@ -2,8 +2,8 @@
 //! `--terminal` dictation in the terminal alone; with a command it is the command line an agent uses
 //! (D-25), which talks to the running Skald or works on the files; `skald bench` runs a test set.
 
-// Off macOS much of the binary is unused: Linux and Windows run the loop without the screen, and elsewhere
-// only the parts without a key listener or a clipboard build.
+// Off macOS parts of the binary are unused: Linux and Windows stand in for the system's permissions and
+// start at login, and elsewhere only the parts without a key listener or a clipboard build.
 #![cfg_attr(not(target_os = "macos"), allow(dead_code))]
 
 #[cfg(any(target_os = "macos", target_os = "linux", windows))]

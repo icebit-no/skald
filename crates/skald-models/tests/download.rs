@@ -10,7 +10,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
-use skald_models::{Cancel, Downloader, Error, Event, ModelFile, Status, status};
+use skald_models::{Cancel, Downloader, Error, Event, ModelFile, Status, remove, status};
 
 #[derive(Debug, Clone, Copy)]
 enum Answer {
@@ -536,6 +536,32 @@ fn checks_a_file_put_there_by_hand_before_fetching() {
     assert_eq!(fs::read(dir.join("ggml-model.bin")).unwrap(), data);
     assert_eq!(status(&file, &dir), Status::Ready);
     assert_eq!(server.ranges(), [None]);
+}
+
+#[test]
+fn removing_a_model_deletes_a_stopped_or_finished_download() {
+    let data = data();
+    let server = Server::start(&data, &[Answer::BreakAfter(300_000), Answer::Serve]);
+    let file = pinned(&server, &data);
+    let folder = Folder::new("remove");
+    let dir = folder.model_dir();
+    let no_retries = Downloader::new().retries(0, Duration::ZERO);
+
+    let stopped = no_retries.download(&file, &dir, &Cancel::new(), |_| {});
+    assert!(matches!(stopped, Err(Error::Connection(_))), "{stopped:?}");
+    remove(&file, &dir).unwrap();
+    assert_eq!(status(&file, &dir), Status::Missing);
+    assert!(!dir.exists());
+
+    no_retries
+        .download(&file, &dir, &Cancel::new(), |_| {})
+        .unwrap();
+    assert_eq!(status(&file, &dir), Status::Ready);
+    remove(&file, &dir).unwrap();
+    assert_eq!(status(&file, &dir), Status::Missing);
+    assert!(!dir.exists());
+    // The part was gone, so the download after it started from the beginning.
+    assert_eq!(server.ranges(), [None, None]);
 }
 
 #[test]

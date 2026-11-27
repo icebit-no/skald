@@ -3,6 +3,7 @@
 use std::borrow::Cow;
 use std::path::{Path, PathBuf};
 
+use crate::download::Error;
 use crate::status::{self, Status};
 
 /// A speech model in the talemodell choice (docs/design.md, Settings).
@@ -67,6 +68,14 @@ impl Model {
     /// How much of the model is on this machine, or `None` for a model this Skald cannot download.
     pub fn status(&self, models_dir: &Path) -> Option<Status> {
         Some(status::status(self.file()?, &self.dir(models_dir)))
+    }
+
+    /// Deletes what Skald downloaded of the model, finished or not, and its folder (see [`crate::remove`]).
+    pub fn remove(&self, models_dir: &Path) -> Result<(), Error> {
+        match self.file() {
+            Some(file) => status::remove(file, &self.dir(models_dir)),
+            None => Ok(()),
+        }
     }
 }
 
@@ -188,6 +197,22 @@ mod tests {
             Path::new("/models/nb-whisper-large/ggml-model.bin")
         );
         assert_eq!(find("nordlyd").unwrap().path(models), None);
+    }
+
+    #[test]
+    fn removes_a_model_by_its_folder() {
+        let models =
+            std::env::temp_dir().join(format!("skald-models-registry-{}", std::process::id()));
+        let whisper = find("nb-whisper-large").unwrap();
+        let path = whisper.path(&models).unwrap();
+        std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+        std::fs::write(&path, b"not the whole file").unwrap();
+
+        whisper.remove(&models).unwrap();
+        assert!(!whisper.dir(&models).exists());
+        assert!(models.exists(), "the models folder itself stays");
+        find("nordlyd").unwrap().remove(&models).unwrap();
+        std::fs::remove_dir_all(&models).unwrap();
     }
 
     fn is_lower_hex(text: &str, len: usize) -> bool {

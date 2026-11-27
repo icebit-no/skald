@@ -1,12 +1,14 @@
-//! What of a model file is in its model's folder.
+//! What of a model file is in its model's folder, and removing it.
 //!
 //! A downloaded file takes its name only after its SHA-256 matched, and the hash it matched is then written
 //! beside it (`ggml-model.bin.sha256`). So a file is known to be checked without reading it again, and a pin
 //! that moves to a new file is told apart from the file of the old pin.
 
 use std::fs;
+use std::io;
 use std::path::{Path, PathBuf};
 
+use crate::download::Error;
 use crate::registry::ModelFile;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -38,6 +40,39 @@ pub fn status(file: &ModelFile, dir: &Path) -> Status {
             },
             _ => Status::Missing,
         },
+    }
+}
+
+/// Deletes the model's file, the record of its check and every part a download left, then the folder if
+/// nothing else is in it. A file the user put there under another name is kept. Nothing there is no error.
+pub fn remove(file: &ModelFile, dir: &Path) -> Result<(), Error> {
+    let mut paths = vec![
+        dir.join(&*file.name),
+        record_path(file, dir),
+        part_path(file, dir),
+    ];
+    paths.extend(stale_parts(file, dir));
+    for path in paths {
+        match fs::remove_file(&path) {
+            Ok(()) => {}
+            Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+            Err(error) => return Err(Error::Io { path, error }),
+        }
+    }
+    match fs::remove_dir(dir) {
+        Ok(()) => Ok(()),
+        Err(error)
+            if matches!(
+                error.kind(),
+                io::ErrorKind::NotFound | io::ErrorKind::DirectoryNotEmpty
+            ) =>
+        {
+            Ok(())
+        }
+        Err(error) => Err(Error::Io {
+            path: dir.to_path_buf(),
+            error,
+        }),
     }
 }
 
@@ -123,6 +158,30 @@ mod tests {
         fs::write(record_path(&file, &dir), format!("{}\n", file.sha256)).unwrap();
         assert_eq!(status(&file, &dir), Status::Ready);
         fs::remove_dir_all(&dir).unwrap();
+    }
+
+    #[test]
+    fn removing_deletes_what_skald_wrote_and_keeps_the_users_files() {
+        let dir = folder("remove");
+        let file = file();
+        fs::write(dir.join("ggml-model.bin"), b"abcd").unwrap();
+        fs::write(record_path(&file, &dir), format!("{}\n", file.sha256)).unwrap();
+        fs::write(part_path(&file, &dir), b"ab").unwrap();
+        fs::write(dir.join("ggml-model.bin.12345678.part"), b"old").unwrap();
+        fs::write(dir.join("notes.txt"), b"mine").unwrap();
+
+        remove(&file, &dir).unwrap();
+        assert_eq!(status(&file, &dir), Status::Missing);
+        let left: Vec<_> = fs::read_dir(&dir)
+            .unwrap()
+            .map(|entry| entry.unwrap().file_name())
+            .collect();
+        assert_eq!(left, ["notes.txt"]);
+
+        fs::remove_file(dir.join("notes.txt")).unwrap();
+        remove(&file, &dir).unwrap();
+        assert!(!dir.exists());
+        remove(&file, &dir).unwrap();
     }
 
     #[test]

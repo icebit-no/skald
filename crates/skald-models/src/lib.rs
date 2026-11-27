@@ -17,7 +17,7 @@ use std::path::{Path, PathBuf};
 
 pub use download::{Cancel, Downloader, Error, Event, verify};
 pub use registry::{Availability, MODELS, Model, ModelFile, find};
-pub use status::{Status, status};
+pub use status::{Status, remove, status};
 
 /// Silero VAD's file at the top of the models folder. It ships with the app and is never downloaded
 /// (docs/design.md, First run).

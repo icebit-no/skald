@@ -75,7 +75,7 @@ next take uses the next one.
 
 The menu's «Mikrofon» submenu switches at once by pinning the chosen microphone ahead of the order; while it
 is unplugged the order applies, and «Bruk den første som er koblet til» removes the pin. `skald mic use` sets
-the same pin. Bluetooth headsets drop to call quality while their microphone is open, so the help text
+the same pin, and `skald mic use --first` removes it. Bluetooth headsets drop to call quality while their microphone is open, so the help text
 suggests putting them last.
 
 ## Vocabulary and corrections
@@ -141,8 +141,8 @@ writes the configuration file directly. Every command takes `--json`.
 |---|---|
 | `skald last`, `skald history` | The latest text, or the five latest |
 | `skald fix list\|add\|remove` | Corrections |
-| `skald vocab list\|add\|remove` | Ordskatt, with the token count |
-| `skald config get\|set` | Key, bokmål or nynorsk, the overlay's look, copy to clipboard, sounds |
+| `skald vocab list\|add\|remove\|sentence` | Ordskatt, with the token count while Skald runs, and the sentence it opens with |
+| `skald config get\|set` | Key, bokmål or nynorsk, the overlay's look, copy to clipboard, start at login, sounds |
 | `skald mic list\|use\|order` | Microphones and their order |
 | `skald model list\|use` | Models, and which are downloaded |
 | `skald transcribe <file.wav>` | Transcribe a file, so an agent can try a correction |

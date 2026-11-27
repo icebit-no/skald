@@ -648,9 +648,8 @@ mod tests {
     /// The pipe's access list in its string form.
     fn access_list(pipe: &Pipe) -> String {
         let mut descriptor = null_mut();
-        let mut string = null_mut();
-        // Safety: a pipe handle opened with the right to read its access list, valid out pointers, and
-        // both results freed once read.
+        // Safety: a pipe handle opened with the right to read its access list and a valid out pointer;
+        // the descriptor is freed once read.
         unsafe {
             let read = GetSecurityInfo(
                 pipe.handle.0,
@@ -663,6 +662,41 @@ mod tests {
                 &mut descriptor,
             );
             assert_eq!(read, 0, "GetSecurityInfo");
+            let text = string_form(descriptor);
+            LocalFree(descriptor);
+            text
+        }
+    }
+
+    /// An access list as the system writes it back, which names well-known accounts by their short
+    /// names, as `LA` for the built-in administrator.
+    fn as_written_back(sddl: &str) -> String {
+        let mut descriptor = null_mut();
+        // Safety: a NUL-terminated string and a valid out pointer; the descriptor is freed once read.
+        unsafe {
+            let made = ConvertStringSecurityDescriptorToSecurityDescriptorW(
+                wide(sddl).as_ptr(),
+                SDDL_REVISION_1,
+                &mut descriptor,
+                null_mut(),
+            );
+            assert_ne!(
+                made, 0,
+                "ConvertStringSecurityDescriptorToSecurityDescriptorW"
+            );
+            let text = string_form(descriptor);
+            LocalFree(descriptor);
+            text
+        }
+    }
+
+    /// The access list of a security descriptor in its string form.
+    ///
+    /// Safety: `descriptor` is a valid security descriptor.
+    unsafe fn string_form(descriptor: *mut c_void) -> String {
+        let mut string = null_mut();
+        // Safety: as the caller promises, and a valid out pointer; the string is freed once copied.
+        unsafe {
             let converted = ConvertSecurityDescriptorToStringSecurityDescriptorW(
                 descriptor,
                 SDDL_REVISION_1,
@@ -677,7 +711,6 @@ mod tests {
             let len = (0..).take_while(|&i| *string.add(i) != 0).count();
             let text = String::from_utf16_lossy(std::slice::from_raw_parts(string, len));
             LocalFree(string.cast::<c_void>());
-            LocalFree(descriptor);
             text
         }
     }
@@ -688,7 +721,7 @@ mod tests {
         let user = this_user().unwrap();
         assert_eq!(
             access_list(&server.listening),
-            format!("D:P(A;;FA;;;{user})")
+            as_written_back(&format!("D:P(A;;FA;;;{user})"))
         );
     }
 

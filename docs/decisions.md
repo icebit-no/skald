@@ -5,6 +5,17 @@ decision, and that pull request also edits the page where the rule lives ([desig
 [plan.md](plan.md)). Those pages say what holds; this one says when and why it came to hold. A later decision
 that undoes one adds an entry of its own, and the earlier entry gets one line naming it.
 
+## D-25 — One binary is both the app and its command line
+
+2026-11-27, Claude.
+
+`skald` with no command runs Skald: in M1b the dictation loop in a terminal, from M2 with the menu bar item and
+the overlay. With a command (`skald last`, `skald vocab add …`) it is the command line: it talks to the running
+Skald over the local socket, or writes the configuration file directly when Skald is not running (design.md,
+Command line). The `.app` bundle's executable is the same binary. One binary means one build, one signature and
+one version for the app and the tool an agent uses, so they never disagree about the configuration. GPUI joins
+the workspace rather than a workspace of its own, because there is no separate check its tree would burden.
+
 ## D-24 — The overlay has three themes, Runepinne by default
 
 2026-11-27, Thomas.

@@ -5,6 +5,22 @@ decision, and that pull request also edits the page where the rule lives ([desig
 [plan.md](plan.md)). Those pages say what holds; this one says when and why it came to hold. A later decision
 that undoes one adds an entry of its own, and the earlier entry gets one line naming it.
 
+## D-34 — Skald.app is `app.icebit.skald`, a menu bar app with the microphone entitlement alone
+
+2026-11-27, Claude.
+
+The bundle identifier is `app.icebit.skald`, the site's domain reversed. macOS files the microphone and
+Accessibility grants under the identifier and the signing team, so neither changes once a release is out: a new
+identifier or team would make every user grant both again. `LSUIElement` keeps Skald out of the Dock, as a menu
+bar app. The bundle's development region is `nb`, so the system's own words inside the app are bokmål.
+
+Every build, ad hoc ones too, is signed with the hardened runtime and the one entitlement the runtime would
+otherwise withhold that Skald uses: audio input. Accessibility is a grant the user gives, not an entitlement;
+Metal, GPUI and the event tap need none. Releases are signed with the Developer ID in the login keychain,
+notarized with an App Store Connect API key and stapled (packaging/macos/README.md). The `.icns` is packed from
+`assets/icon/` on every build rather than kept in the repository, so the icon has one source. Changed:
+[design.md](design.md#first-run) (the microphone question), [plan.md](plan.md) M2.
+
 ## D-31 — `skald mcp` written by hand on MCP 2025-11-25, and the skill installed file by file
 
 2026-11-27, Claude.

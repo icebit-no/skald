@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Skald.app's Info.plist. packaging/macos/bundle.sh writes the workspace's version in place of @VERSION@ and
+     the oldest macOS the binary was linked for in place of @MINIMUM_SYSTEM@. -->
+<plist version="1.0">
+<dict>
+	<!-- Skald speaks bokmål only, so the system's own words inside it (menus, panels) are bokmål too. -->
+	<key>CFBundleDevelopmentRegion</key>
+	<string>nb</string>
+	<key>CFBundleDisplayName</key>
+	<string>Skald</string>
+	<key>CFBundleExecutable</key>
+	<string>skald</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
+	<key>CFBundleIdentifier</key>
+	<string>app.icebit.skald</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>Skald</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>@VERSION@</string>
+	<key>CFBundleVersion</key>
+	<string>@VERSION@</string>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.productivity</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>@MINIMUM_SYSTEM@</string>
+	<!-- A menu bar app: no Dock icon and no menu of its own at the top of the screen. -->
+	<key>LSUIElement</key>
+	<true/>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSHumanReadableCopyright</key>
+	<string>© 2026 Thomas Seljen Tvedt</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Skald tar opp det du sier mens du dikterer, og gjør det om til tekst på maskinen. Ingenting sendes fra maskinen.</string>
+</dict>
+</plist>

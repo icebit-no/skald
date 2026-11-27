@@ -115,7 +115,7 @@ Design: [Audio in](design.md#audio-in).
 ## M5 Linux (Omarchy and Hyprland)
 
 - [ ] Hold-to-talk through the GlobalShortcuts portal, or Hyprland `bind`/`bindr` calling `skald start` and
-      `skald stop`.
+      `skald stop`: built in #31; ticked once Thomas has held the key on Omarchy.
 - [ ] Overlay as a layer-shell surface, insertion with wtype, icon through StatusNotifierItem (Waybar).
 - [ ] Vulkan build; AUR package `skald-bin`.
 

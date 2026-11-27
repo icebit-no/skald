@@ -12,13 +12,22 @@ own words.
 
 ## Overlay
 
-A pill near the bottom of the active screen, 430 × 58 pt, drawn as an iron plate: near-black fill, a thin gold
-edge, a rivet at each end. It never takes focus and lets clicks through.
+A pill near the bottom of the active screen, about 430 × 58 pt. It never takes focus and lets clicks through. Its
+look is a theme, chosen under «Overleggets utseende» in Generelt; the states, their texts and their timing are the
+same in every theme. The settings window has no themes.
+
+| Theme | Look |
+|---|---|
+| Runepinne (standard) | A rune stick of dark oak: the level bars are knife notches, and the runes are cut with a knife behind the chisel |
+| Smidd jern | A hammered iron plate with domed rivets; the gold edge is two Urnes-style serpents biting each other's tails |
+| Kjedelig | Looks like the rest of the system: on macOS a HUD panel in the system's material and type, on Windows 11 its acrylic surface and Segoe UI, on Linux the desktop's own colours. No ornament and no runes: the chisel line crosses the bars in the system's accent colour |
+
+The colours named below are the two Viking themes'; Kjedelig uses the system's accent and label colours.
 
 | State | What it shows |
 |---|---|
 | Opptak | A glowing ember-red dot, the elapsed time, the last 2.4 s as 40 bars (3 pt wide, 6 pt apart) scrolling smoothly at 60 fps, and «slipp ⌘» |
-| Rister | On release the bars fold into the whole take; a gold chisel line moves across it, and behind it the bars become runes: the dictated text transliterated to the Younger Futhark. «rister …» |
+| Rister | On release the bars fold into the whole take; a gold chisel line moves across it, and behind it the bars, now 8 pt apart so each holds one rune, become runes: the dictated text transliterated to the Younger Futhark. «rister …» |
 | Satt inn | A gold tick and the start of the text, in plain type, for about 1.5 s |
 | Hørte ingenting | «Hørte ingenting · lyttet på <mikrofon>» |
 | Mikrofon byttet | «<mikrofon> · koblet til, brukes nå», once, when the active microphone changes |
@@ -101,7 +110,7 @@ dot while recording and a gold dot while transcribing.
 
 | Tab | Holds |
 |---|---|
-| Generelt | Hold-to-talk key; bokmål or nynorsk; microphone order; talemodell (NB-Whisper Large, NB-ASR Bokfink beta, Nordlyd greyed until open); «Kopier også teksten til utklippstavlen»; start at login; sounds |
+| Generelt | Hold-to-talk key; bokmål or nynorsk; microphone order; talemodell (NB-Whisper Large, NB-ASR Bokfink beta, Nordlyd greyed until open); «Overleggets utseende» (Runepinne, Smidd jern, Kjedelig); «Kopier også teksten til utklippstavlen»; start at login; sounds |
 | Ordskatt | The sentence, the words with the token meter, the corrections with their counts, «+ Ny retting», «Prøv på en tekst» |
 | Historikk | The five latest texts, «Kopier», correct a word |
 | Om | Version, models and engine with their licences, source link, «Ingenting sendes fra maskinen» |
@@ -123,7 +132,7 @@ writes the configuration file directly. Every command takes `--json`.
 | `skald last`, `skald history` | The latest text, or the five latest |
 | `skald fix list\|add\|remove` | Corrections |
 | `skald vocab list\|add\|remove` | Ordskatt, with the token count |
-| `skald config get\|set` | Key, bokmål or nynorsk, copy to clipboard, sounds |
+| `skald config get\|set` | Key, bokmål or nynorsk, the overlay's look, copy to clipboard, sounds |
 | `skald mic list\|use\|order` | Microphones and their order |
 | `skald model list\|use` | Models, and which are downloaded |
 | `skald transcribe <file.wav>` | Transcribe a file, so an agent can try a correction |

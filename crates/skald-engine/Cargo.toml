@@ -13,5 +13,10 @@ skald-core.workspace = true
 transcribe-cpp = { version = "=0.5.1", default-features = false, features = ["metal"] }
 transcribe-cpp-sys = { version = "=0.5.1", default-features = false }
 
+# On Windows the backends are modules loaded at run time, so a machine without a Vulkan driver still starts
+# and computes on the CPU (D-40). The Vulkan SDK is needed to build them.
+[target.'cfg(windows)'.dependencies]
+transcribe-cpp = { version = "=0.5.1", default-features = false, features = ["vulkan", "dynamic-backends"] }
+
 [dev-dependencies]
 hound = "=3.5.1"

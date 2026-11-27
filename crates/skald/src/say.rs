@@ -42,6 +42,8 @@ pub(crate) enum Line {
         device: String,
         took: Duration,
     },
+    /// The model computes on the CPU because no GPU has a Vulkan driver.
+    NoVulkan,
     Ready(HoldKey),
     HoldKeyChanged(HoldKey),
     MicrophoneChanged(Option<String>),
@@ -156,6 +158,10 @@ impl fmt::Display for Line {
             Line::ModelLoaded { device, took } => {
                 write!(f, "Talemodellen lastet på {} ({device}).", duration(*took))
             }
+            Line::NoVulkan => f.write_str(
+                "Fant ingen skjermkortdriver med Vulkan, så talemodellen regner på prosessoren og bruker \
+                 lengre tid.",
+            ),
             Line::Ready(key) => write!(f, "Klar. Hold {} for å snakke.", key_name(*key)),
             Line::HoldKeyChanged(key) => write!(f, "Hold {} for å snakke.", key_name(*key)),
             Line::MicrophoneChanged(Some(name)) => write!(f, "{name} · koblet til, brukes nå"),

@@ -59,6 +59,9 @@ impl Machine for LocalMachine {
         route_engine_logs();
         let mut engine = Engine::load(&files.model, &files.vad)
             .map_err(|error| stopped(Exit::ModelLoad(error.to_string())))?;
+        if cfg!(windows) && !skald_engine::gpu_available() {
+            eprintln!("{}", Line::NoVulkan);
+        }
         let prompt = config.vocabulary.prompt();
         let options = TakeOptions {
             language: config.language,

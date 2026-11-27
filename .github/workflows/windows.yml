@@ -17,9 +17,10 @@ env:
 jobs:
   check:
     # GitHub's own runner, as for macOS. Formatting is checked in the macOS job alone; it does not depend on
-    # the system. transcribe.cpp builds for the CPU here, with MSVC and the runner's CMake.
+    # the system. transcribe.cpp builds here with MSVC and the runner's CMake, its CPU and Vulkan backends as
+    # modules loaded at run time; the runner has no GPU, so the tests compute on the CPU.
     runs-on: windows-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
     concurrency:
       group: windows-${{ github.head_ref || github.ref }}
       cancel-in-progress: ${{ github.event_name == 'pull_request' }}
@@ -28,6 +29,22 @@ jobs:
       # read them expect the repository's bytes.
       - run: git config --global core.autocrlf false
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # The Vulkan backend builds against LunarG's SDK: the headers, the loader's import library and the
+      # shader compiler. The version is the one transcribe.cpp's own Windows build uses, and the installer
+      # runs only once its hash matches.
+      - name: Install the Vulkan SDK
+        env:
+          VERSION: 1.4.350.0
+          SHA256: 855b27ba05d2d8119c5114c5d4ff870ca38f2c632b11e1bb9923b9b7e6ecfe7b
+        run: |
+          $installer = "$env:RUNNER_TEMP\vulkan_sdk.exe"
+          curl.exe --fail --location --silent --show-error --output $installer "https://sdk.lunarg.com/sdk/download/$env:VERSION/windows/vulkan_sdk.exe"
+          $hash = (Get-FileHash $installer -Algorithm SHA256).Hash.ToLowerInvariant()
+          if ($hash -ne $env:SHA256) { throw "The Vulkan SDK installer's SHA-256 is $hash, not $env:SHA256." }
+          & $installer --accept-licenses --default-answer --confirm-command install
+          if ($LASTEXITCODE -ne 0) { throw "The Vulkan SDK installer failed with $LASTEXITCODE." }
+          Add-Content $env:GITHUB_ENV "VULKAN_SDK=C:\VulkanSDK\$env:VERSION"
+          Add-Content $env:GITHUB_PATH "C:\VulkanSDK\$env:VERSION\Bin"
       # rustup installs the toolchain rust-toolchain.toml pins on the first cargo call.
       - run: cargo clippy --workspace --all-targets --locked
       # Every crate's tests run even when one fails, so a run on this system shows all it breaks.

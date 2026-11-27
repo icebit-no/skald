@@ -5,6 +5,7 @@
 
 /// The pill's rectangle inside its window, in points from the window's top left, and its corner radius.
 #[derive(Clone, Copy, Debug)]
+#[cfg_attr(not(target_os = "macos"), allow(dead_code))]
 pub(crate) struct PillFrame {
     pub x: f64,
     pub y: f64,

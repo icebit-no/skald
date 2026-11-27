@@ -49,7 +49,6 @@ impl Chime for Afplay {
 
 #[cfg(test)]
 pub(crate) mod tests {
-    use std::path::Path;
     use std::sync::{Arc, Mutex};
 
     use super::*;
@@ -73,6 +72,8 @@ pub(crate) mod tests {
     #[test]
     #[cfg(target_os = "macos")]
     fn the_sounds_are_the_systems_own() {
+        use std::path::Path;
+
         for sound in [Sound::Armed, Sound::Inserted] {
             assert!(Path::new(sound.file()).is_file(), "{sound:?}");
         }

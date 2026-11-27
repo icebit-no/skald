@@ -41,8 +41,10 @@ jobs:
           curl.exe --fail --location --silent --show-error --output $installer "https://sdk.lunarg.com/sdk/download/$env:VERSION/windows/vulkan_sdk.exe"
           $hash = (Get-FileHash $installer -Algorithm SHA256).Hash.ToLowerInvariant()
           if ($hash -ne $env:SHA256) { throw "The Vulkan SDK installer's SHA-256 is $hash, not $env:SHA256." }
-          & $installer --accept-licenses --default-answer --confirm-command install
-          if ($LASTEXITCODE -ne 0) { throw "The Vulkan SDK installer failed with $LASTEXITCODE." }
+          # The installer is a windowed program, which PowerShell would not wait for unless told to.
+          $run = Start-Process -FilePath $installer -ArgumentList '--accept-licenses', '--default-answer', '--confirm-command', 'install' -Wait -PassThru
+          if ($run.ExitCode -ne 0) { throw "The Vulkan SDK installer failed with $($run.ExitCode)." }
+          if (-not (Test-Path "C:\VulkanSDK\$env:VERSION\Bin\glslc.exe")) { throw "The Vulkan SDK has no glslc.exe." }
           Add-Content $env:GITHUB_ENV "VULKAN_SDK=C:\VulkanSDK\$env:VERSION"
           Add-Content $env:GITHUB_PATH "C:\VulkanSDK\$env:VERSION\Bin"
       # rustup installs the toolchain rust-toolchain.toml pins on the first cargo call.

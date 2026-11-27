@@ -178,6 +178,10 @@ comes back to the front. On macOS the step says that macOS may ask once whether 
 not arrive there, the window shows «Skald hørte:» and the text. «Hopp over» leaves the test out and becomes
 «Ferdig» once a take was heard; both wait until the model is checked and the permissions are granted.
 
+On Windows the model computes on the GPU through Vulkan, on NVIDIA, AMD and Intel alike. A machine with no
+Vulkan driver runs it on the CPU, and Skald says so when the model loads: «Fant ingen skjermkortdriver med
+Vulkan, så talemodellen regner på prosessoren og bruker lengre tid.»
+
 ## Command line
 
 `skald` talks to the running app over a local socket only the user can open; when the app is not running it

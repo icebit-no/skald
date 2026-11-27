@@ -5,9 +5,9 @@ decision, and that pull request also edits the page where the rule lives ([desig
 [plan.md](plan.md)). Those pages say what holds; this one says when and why it came to hold. A later decision
 that undoes one adds an entry of its own, and the earlier entry gets one line naming it.
 
-## D-26 — The microphone opens at the press; model files by id; one Skald at a time
+## D-27 — The microphone opens at the press; one Skald at a time
 
-2026-11-27, the lead (the press, the permission check, the model files), Claude (the rest).
+2026-11-27, the lead (the press, the permission check), Claude (the rest).
 
 The microphone opens when the hold key goes down rather than when the take arms 200 ms later, so the first
 words are kept. skald-input reports the press, and every press ends in either armed or not armed, so a
@@ -19,8 +19,7 @@ macOS gives a program it refused the microphone digital silence rather than an e
 AVFoundation whether access is granted, which never prompts. Without Accessibility or the microphone, Skald
 says which and where in System Settings to grant it, and stops.
 
-The speech model is `<models>/<id>/ggml-model.bin`, NbAiLab's own file name in a folder named after the
-model's id, and Silero VAD is `<models>/silero-vad-v6.2-F32.gguf`; `--model` and `--vad` give other files.
+The terminal loop reads the model files where D-26 puts them, or where `--model` and `--vad` say.
 
 A lock beside the state file lets one Skald at a time take dictation, so a second one started by mistake says
 so and stops instead of pasting every take twice.
@@ -29,6 +28,35 @@ The configuration is read again when the file changes. A file that cannot be rea
 and says why, as does a file that disappears, since an editor may remove it for a moment while saving; a new
 model is used from the next start, since loading one takes seconds. Changed: [design.md](design.md#recording),
 [plan.md](plan.md) M1b.
+
+## D-26 — Models downloaded with ureq over rustls, checked by the system's verifier
+
+2026-11-27, Claude; the folder layout set by the lead.
+
+`skald-models` fetches a model's file with ureq, a blocking HTTP client, over rustls with ring, and has the
+system check the server's certificate (rustls-platform-verifier: Security.framework on macOS, CryptoAPI on
+Windows, the system's certificate store on Linux), so a certificate the user's system trusts or revokes counts
+the same in Skald. A download is one long GET on a thread of its own, with a range when it goes on from a
+stopped one. An async client (reqwest) would bring tokio and hyper for that; native-tls would mean OpenSSL to
+build and ship on Linux and Windows. ring is in the tree for TLS and also gives the SHA-256, so no hashing
+crate is added. Hugging Face redirects the pinned URL to its CDN; the redirect is followed over HTTPS only, and
+the range goes with it. Nothing else is contacted.
+
+The models folder holds a folder per model, named by its id, with the file in it as the binary loads it
+(`nb-whisper-large/ggml-model.bin`), and Silero VAD's file at its top. A file takes that name only after its
+SHA-256 matched, and the hash is then written beside it (`ggml-model.bin.sha256`). So `skald model list` knows a
+file is checked without reading 3 GB, a file put there by hand is checked once before it is used, and a pin
+moved to a new file is not mistaken for the old one. A stopped download's part carries the start of its hash in
+its name, so it is never continued against another file.
+
+A broken connection is tried again up to five times, after 1, 2, 4, 8 and 16 s, and the count starts over
+whenever a try brings more of the file; then the download stops and keeps what arrived for the next one. The
+free-space check asks macOS for the room it would give a file the user asked for, which counts the purgeable
+space that statvfs leaves out.
+
+Evidence: the tests in `crates/skald-models/tests/download.rs`, and the pinned file fetched for a few seconds,
+stopped and resumed, with the bytes at the resume point matching the server's. Changed:
+[research.md](research.md#stack).
 
 ## D-25 — One binary is both the app and its command line
 

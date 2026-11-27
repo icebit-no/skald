@@ -5,9 +5,9 @@ use gpui_kit::{AnyElement, Context, FontWeight, div, px};
 
 use super::controls::{SMALL_SIZE, link, section, tag};
 use super::general::{list, row, tab_column};
-use super::palette::Palette;
 use super::view::SettingsView;
 use crate::about::{AboutTab, Credit, LICENCE, NETWORK, NOTHING_LEAVES, SOURCE};
+use skald_ui::Palette;
 
 impl SettingsView {
     pub(super) fn render_about(&mut self, p: &Palette, _: &mut Context<Self>) -> AnyElement {

@@ -11,12 +11,9 @@ pub enum Action {
     RequestAccess(Permission),
     /// Open the permission's pane in the system's settings, where a refusal is undone.
     OpenSettings(Permission),
-    /// The window came to the front again, as when the user comes back from the system's settings:
-    /// read the permissions afresh.
-    CheckPermissions,
     /// Load the model and listen for the hold key; each take's result goes into the model's test.
     RunTest,
-    /// The user is done; the window has closed itself.
+    /// The user is done, with the test or without it; the window has closed itself.
     Done,
     /// The user closed the window before they were done.
     Closed,

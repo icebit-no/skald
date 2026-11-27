@@ -2,7 +2,8 @@
 //! moves between them.
 
 use crate::download::Download;
-use crate::model::FirstRunModel;
+use crate::format;
+use crate::model::{FirstRunModel, Permissions, TestDictation};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Step {
@@ -30,19 +31,19 @@ impl Step {
         }
     }
 
-    pub fn is_done(self, model: &FirstRunModel) -> bool {
+    pub fn is_done(self, model: &FirstRunModel, permissions: &Permissions) -> bool {
         match self {
             Step::Model => model.download == Download::Ready,
-            Step::Permissions => model.permissions_granted(),
-            Step::Test => matches!(model.test, crate::model::TestDictation::Heard { .. }),
+            Step::Permissions => permissions.granted(model.platform),
+            Step::Test => matches!(model.test, TestDictation::Heard { .. }),
         }
     }
 
     /// The first step not done yet; the test when the other two are.
-    pub fn first_open(model: &FirstRunModel) -> Step {
+    pub fn first_open(model: &FirstRunModel, permissions: &Permissions) -> Step {
         [Step::Model, Step::Permissions]
             .into_iter()
-            .find(|step| !step.is_done(model))
+            .find(|step| !step.is_done(model, permissions))
             .unwrap_or(Step::Test)
     }
 
@@ -64,34 +65,45 @@ impl Step {
 }
 
 /// The buttons along the bottom of a step. The user may go on while the model downloads, so the
-/// permissions can be granted meanwhile; «Ferdig» waits until Skald can take dictation. The test is not
-/// required: someone setting Skald up again knows it works.
+/// permissions can be granted meanwhile. The last step ends with «Ferdig» once the test heard something
+/// and «Hopp over» before; either waits until Skald can take dictation.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Footer {
     pub back: bool,
     pub next: bool,
-    /// `Some(enabled)` on the last step.
-    pub finish: Option<bool>,
+    /// On the last step only.
+    pub finish: Option<Finish>,
     /// The download's progress while another step shows, so it is not forgotten.
     pub download_note: Option<String>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Finish {
+    pub label: &'static str,
+    pub primary: bool,
+    pub enabled: bool,
+}
+
 impl Footer {
-    pub fn of(step: Step, model: &FirstRunModel) -> Self {
-        let download_note = (step != Step::Model)
-            .then(|| match &model.download {
-                Download::Starting { .. } | Download::Running { .. } => Some(format!(
-                    "Laster ned modellen · {}",
-                    crate::format::percent(model.download.received(), model.model.size)
-                )),
-                Download::Failed { .. } => Some("Nedlastingen stoppet med en feil.".to_owned()),
-                _ => None,
-            })
-            .flatten();
+    pub fn of(step: Step, model: &FirstRunModel, permissions: &Permissions) -> Self {
+        let download_note = match (&model.download, step) {
+            (_, Step::Model) => None,
+            (Download::Starting { .. } | Download::Running { .. }, _) => Some(format!(
+                "Laster ned modellen · {}",
+                format::percent(model.download.received(), model.model.size)
+            )),
+            (Download::Failed { .. }, _) => Some("Nedlastingen stoppet med en feil.".to_owned()),
+            _ => None,
+        };
+        let tested = Step::Test.is_done(model, permissions);
         Footer {
             back: step.previous().is_some(),
             next: step.next().is_some(),
-            finish: (step == Step::Test).then(|| model.ready()),
+            finish: (step == Step::Test).then(|| Finish {
+                label: if tested { "Ferdig" } else { "Hopp over" },
+                primary: tested,
+                enabled: model.ready(permissions),
+            }),
             download_note,
         }
     }
@@ -103,29 +115,36 @@ mod tests {
 
     use super::*;
     use crate::download::Throughput;
-    use crate::model::{Access, ModelCard, Platform, TestDictation};
+    use crate::model::{Access, ModelCard, Platform};
 
-    fn model(status: Status, microphone: Access, accessibility: Access) -> FirstRunModel {
+    const GRANTED: Permissions = Permissions {
+        microphone: Access::Granted,
+        accessibility: Access::Granted,
+    };
+    const ACCESSIBILITY_MISSING: Permissions = Permissions {
+        microphone: Access::Granted,
+        accessibility: Access::NotAsked,
+    };
+
+    fn model(status: Status) -> FirstRunModel {
         let card = ModelCard::of(skald_models::find("nb-whisper-large").unwrap()).unwrap();
         let mut model = FirstRunModel::new(card, status);
         model.platform = Platform::MacOs;
-        model.microphone = microphone;
-        model.accessibility = accessibility;
         model
     }
 
     #[test]
     fn the_window_opens_on_the_first_step_not_done() {
         assert_eq!(
-            Step::first_open(&model(Status::Missing, Access::Granted, Access::Granted)),
+            Step::first_open(&model(Status::Missing), &GRANTED),
             Step::Model
         );
         assert_eq!(
-            Step::first_open(&model(Status::Ready, Access::Granted, Access::NotAsked)),
+            Step::first_open(&model(Status::Ready), &ACCESSIBILITY_MISSING),
             Step::Permissions
         );
         assert_eq!(
-            Step::first_open(&model(Status::Ready, Access::Granted, Access::Granted)),
+            Step::first_open(&model(Status::Ready), &GRANTED),
             Step::Test
         );
     }
@@ -144,46 +163,68 @@ mod tests {
 
     #[test]
     fn the_test_step_is_done_once_skald_heard_something() {
-        let mut model = model(Status::Ready, Access::Granted, Access::Granted);
-        assert!(!Step::Test.is_done(&model));
+        let mut model = model(Status::Ready);
+        assert!(!Step::Test.is_done(&model, &GRANTED));
         model.test = TestDictation::HeardNothing {
             microphone: "Shure MV7".into(),
         };
-        assert!(!Step::Test.is_done(&model));
+        assert!(!Step::Test.is_done(&model, &GRANTED));
         model.test = TestDictation::Heard {
             text: "Hei.".into(),
         };
-        assert!(Step::Test.is_done(&model));
+        assert!(Step::Test.is_done(&model, &GRANTED));
     }
 
     #[test]
-    fn finishing_waits_for_the_model_and_the_permissions_not_the_test() {
-        let mut model = model(
-            Status::Partial { received: 5 },
-            Access::Granted,
-            Access::Granted,
+    fn the_test_can_be_skipped_once_skald_can_take_dictation() {
+        let mut model = model(Status::Partial { received: 5 });
+        let finish = |model: &FirstRunModel, permissions| {
+            Footer::of(Step::Test, model, permissions).finish.unwrap()
+        };
+        assert_eq!(
+            finish(&model, &GRANTED),
+            Finish {
+                label: "Hopp over",
+                primary: false,
+                enabled: false
+            }
         );
-        assert_eq!(Footer::of(Step::Test, &model).finish, Some(false));
         model.download = Download::Ready;
-        assert_eq!(Footer::of(Step::Test, &model).finish, Some(true));
-        assert_eq!(Footer::of(Step::Permissions, &model).finish, None);
+        assert!(finish(&model, &GRANTED).enabled);
+        assert!(!finish(&model, &ACCESSIBILITY_MISSING).enabled);
+
+        model.test = TestDictation::Heard {
+            text: "Hei.".into(),
+        };
+        assert_eq!(
+            finish(&model, &GRANTED),
+            Finish {
+                label: "Ferdig",
+                primary: true,
+                enabled: true
+            }
+        );
+        assert_eq!(Footer::of(Step::Permissions, &model, &GRANTED).finish, None);
     }
 
     #[test]
     fn a_running_download_is_named_on_the_other_steps() {
-        let mut model = model(Status::Missing, Access::NotAsked, Access::NotAsked);
+        let mut model = model(Status::Missing);
         model.download = Download::Running {
             received: model.model.size / 4,
             throughput: Throughput::default(),
             retry: None,
             stopping: false,
         };
-        let footer = Footer::of(Step::Permissions, &model);
+        let footer = Footer::of(Step::Permissions, &model, &ACCESSIBILITY_MISSING);
         assert_eq!(
             footer.download_note.as_deref(),
             Some("Laster ned modellen · 25 %")
         );
         assert!(footer.back && footer.next);
-        assert_eq!(Footer::of(Step::Model, &model).download_note, None);
+        assert_eq!(
+            Footer::of(Step::Model, &model, &ACCESSIBILITY_MISSING).download_note,
+            None
+        );
     }
 }

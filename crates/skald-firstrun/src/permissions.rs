@@ -2,7 +2,7 @@
 
 use crate::action::{Action, Permission};
 use crate::button::ButtonSpec;
-use crate::model::{Access, FirstRunModel, Platform};
+use crate::model::{Access, Permissions, Platform};
 
 /// macOS may ask about the clipboard the first time Skald puts the previous one back (docs/design.md,
 /// Insertion); the step says so before it happens.
@@ -28,17 +28,17 @@ pub struct PermissionRow {
 }
 
 /// The permissions this platform asks for, in the order the step lists them.
-pub fn rows(model: &FirstRunModel) -> Vec<PermissionRow> {
+pub fn rows(platform: Platform, permissions: &Permissions) -> Vec<PermissionRow> {
     let mut rows = vec![row(
         Permission::Microphone,
-        model.microphone,
-        model.platform,
+        permissions.microphone,
+        platform,
     )];
-    if model.platform.asks_for_accessibility() {
+    if platform.asks_for_accessibility() {
         rows.push(row(
             Permission::Accessibility,
-            model.accessibility,
-            model.platform,
+            permissions.accessibility,
+            platform,
         ));
     }
     rows
@@ -88,23 +88,21 @@ fn row(permission: Permission, access: Access, platform: Platform) -> Permission
 
 #[cfg(test)]
 mod tests {
-    use skald_models::Status;
-
     use super::*;
-    use crate::model::ModelCard;
 
-    fn model(platform: Platform, microphone: Access, accessibility: Access) -> FirstRunModel {
-        let card = ModelCard::of(skald_models::find("nb-whisper-large").unwrap()).unwrap();
-        let mut model = FirstRunModel::new(card, Status::Missing);
-        model.platform = platform;
-        model.microphone = microphone;
-        model.accessibility = accessibility;
-        model
+    fn rows(platform: Platform, microphone: Access, accessibility: Access) -> Vec<PermissionRow> {
+        super::rows(
+            platform,
+            &Permissions {
+                microphone,
+                accessibility,
+            },
+        )
     }
 
     #[test]
     fn macos_asks_for_the_microphone_and_accessibility() {
-        let rows = rows(&model(Platform::MacOs, Access::Granted, Access::NotAsked));
+        let rows = rows(Platform::MacOs, Access::Granted, Access::NotAsked);
         assert_eq!(rows.len(), 2);
         assert_eq!(rows[0].name, "Mikrofon");
         assert!(rows[0].granted);
@@ -124,7 +122,7 @@ mod tests {
 
     #[test]
     fn a_refusal_opens_the_pane_where_it_is_undone() {
-        let rows = rows(&model(Platform::MacOs, Access::Denied, Access::Granted));
+        let rows = rows(Platform::MacOs, Access::Denied, Access::Granted);
         assert_eq!(rows[0].state, "Avslått");
         assert!(rows[0].refused);
         assert_eq!(
@@ -142,7 +140,7 @@ mod tests {
 
     #[test]
     fn a_policy_leaves_nothing_to_press() {
-        let rows = rows(&model(Platform::MacOs, Access::Restricted, Access::Granted));
+        let rows = rows(Platform::MacOs, Access::Restricted, Access::Granted);
         assert_eq!(rows[0].state, "Sperret av en regel på denne maskinen");
         assert_eq!(rows[0].button, None);
         assert!(!rows[0].granted);
@@ -151,7 +149,7 @@ mod tests {
     #[test]
     fn windows_and_linux_ask_for_the_microphone_only() {
         for platform in [Platform::Windows, Platform::Linux] {
-            let rows = rows(&model(platform, Access::Denied, Access::NotAsked));
+            let rows = rows(platform, Access::Denied, Access::NotAsked);
             assert_eq!(rows.len(), 1);
             assert_eq!(
                 rows[0].button.as_ref().unwrap().label,

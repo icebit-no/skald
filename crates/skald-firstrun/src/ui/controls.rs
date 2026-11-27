@@ -1,17 +1,18 @@
-//! The window's controls, dressed in its colours: gpui-kit's headless button and progress bar, the step
-//! bar and the boxes a step is laid out in.
+//! The window's controls, dressed in its colours: gpui-kit's headless button, progress bar and text
+//! input, the step bar and the boxes a step is laid out in.
 
 use std::time::Duration;
 
+use gpui_kit::base::input::{Input, InputState};
 use gpui_kit::base::{Button, Progress};
 use gpui_kit::prelude::*;
 use gpui_kit::{
-    Animation, AnimationExt, App, ClickEvent, Div, ElementId, FontWeight, SharedString, Window,
-    div, px, relative,
+    Animation, AnimationExt, App, ClickEvent, Div, ElementId, Entity, Focusable, FontWeight,
+    SharedString, Window, div, px, relative,
 };
 
-use super::palette::{Palette, with_alpha};
 use crate::button::ButtonSpec;
+use skald_ui::{Palette, with_alpha};
 
 pub(crate) type OnClick = Box<dyn Fn(&ClickEvent, &mut Window, &mut App)>;
 
@@ -201,6 +202,28 @@ pub(crate) fn note(text: impl Into<SharedString>, palette: &Palette) -> Div {
         ))
         .text_size(px(SMALL_SIZE))
         .text_color(palette.quiet)
-        .child(div().flex_none().text_color(palette.done()).child("ⓘ"))
+        .child(div().flex_none().text_color(palette.done).child("ⓘ"))
         .child(div().flex_1().min_w_0().child(text.into()))
+}
+
+/// A text field: the input in a box that turns gold while it has the focus.
+pub(crate) fn field(
+    input: &Entity<InputState>,
+    palette: &Palette,
+    window: &Window,
+    cx: &App,
+) -> Div {
+    let focused = input.read(cx).focus_handle(cx).is_focused(window);
+    div()
+        .flex()
+        .items_center()
+        .w_full()
+        .h(px(36.0))
+        .px(px(10.0))
+        .rounded(px(8.0))
+        .bg(palette.raised)
+        .border_1()
+        .border_color(if focused { palette.gold } else { palette.line })
+        .text_size(px(15.0))
+        .child(Input::new(input))
 }

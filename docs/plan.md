@@ -66,7 +66,8 @@ Design: [Overlay](design.md#overlay), [Menu](design.md#menu), [Settings](design.
 One binary, `skald` (D-25). New crates, one area each: `skald-overlay` (the GPUI overlay and its themes),
 `skald-tray` (the menu bar item and its menu), `skald-control` (the local socket, its protocol and the command
 line's commands), `skald-models` (downloading a model), `skald-settings` (the settings window, after the
-overlay has set GPUI up), and `skald-firstrun` (the first-run window). The binary joins them.
+overlay has set GPUI up), `skald-firstrun` (the first-run window), and `skald-ui` (what the two windows share).
+The binary joins them.
 
 - [x] Overlay on GPUI: a PopUp window that takes no focus, lets clicks through, is transparent and draws at
       60 fps; the states recording, carving, inserted, heard nothing, microphone changed and hands-free, in the

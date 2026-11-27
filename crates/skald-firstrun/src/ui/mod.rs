@@ -1,19 +1,17 @@
 //! The window on GPUI: one view that draws the step chosen from the model it was last given.
 
 mod controls;
-mod palette;
 mod view;
 
 use std::rc::Rc;
 
-use gpui_kit::base::GlobalState;
 use gpui_kit::{
-    AnyWindowHandle, App, AppContext, Bounds, Global, KeyBinding, TitlebarOptions, WeakEntity,
-    WindowBounds, WindowOptions, px, size,
+    AnyWindowHandle, App, AppContext, Bounds, Entity, Global, KeyBinding, TitlebarOptions,
+    WeakEntity, WindowBounds, WindowOptions, px, size,
 };
 
 use crate::action::Action;
-use crate::model::FirstRunModel;
+use crate::model::{FirstRunModel, PermissionChecks};
 use view::FirstRunView;
 
 gpui_kit::actions!(skald_firstrun, [CloseWindow]);
@@ -24,6 +22,7 @@ type OnAction = Rc<dyn Fn(Action, &mut App)>;
 /// the model whenever the model changes, and receives an [`Action`] for each thing the user asks for.
 pub struct FirstRunWindow {
     on_action: OnAction,
+    checks: Rc<PermissionChecks>,
     open: Option<(AnyWindowHandle, WeakEntity<FirstRunView>)>,
 }
 
@@ -31,17 +30,18 @@ struct KeysBound;
 
 impl Global for KeysBound {}
 
-const WINDOW_SIZE: (f32, f32) = (620.0, 600.0);
-const MIN_SIZE: (f32, f32) = (540.0, 520.0);
+const WINDOW_SIZE: (f32, f32) = (620.0, 620.0);
+const MIN_SIZE: (f32, f32) = (540.0, 540.0);
 
 impl FirstRunWindow {
     /// `on_action` runs once the window's own update is done, so it may hand the window a new model at
-    /// once. Sets up gpui-kit the first time, unless another window has, which also reads the system's
-    /// reduced motion for the busy bar.
-    pub fn new(on_action: impl Fn(Action, &mut App) + 'static, cx: &mut App) -> Self {
-        if !cx.has_global::<GlobalState>() {
-            gpui_kit::init(cx);
-        }
+    /// once. Sets up gpui-kit through skald-ui the first time a window asks.
+    pub fn new(
+        checks: PermissionChecks,
+        on_action: impl Fn(Action, &mut App) + 'static,
+        cx: &mut App,
+    ) -> Self {
+        skald_ui::init(cx);
         if !cx.has_global::<KeysBound>() {
             cx.bind_keys([KeyBinding::new(
                 "cmd-w",
@@ -52,21 +52,19 @@ impl FirstRunWindow {
         }
         Self {
             on_action: Rc::new(on_action),
+            checks: Rc::new(checks),
             open: None,
         }
     }
 
     /// Opens the window on the first step not done, or brings it to the front.
     pub fn show(&mut self, model: &FirstRunModel, cx: &mut App) {
-        if let Some((handle, view)) = &self.open {
-            let raised = handle
-                .update(cx, |_, window, _| window.activate_window())
-                .is_ok();
-            if raised && let Some(view) = view.upgrade() {
-                view.update(cx, |view, cx| view.set_model(model.clone(), cx));
-                cx.activate(true);
-                return;
+        if self.update_view(model, cx) {
+            if let Some((handle, _)) = &self.open {
+                let _ = handle.update(cx, |_, window, _| window.activate_window());
             }
+            cx.activate(true);
+            return;
         }
         let options = WindowOptions {
             titlebar: Some(TitlebarOptions {
@@ -83,9 +81,10 @@ impl FirstRunWindow {
             ..WindowOptions::default()
         };
         let on_action = self.on_action.clone();
+        let checks = self.checks.clone();
         let model = model.clone();
         let opened = cx.open_window(options, move |window, cx| {
-            cx.new(|cx| FirstRunView::new(model, on_action, window, cx))
+            cx.new(|cx| FirstRunView::new(model, checks, on_action, window, cx))
         });
         match opened {
             Ok(handle) => {
@@ -102,8 +101,16 @@ impl FirstRunWindow {
 
     /// Shows `model` if the window is open.
     pub fn update(&mut self, model: &FirstRunModel, cx: &mut App) {
-        if let Some(view) = self.view() {
-            view.update(cx, |view, cx| view.set_model(model.clone(), cx));
+        self.update_view(model, cx);
+    }
+
+    /// Reads the permissions again now, as when the system's prompt was answered while the window kept
+    /// the front.
+    pub fn check_permissions(&mut self, cx: &mut App) {
+        if let Some((handle, view)) = self.window() {
+            let _ = handle.update(cx, |_, window, cx| {
+                view.update(cx, |view, cx| view.check_permissions(window, cx))
+            });
         }
     }
 
@@ -116,10 +123,23 @@ impl FirstRunWindow {
     }
 
     pub fn is_open(&self) -> bool {
-        self.view().is_some()
+        self.window().is_some()
     }
 
-    fn view(&self) -> Option<gpui_kit::Entity<FirstRunView>> {
-        self.open.as_ref().and_then(|(_, view)| view.upgrade())
+    /// Hands the open window the model; `false` when no window is open.
+    fn update_view(&mut self, model: &FirstRunModel, cx: &mut App) -> bool {
+        let Some((handle, view)) = self.window() else {
+            return false;
+        };
+        handle
+            .update(cx, |_, window, cx| {
+                view.update(cx, |view, cx| view.set_model(model.clone(), window, cx))
+            })
+            .is_ok()
+    }
+
+    fn window(&self) -> Option<(AnyWindowHandle, Entity<FirstRunView>)> {
+        let (handle, view) = self.open.as_ref()?;
+        Some((*handle, view.upgrade()?))
     }
 }

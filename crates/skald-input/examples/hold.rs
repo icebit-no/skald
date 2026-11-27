@@ -5,7 +5,10 @@
 //! cargo run -p skald-input --example hold                      # print only
 //! cargo run -p skald-input --example hold -- --insert          # also insert a test text on release
 //! cargo run -p skald-input --example hold -- --insert --keep   # and leave it on the clipboard
+//! cargo run -p skald-input --example hold -- --insert --wait 3 # insert 3 s after the release
 //! ```
+//!
+//! The wait leaves time to click into another window, which during a hold would cancel the take.
 //!
 //! On macOS the terminal running it needs Accessibility (System Settings › Privacy & Security ›
 //! Accessibility). On Windows a window run as administrator neither shows the key to it nor takes its
@@ -20,7 +23,7 @@ fn main() {
 
 #[cfg(any(target_os = "macos", windows))]
 mod listen {
-    use std::time::Instant;
+    use std::time::{Duration, Instant};
 
     use skald_input::{HoldEvent, HoldKey, HoldListener, InsertOptions, Inserter, ListenerEvent};
 
@@ -35,6 +38,12 @@ mod listen {
     pub fn main() {
         let args: Vec<String> = std::env::args().skip(1).collect();
         let insert = args.iter().any(|arg| arg == "--insert");
+        let wait = args
+            .iter()
+            .position(|arg| arg == "--wait")
+            .and_then(|at| args.get(at + 1))
+            .map(|seconds| Duration::from_secs_f64(seconds.parse().expect("--wait takes seconds")))
+            .unwrap_or_default();
         let options = InsertOptions {
             keep_text_on_clipboard: args.iter().any(|arg| arg == "--keep"),
             ..InsertOptions::default()
@@ -85,6 +94,7 @@ mod listen {
                         _ => println!("{at}  hands-free stopped"),
                     }
                     if insert {
+                        std::thread::sleep(wait);
                         match inserter.insert(TEST_TEXT, &options) {
                             Ok(outcome) => println!("          inserted: {outcome:?}"),
                             Err(error) => println!("          not inserted: {error}"),

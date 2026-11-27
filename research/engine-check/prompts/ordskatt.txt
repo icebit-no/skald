@@ -1,0 +1,1 @@
+Jeg har merget pull-requesten, rebaset branchen, pushet commiten og deployet releasen. Secret, main, Metal, Macen, SQLite, Kubernetes-clusteret, GitHub, NB-Whisper, Transcribe.cpp, PostgreSQL, Skald.

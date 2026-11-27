@@ -23,8 +23,9 @@
 //! settings.update(&model, cx);
 //! ```
 //!
-//! [`SettingsWindow::new`] runs gpui-kit's `init` the first time, which binds the text fields' keys for
-//! the whole app. The window shows a change at once, and the next model the app hands it is the truth.
+//! [`SettingsWindow::new`] sets gpui-kit up through skald-ui the first time a window asks, which binds the
+//! text fields' keys for the whole app. The window shows a change at once, and the next model the app
+//! hands it is the truth.
 
 pub mod about;
 mod action;

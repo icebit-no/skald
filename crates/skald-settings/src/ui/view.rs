@@ -10,13 +10,13 @@ use gpui_kit::{
     SharedString, Subscription, Window, div, px,
 };
 
-use super::controls::{self, OnClick, TEXT_SIZE};
-use super::palette::Palette;
+use super::controls::{OnClick, TEXT_SIZE};
 use super::{CloseWindow, OnAction, Tab};
 use crate::action::{Action, Change};
 use crate::history::{HistoryTab, Pick};
 use crate::model::SettingsModel;
 use crate::vocabulary::VocabularyTab;
+use skald_ui::Palette;
 
 pub(super) const KEY_CONTEXT: &str = "SkaldSettings";
 
@@ -347,7 +347,7 @@ impl SettingsView {
             return;
         }
         self.styled_dark = Some(palette.dark);
-        let style = controls::input_style(palette);
+        let style = skald_ui::input_style(palette);
         for input in [
             &self.sentence,
             &self.new_word,

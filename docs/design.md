@@ -156,6 +156,16 @@ utklippstavlen», «Start Skald ved innlogging» and «Lyd når opptaket starter
    maskinen. Ingenting sendes fra maskinen.»
 3. A test: «Hold høyre ⌘ og si "Hei, dette er en prøve"».
 
+The window, «Kom i gang med Skald», shows the steps as «Talemodell», «Tilganger» and «Prøv» and opens on the
+first one not done. The user may go on while the model downloads. The model shows its name, size, licence and
+credit, then «Last ned», the progress with speed and time left and «Avbryt», «Fortsett» after a stop, and a
+plain reason with «Prøv igjen» after an error. Each permission shows its state, with «Gi tilgang» while the
+system can still ask and «Åpne Systeminnstillinger» once it has refused, and is read again when the window
+comes back to the front. On macOS the step says that macOS may ask once whether Skald may read the clipboard
+(Insertion). The test take is inserted into a field in the window, «Teksten settes inn her»; when it does
+not arrive there, the window shows «Skald hørte:» and the text. «Hopp over» leaves the test out and becomes
+«Ferdig» once a take was heard; both wait until the model is checked and the permissions are granted.
+
 ## Command line
 
 `skald` talks to the running app over a local socket only the user can open; when the app is not running it

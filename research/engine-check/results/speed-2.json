@@ -1,0 +1,140 @@
+{
+ "clip": "fleurs-nb-1994",
+ "started": "2026-11-27 16:04:30",
+ "load_average_start": "{ 6.39 5.09 4.96 }",
+ "load_average_end": "{ 4.49 4.79 4.85 }",
+ "results": {
+  "tc greedy, GGUF F16": {
+   "runs_ms": [
+    869.9,
+    870.8,
+    872.0,
+    871.1,
+    873.9,
+    875.2,
+    874.7,
+    874.0,
+    871.0,
+    872.1
+   ],
+   "median_ms": 872.0803,
+   "load_ms": 275.1785,
+   "first_run_ms": 894.7277,
+   "encode_ms": 464.93,
+   "decode_ms": 402.598,
+   "text": "Hvis du allerede kan et romansk språk, vil det være lettere for deg å lære portugisisk."
+  },
+  "tc greedy, nb-whisper-large-Q8_0.gguf": {
+   "runs_ms": [
+    795.6,
+    797.0,
+    794.2,
+    796.1,
+    796.4,
+    797.0,
+    776.7,
+    771.9,
+    770.7,
+    770.6
+   ],
+   "median_ms": 794.9271,
+   "load_ms": 98.3361,
+   "first_run_ms": 816.4265,
+   "encode_ms": 465.276,
+   "decode_ms": 300.823,
+   "text": "Hvis du allerede kan et romansk språk, vil det være lettere for deg å lære portugisisk."
+  },
+  "tc greedy, nb-whisper-large-Q5_K_M.gguf": {
+   "runs_ms": [
+    814.9,
+    811.9,
+    813.1,
+    811.9,
+    813.5,
+    812.2,
+    812.8,
+    812.7,
+    813.5,
+    812.9
+   ],
+   "median_ms": 812.8875,
+   "load_ms": 119.6381,
+   "first_run_ms": 831.2475,
+   "encode_ms": 504.978,
+   "decode_ms": 303.377,
+   "text": "Hvis du allerede kan et romansk språk, vil det være lettere for deg å lære portugisisk."
+  },
+  "tc greedy, nb-whisper-large.bin": {
+   "runs_ms": [
+    849.8,
+    842.8,
+    843.0,
+    843.8,
+    844.8,
+    843.3,
+    843.8,
+    844.1,
+    845.7,
+    842.9
+   ],
+   "median_ms": 843.7886,
+   "load_ms": 734.4843,
+   "first_run_ms": 868.3382,
+   "encode_ms": 449.408,
+   "decode_ms": 390.203,
+   "text": "Hvis du allerede kan et romansk språk, vil det være lettere for deg å lære portugisisk."
+  },
+  "tc greedy, ggml-model-q5_0.bin": {
+   "runs_ms": [
+    780.5,
+    783.5,
+    782.0,
+    782.0,
+    779.8,
+    782.8,
+    784.1,
+    785.8,
+    782.6,
+    781.5
+   ],
+   "median_ms": 782.3214,
+   "load_ms": 300.5222,
+   "first_run_ms": 798.5719,
+   "encode_ms": 488.941,
+   "decode_ms": 289.153,
+   "text": "Hvis du allerede kan et romansk språk, vil det være lettere for deg å lære portugisisk."
+  },
+  "wc greedy, ggml-model.bin": {
+   "runs_ms": [
+    951.0,
+    952.3,
+    953.3,
+    951.0,
+    948.5,
+    952.5,
+    951.4,
+    952.2,
+    950.5,
+    950.7
+   ],
+   "median_ms": 951.2181039990537,
+   "text": "Hvis du allerede kan et romansk språk, vil det være lettere for deg å lære portugisisk."
+  },
+  "wc beam 5, ggml-model.bin": {
+   "runs_ms": [
+    1066.3,
+    1067.3,
+    1067.1,
+    1069.1,
+    1067.1,
+    1069.9,
+    1068.0,
+    1065.4,
+    1066.0,
+    1067.5
+   ],
+   "median_ms": 1067.1725414995308,
+   "text": "Hvis du allerede kan et romansk språk, vil det være lettere for deg å lære portugisisk."
+  }
+ }
+}

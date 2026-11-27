@@ -23,13 +23,13 @@ by a script from a pinned source with SHA-256 checks, not committed.
 
 **NB-Whisper and VAD** (`docs/research/engine-check.md`):
 
-- [ ] Build transcribe.cpp with Metal. Convert NB-Whisper Large to GGUF with transcribe.cpp's converter and
+- [x] Build transcribe.cpp with Metal. Convert NB-Whisper Large to GGUF with transcribe.cpp's converter and
       check on 10 Norwegian clips that its text matches whisper.cpp with NbAiLab's `ggml-model.bin`.
-- [ ] Check that the vocabulary prompt works with NB-Whisper in transcribe.cpp: as initial prompt, and carried
+- [x] Check that the vocabulary prompt works with NB-Whisper in transcribe.cpp: as initial prompt, and carried
       into each 30-second window for a long take.
-- [ ] Run Silero VAD from transcribe.cpp on the same clips, including silent takes.
-- [ ] Choose the Rust binding: transcribe-rs, or our own over transcribe.cpp's C API. Say why.
-- [ ] Measure the time to transcribe 9 s of speech with NB-Whisper on Apple Silicon.
+- [x] Run Silero VAD from transcribe.cpp on the same clips, including silent takes.
+- [x] Choose the Rust binding: transcribe-rs, or our own over transcribe.cpp's C API. Say why.
+- [x] Measure the time to transcribe 9 s of speech with NB-Whisper on Apple Silicon.
 
 **Bokfink** (`docs/research/bokfink-gguf.md`):
 
@@ -48,7 +48,7 @@ by a script from a pinned source with SHA-256 checks, not committed.
       release.
 - [x] Capture with cpal, resampled to 16 kHz mono with rubato, level readings for the meter; the microphone
       chosen by the priority list.
-- [ ] The silence gate: level, VAD (at least 250 ms of speech), the no-speech threshold, known phrases.
+- [ ] The silence gate: level, VAD (at least 250 ms of speech), known phrases.
 - [ ] Transcribe with NB-Whisper Large on Metal, loaded once, with beam search 5.
 - [x] Insert by clipboard and ⌘V after the key is released; put the previous clipboard back unless the user
       chose to copy the text.

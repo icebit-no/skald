@@ -39,8 +39,7 @@ Whisper turns silence into «ja», «ja takk» or «den satt». A take is transc
 1. **Level:** the loudest reading never reached speech level, so the model is not run.
 2. **Speech detection:** Silero VAD finds less than 250 ms of speech. Silence before and after the speech is cut
    before the model sees the audio.
-3. **The model's doubt:** the no-speech probability is above its threshold.
-4. **Known phrases:** the whole text is a known silence phrase and VAD found almost no speech. The list grows
+3. **Known phrases:** the whole text is a known silence phrase and VAD found almost no speech. The list grows
    from real cases.
 
 Any of them ends the take with «Hørte ingenting», and nothing is inserted.
@@ -108,7 +107,7 @@ dot while recording and a gold dot while transcribing.
 
 ## First run
 
-1. Download the model, with size, progress and checksum.
+1. Download the model, NbAiLab's own `ggml-model.bin` at a pinned revision, with size, progress and SHA-256.
 2. Permissions: Microphone, and on macOS Accessibility «for tasten og innsettingen».
 3. A test: «Hold høyre ⌘ og si "Hei, dette er en prøve"».
 

@@ -5,7 +5,7 @@ decision, and that pull request also edits the page where the rule lives ([desig
 [plan.md](plan.md)). Those pages say what holds; this one says when and why it came to hold. A later decision
 that undoes one adds an entry of its own, and the earlier entry gets one line naming it.
 
-## D-40 — On Wayland the clipboard goes through data-control in Skald itself, and Ctrl+V through wtype
+## D-42 — On Wayland the clipboard goes through data-control in Skald itself, and Ctrl+V through wtype
 
 2026-11-27, Claude; data-control or wl-clipboard, and wtype, offered by the lead's brief for M5.
 
@@ -65,7 +65,7 @@ the key's real state, with `invalid`. They are no MCP tools, since an agent has 
 (the tray and the overlay, later in M5), `skald` there runs the loop in the terminal, as `--terminal` does,
 and text is not inserted: each take is kept in the history and printed. Changed:
 [design.md](design.md#recording) (Recording, Command line), [plan.md](plan.md) M5.
-Insertion on Linux: D-40.
+Insertion on Linux: D-42.
 
 ## D-38 — Right Ctrl, Ctrl+V and the clipboard on Windows; a window run as administrator is checked first
 

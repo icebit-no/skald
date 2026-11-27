@@ -3,7 +3,7 @@
 How to build and run Skald on Linux, on Omarchy and other Hyprland desktops first (D-7), and how the desktop
 holds the key you talk with (D-39). Linux is M5 in [plan.md](../../docs/plan.md). Skald runs there in the
 terminal: the tray, the overlay and the windows have not come to Linux. The text is inserted where the cursor
-is, through the clipboard and Ctrl+V (D-40).
+is, through the clipboard and Ctrl+V (D-42).
 
 ## Build
 

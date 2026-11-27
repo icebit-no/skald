@@ -113,6 +113,8 @@ Design: [Audio in](design.md#audio-in).
 - [ ] Paste with Ctrl+V; windows running as administrator cannot receive it, and Skald says so. Built in
       skald-input (#30); ticked once the app runs on Windows and shows it.
 - [ ] Zip and manifest in `icebit-no/scoop-bucket`, a winget manifest, signing through SignPath Foundation.
+      The zip and the manifests' templates are in `packaging/windows/` (D-51); publishing them is M6's, and
+      signing waits for Thomas's application to SignPath Foundation.
 - [ ] Tested on a real Windows machine with an NVIDIA RTX GPU.
 
 ## M5 Linux (Omarchy and Hyprland)

@@ -1,0 +1,28 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.28.0.schema.json
+
+PackageIdentifier: Icebit.Skald
+PackageVersion: {{version}}
+PackageLocale: nb-NO
+Publisher: icebit
+PublisherUrl: https://icebit.app
+PublisherSupportUrl: https://github.com/icebit-no/skald/issues
+PackageName: Skald
+PackageUrl: https://skald.icebit.app
+License: MIT
+LicenseUrl: https://github.com/icebit-no/skald/blob/main/LICENSE
+ShortDescription: Norsk diktering på maskinen. Hold høyre Ctrl, snakk, slipp.
+Description: |-
+  Skald gjør det du sier om til tekst og setter den inn der markøren er. Hold høyre Ctrl mens du snakker,
+  og slipp. Talemodellene er laget av Nasjonalbiblioteket og kjører på maskinen, på skjermkortet med
+  Vulkan eller på prosessoren. Ingenting sendes fra maskinen. Skriver bokmål eller nynorsk.
+Moniker: skald
+Tags:
+- bokmål
+- diktering
+- norsk
+- nynorsk
+- tale-til-tekst
+- whisper
+ReleaseNotesUrl: https://github.com/icebit-no/skald/releases/tag/v{{version}}
+ManifestType: defaultLocale
+ManifestVersion: 1.28.0

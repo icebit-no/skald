@@ -34,9 +34,15 @@ The colours named below are the two Viking themes'; Kjedelig uses the system's a
 | Håndfritt | A padlock instead of the dot, and «⌃⌘X stopper» |
 
 The chisel's speed comes from this machine's measured seconds of work per second of audio, kept from recent
-takes, so it reaches the end about when the text arrives. Past 96 % it slows down instead of stopping. When the
-text comes early, it runs to the end in 150 ms. With reduced motion asked for, the pill shows each state without
-movement.
+takes, so it reaches the end about when the text arrives. Past 96 % it slows down instead of stopping. It never
+carves the runes of a text that does not exist yet: until the text arrives, the bars it has passed are fresh
+cuts. When the text arrives, the carved stretch shows its runes, the chisel runs to the end in 150 ms, the row
+stands 0.4 s, and Satt inn follows.
+
+Hørte ingenting stands 2 s and Mikrofon byttet 2.5 s.
+
+With reduced motion asked for, the pill shows each state without movement; the recording bars are a still picture
+of the last 2.4 s, replaced once a second.
 
 Transliteration to the Younger Futhark: a ᛅ, b/p ᛒ, c/g/k/q ᚴ, d/t ᛏ, e/i/j ᛁ, f ᚠ, h ᚼ, l ᛚ, m ᛘ, n ᚾ,
 o/u/v/w/y/ø ᚢ, r ᚱ, s/x/z ᛋ, æ ᛅ, å ᚬ, and ᛫ between words.
@@ -75,7 +81,7 @@ next take uses the next one.
 
 The menu's «Mikrofon» submenu switches at once by pinning the chosen microphone ahead of the order; while it
 is unplugged the order applies, and «Bruk den første som er koblet til» removes the pin. `skald mic use` sets
-the same pin. Bluetooth headsets drop to call quality while their microphone is open, so the help text
+the same pin, and `skald mic use --first` removes it. Bluetooth headsets drop to call quality while their microphone is open, so the help text
 suggests putting them last.
 
 ## Vocabulary and corrections
@@ -141,8 +147,8 @@ writes the configuration file directly. Every command takes `--json`.
 |---|---|
 | `skald last`, `skald history` | The latest text, or the five latest |
 | `skald fix list\|add\|remove` | Corrections |
-| `skald vocab list\|add\|remove` | Ordskatt, with the token count |
-| `skald config get\|set` | Key, bokmål or nynorsk, the overlay's look, copy to clipboard, sounds |
+| `skald vocab list\|add\|remove\|sentence` | Ordskatt, with the token count while Skald runs, and the sentence it opens with |
+| `skald config get\|set` | Key, bokmål or nynorsk, the overlay's look, copy to clipboard, start at login, sounds |
 | `skald mic list\|use\|order` | Microphones and their order |
 | `skald model list\|use` | Models, and which are downloaded |
 | `skald transcribe <file.wav>` | Transcribe a file, so an agent can try a correction |

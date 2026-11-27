@@ -1,0 +1,35 @@
+Whisper: a prompt carried into every window shares the prefix budget with the earlier text
+
+With prompt_condition = ALL_SEGMENTS and condition_on_prev_tokens, each 30-second window's prefix is
+<|startofprev|>, the prompt (up to max_prev_context_tokens, 223 by default) and up to the same number of
+tokens of earlier text, as in Hugging Face. A 213-token prompt then leaves the window almost no room of its
+own, and a 97 s take came out with 61 % word errors. Here the earlier text fills only what the prompt leaves
+of the budget, as whisper.cpp's carry_initial_prompt does; with that, whisper.cpp wrote the same take with
+10.5 % word errors. Evidence: docs/research/engine-check.md, section 2.
+
+Against transcribe.cpp 4a4e08f99c62ae1036551c259477fe4f3127f092 (v0.5.1), paths as in the
+transcribe-cpp-sys crate. Skald carries it until upstream releases this change or one like it.
+
+diff --git a/src/arch/whisper/model.cpp b/src/arch/whisper/model.cpp
+index 75cb266..1584209 100644
+--- a/src/arch/whisper/model.cpp
++++ b/src/arch/whisper/model.cpp
+@@ -1850,7 +1850,17 @@ transcribe_status whisper_run(transcribe_session *          session,
+                 }
+                 hist.insert(hist.end(), seg.begin(), seg.begin() + n);
+             }
+-            const int cap = std::min<int>(static_cast<int>(hist.size()), max_prev_cap);
++            // ALL_SEGMENTS: the prompt and the earlier text share one budget of
++            // max_prev_cap tokens, the prompt first and the earlier text filling
++            // what is left, as whisper.cpp's carry_initial_prompt does. HF gives
++            // each its own max_prev_cap, so a long prompt plus a full history
++            // takes nearly the whole decoder window and the window's own text
++            // falls apart.
++            int history_budget = max_prev_cap;
++            if (wp->prompt_condition == TRANSCRIBE_WHISPER_PROMPT_ALL_SEGMENTS) {
++                history_budget = std::max(0, max_prev_cap - static_cast<int>(window_prompt.size()));
++            }
++            const int cap = std::min<int>(static_cast<int>(hist.size()), history_budget);
+             prev_tokens.insert(prev_tokens.end(), hist.end() - cap, hist.end());
+         } else if (!window_prompt.empty() && prev_sot_id >= 0 &&
+                    (is_first_chunk || wp->prompt_condition == TRANSCRIBE_WHISPER_PROMPT_ALL_SEGMENTS)) {

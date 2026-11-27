@@ -1,6 +1,8 @@
 [workspace]
 resolver = "3"
 members = ["crates/*"]
+# Vendored code is built, never linted, formatted or tested as ours.
+exclude = ["third_party"]
 
 [workspace.package]
 version = "0.1.0"
@@ -14,3 +16,9 @@ skald-core = { path = "crates/skald-core" }
 skald-engine = { path = "crates/skald-engine" }
 skald-audio = { path = "crates/skald-audio" }
 skald-input = { path = "crates/skald-input" }
+
+# transcribe.cpp with Skald's two patches: a prompt carried into every 30-second window shares its budget
+# with the earlier text, and a Qwen3-ASR GGUF names its own languages (Bokfink). The copy and its patches are
+# described in third_party/transcribe-cpp-sys/SKALD.md. It goes once upstream releases both changes (D-23).
+[patch.crates-io]
+transcribe-cpp-sys = { path = "third_party/transcribe-cpp-sys" }

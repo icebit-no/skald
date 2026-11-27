@@ -51,7 +51,8 @@ Whisper turns silence into «ja», «ja takk» or «den satt». A take is transc
 3. **Known phrases:** the whole text is a known silence phrase and VAD found almost no speech. The list grows
    from real cases.
 
-Any of them ends the take with «Hørte ingenting», and nothing is inserted.
+Any of them ends the take with «Hørte ingenting», and nothing is inserted; so does a text with no word in it,
+only punctuation or nothing.
 
 ## Insertion
 
@@ -117,6 +118,7 @@ dot while recording and a gold dot while transcribing.
 ## First run
 
 1. Download the model, NbAiLab's own `ggml-model.bin` at a pinned revision, with size, progress and SHA-256.
+   Silero VAD (MIT, 1.2 MB) ships inside the app and is credited with the other notices; it is not downloaded.
 2. Permissions: Microphone, and on macOS Accessibility «for tasten og innsettingen».
 3. A test: «Hold høyre ⌘ og si "Hei, dette er en prøve"».
 

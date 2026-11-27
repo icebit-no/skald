@@ -1,0 +1,4 @@
+# Code from other projects: left out of the repository's language statistics and collapsed in pull
+# request diffs. Skald's own changes to it are the patches, which stay readable.
+transcribe-cpp-sys/** linguist-vendored linguist-generated
+transcribe-cpp-sys/SKALD.md -linguist-vendored -linguist-generated

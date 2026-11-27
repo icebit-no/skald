@@ -28,6 +28,44 @@ style, on Windows 11 its acrylic surface. It is called Kjedelig, which says what
 overlay only. In the rune stick the bars stand 8 pt apart while carving so each holds one rune. Changed:
 [design.md](design.md#overlay), [plan.md](plan.md) M2.
 
+## D-23 — transcribe.cpp as a vendored crate with Skald's patches; 500 ms kept around the speech
+
+2026-11-27, Claude; the known-phrase limit, the cut and the VAD model settled by the lead in review.
+
+Skald builds transcribe.cpp with its two patches (D-22) from a copy of the `transcribe-cpp-sys` crate in
+`third_party/`, which the root `Cargo.toml` puts in place of the crates.io crate; the safe `transcribe-cpp`
+crate stays from crates.io. The copy is the published crate as it is plus the patches, and a script writes it
+from the crate's SHA-256 and the patch files, so what differs from upstream is the patches and nothing else,
+and anyone can check that. The other ways each cost more: a patched install elsewhere (`TRANSCRIBE_DIR`) is a
+separate build on every machine and in CI; a git submodule needs CI changes; a fork would be a public
+repository of Thomas's; applying the patches at build time needs a patch tool on every machine. The price is
+about 35 MB of C++ source in the repository (5 MB as the published crate), marked as vendored so pull requests
+collapse it. The copy goes when an upstream release carries both changes.
+
+The budget patch lets the prompt and the text before each 30-second window share Whisper's 223 tokens, the
+prompt first, as whisper.cpp does: the second of the two fixes engine-check.md names (the first, the prompt
+alone at each window's head, was not measured). The 97 s take with the full 213-token ordskatt then has 9.8 %
+word errors, against 60.3 % in stock transcribe.cpp and 10.5 % in whisper.cpp, so the meter keeps its 223
+tokens.
+
+The silence before and after the speech is cut with 500 ms kept on either side. Cut at Silero's own 30 ms of
+padding, the 20 FLEURS clips lost words (5.2 → 5.9 % word errors clean, 20.2 → 23.9 % with noise); with
+500 ms they came out about as with the whole take (5.6 % and 19.2 %). A text with no word in it ends a take as
+the silence checks do: there is nothing to insert.
+
+Decided by the lead in review. A known phrase counts as silence only under 350 ms of speech, not 1000 ms: just
+above the 250 ms VAD must find before the model runs, and below the shortest real word measured («Hei.»,
+380 ms). With 1000 ms a spoken «Ja.» (444 ms) was never inserted, while VAD alone stopped every take without
+speech (0 ms). The silence around the speech stays cut at 500 ms, as design.md says, and M3 compares cutting
+it or not. Silero VAD ships inside the app (MIT, 1.2 MB) instead of being downloaded on first run. The engine
+has to be dropped before the process exits, since the Metal backend aborts at exit while a model is loaded;
+that is for the integration item.
+
+Evidence: [research/engine-check.md](research/engine-check.md), the model tests in `crates/skald-engine/tests`,
+the margins in `crates/skald-engine/src/vad.rs`. Changed: [plan.md](plan.md) M1b and M3,
+[design.md](design.md#silence) and [First run](design.md#first-run), the default of
+`known_phrase_max_speech_ms`.
+
 ## D-22 — transcribe.cpp's Rust crates, a patched build, NbAiLab's model file, no no-speech check
 
 2026-11-27, Claude; the patched build, the model file and the silence gate settled by the lead in review.

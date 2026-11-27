@@ -48,8 +48,10 @@ by a script from a pinned source with SHA-256 checks, not committed.
       release.
 - [x] Capture with cpal, resampled to 16 kHz mono with rubato, level readings for the meter; the microphone
       chosen by the priority list.
-- [ ] The silence gate: level, VAD (at least 250 ms of speech), known phrases.
-- [ ] Transcribe with NB-Whisper Large on Metal, loaded once, with beam search 5.
+- [x] The silence gate: level, VAD (at least 250 ms of speech), known phrases.
+- [x] Transcribe with NB-Whisper Large on Metal, loaded once.
+- [ ] Beam search 5 (D-16). transcribe.cpp decodes Whisper greedily only; waiting on Thomas
+      ([engine-check.md](research/engine-check.md#beam-search-three-ways-and-the-one-recommended)).
 - [x] Insert by clipboard and ⌘V after the key is released; put the previous clipboard back unless the user
       chose to copy the text.
 - [x] Vocabulary prompt and corrections from a TOML configuration; history of the five latest texts.
@@ -87,9 +89,9 @@ Design: [Audio in](design.md#audio-in).
 - [ ] Test set: the same sentences read with a good USB microphone, with the built-in Mac microphone and from
       a distance, with references in bokmål.
 - [ ] `skald bench`: word error rate and spacing errors (split or joined compounds), per configuration.
-- [ ] Compare greedy and beam 5, level normalisation, an 80 Hz high-pass, RNNoise, and NB-Whisper against
-      Bokfink as BF16 and as Q8_0 (Q5_K_M changed 9 of 48 texts in M1a and is left out). Keep what helps; write
-      the numbers into `docs/research/`.
+- [ ] Compare greedy and beam 5, level normalisation, an 80 Hz high-pass, RNNoise, cutting the silence around
+      the speech or not, and NB-Whisper against Bokfink as BF16 and as Q8_0 (Q5_K_M changed 9 of 48 texts in
+      M1a and is left out). Keep what helps; write the numbers into `docs/research/`.
 - [ ] Bokfink in the model choice, marked beta.
 
 ## M4 Windows

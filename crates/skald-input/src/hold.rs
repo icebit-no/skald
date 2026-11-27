@@ -1,10 +1,12 @@
 //! Hold-to-talk as pure logic over timestamped key changes, so every rule is tested with synthetic events
 //! and a fake clock.
 //!
-//! A take arms once the hold key has been down alone for [`ARM_AFTER`]. Any other key pressed while the
-//! hold key is down spoils the hold: before arming nothing starts, after arming the take is cancelled, and
-//! either way nothing more happens until the hold key comes up. While a take runs, the key's real state is
-//! checked every [`WATCHDOG_EVERY`], which ends a take whose release was never reported.
+//! A take arms once the hold key has been down alone for [`ARM_AFTER`]. The press is reported at once,
+//! before arming, so the caller can open the microphone and keep the speech of those first moments; each
+//! press then ends in exactly one of [`HoldEvent::Armed`] and [`HoldEvent::NotArmed`]. Any other key pressed
+//! while the hold key is down spoils the hold: before arming it is not armed, after arming the take is
+//! cancelled, and either way nothing more happens until the hold key comes up. While a take runs, the key's
+//! real state is checked every [`WATCHDOG_EVERY`], which ends a take whose release was never reported.
 
 use std::time::{Duration, Instant};
 
@@ -26,8 +28,14 @@ pub struct KeySample {
 /// What a hold means for the take.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum HoldEvent {
+    /// The hold key went down alone. A take may follow, and speech may begin at once, so this is the moment
+    /// to start listening; [`HoldEvent::Armed`] or [`HoldEvent::NotArmed`] follows.
+    Pressed { at: Instant },
     /// The take starts. Speech may have begun at `pressed_at`, before arming.
     Armed { pressed_at: Instant },
+    /// The hold ended before it armed: the key came up too soon, or another key joined it, as in ⌘C.
+    /// Nothing starts, and whatever was heard since [`HoldEvent::Pressed`] is thrown away.
+    NotArmed,
     /// The hold key came up: the take ends and is transcribed.
     Released,
     /// The hold key was found up although its release was never reported: the take ends and is
@@ -76,18 +84,24 @@ impl HoldMachine {
     /// The hold key went down or up; `sample` says which.
     pub fn hold_key_changed(&mut self, now: Instant, sample: KeySample) -> Option<HoldEvent> {
         if !sample.hold_key_down {
-            let was_armed = self.is_armed();
-            self.state = State::Idle;
-            return was_armed.then_some(HoldEvent::Released);
-        }
-        if self.state == State::Idle {
-            self.state = if sample.other_modifiers_down {
-                State::WaitingForRelease { checked: now }
-            } else {
-                State::Pressed { since: now }
+            let event = match self.state {
+                State::Armed { .. } => Some(HoldEvent::Released),
+                State::Pressed { .. } => Some(HoldEvent::NotArmed),
+                State::Idle | State::WaitingForRelease { .. } => None,
             };
+            self.state = State::Idle;
+            return event;
         }
-        None
+        if self.state != State::Idle {
+            return None;
+        }
+        if sample.other_modifiers_down {
+            self.state = State::WaitingForRelease { checked: now };
+            None
+        } else {
+            self.state = State::Pressed { since: now };
+            Some(HoldEvent::Pressed { at: now })
+        }
     }
 
     /// Any key other than the hold key went down: a key, a modifier or a mouse button.
@@ -96,7 +110,7 @@ impl HoldMachine {
             State::Idle | State::WaitingForRelease { .. } => None,
             State::Pressed { .. } => {
                 self.state = State::WaitingForRelease { checked: now };
-                None
+                Some(HoldEvent::NotArmed)
             }
             State::Armed { .. } => {
                 self.state = State::WaitingForRelease { checked: now };
@@ -124,10 +138,10 @@ impl HoldMachine {
             State::Pressed { since } => {
                 if !sample.hold_key_down {
                     self.state = State::Idle;
-                    None
+                    Some(HoldEvent::NotArmed)
                 } else if sample.other_modifiers_down {
                     self.state = State::WaitingForRelease { checked: now };
-                    None
+                    Some(HoldEvent::NotArmed)
                 } else if now >= since + ARM_AFTER {
                     self.state = State::Armed { checked: now };
                     Some(HoldEvent::Armed { pressed_at: since })
@@ -159,11 +173,15 @@ impl HoldMachine {
     }
 
     /// Forgets the hold, for when key events can no longer be trusted to arrive. A running take is
-    /// cancelled.
+    /// cancelled, and a press not yet armed is not armed.
     pub fn reset(&mut self) -> Option<HoldEvent> {
-        let was_armed = self.is_armed();
+        let event = match self.state {
+            State::Armed { .. } => Some(HoldEvent::Cancelled),
+            State::Pressed { .. } => Some(HoldEvent::NotArmed),
+            State::Idle | State::WaitingForRelease { .. } => None,
+        };
         self.state = State::Idle;
-        was_armed.then_some(HoldEvent::Cancelled)
+        event
     }
 }
 
@@ -215,7 +233,10 @@ mod tests {
 
     fn armed_machine(clock: &Clock) -> HoldMachine {
         let mut machine = HoldMachine::new();
-        machine.hold_key_changed(clock.at(0), ALONE);
+        assert_eq!(
+            machine.hold_key_changed(clock.at(0), ALONE),
+            Some(HoldEvent::Pressed { at: clock.at(0) })
+        );
         assert_eq!(
             run_until(&mut machine, clock.at(200), ALONE),
             [HoldEvent::Armed {
@@ -230,7 +251,10 @@ mod tests {
         let clock = Clock::new();
         let mut machine = HoldMachine::new();
 
-        assert_eq!(machine.hold_key_changed(clock.at(0), ALONE), None);
+        assert_eq!(
+            machine.hold_key_changed(clock.at(0), ALONE),
+            Some(HoldEvent::Pressed { at: clock.at(0) })
+        );
         assert_eq!(machine.next_tick(), Some(clock.at(200)));
         assert_eq!(run_until(&mut machine, clock.at(199), ALONE), []);
         assert_eq!(
@@ -272,24 +296,31 @@ mod tests {
     }
 
     #[test]
-    fn a_tap_shorter_than_200_ms_starts_nothing() {
+    fn a_tap_shorter_than_200_ms_is_not_armed() {
         let clock = Clock::new();
         let mut machine = HoldMachine::new();
         machine.hold_key_changed(clock.at(0), ALONE);
 
-        assert_eq!(machine.hold_key_changed(clock.at(120), UP), None);
+        assert_eq!(
+            machine.hold_key_changed(clock.at(120), UP),
+            Some(HoldEvent::NotArmed)
+        );
         assert_eq!(machine.next_tick(), None);
         assert_eq!(run_until(&mut machine, clock.at(1000), UP), []);
     }
 
     #[test]
-    fn a_shortcut_typed_before_arming_starts_nothing() {
+    fn a_shortcut_typed_before_arming_is_not_armed() {
         // ⌘C: the hold key, then C within 200 ms.
         let clock = Clock::new();
         let mut machine = HoldMachine::new();
         machine.hold_key_changed(clock.at(0), ALONE);
 
-        assert_eq!(machine.other_key_pressed(clock.at(80)), None);
+        assert_eq!(
+            machine.other_key_pressed(clock.at(80)),
+            Some(HoldEvent::NotArmed)
+        );
+        assert_eq!(machine.other_key_pressed(clock.at(90)), None);
         assert_eq!(run_until(&mut machine, clock.at(2000), ALONE), []);
         assert!(!machine.is_armed());
         assert_eq!(machine.hold_key_changed(clock.at(2100), UP), None);
@@ -341,7 +372,7 @@ mod tests {
     }
 
     #[test]
-    fn a_modifier_already_down_when_the_key_is_pressed_starts_nothing() {
+    fn a_modifier_already_down_when_the_key_is_pressed_is_not_even_a_press() {
         // ⇧ held, then the hold key: a chord, not dictation.
         let clock = Clock::new();
         let mut machine = HoldMachine::new();
@@ -352,23 +383,29 @@ mod tests {
     }
 
     #[test]
-    fn a_modifier_found_down_at_arming_time_starts_nothing() {
+    fn a_modifier_found_down_at_arming_time_is_not_armed() {
         let clock = Clock::new();
         let mut machine = HoldMachine::new();
         machine.hold_key_changed(clock.at(0), ALONE);
 
-        assert_eq!(run_until(&mut machine, clock.at(200), WITH_OTHERS), []);
+        assert_eq!(
+            run_until(&mut machine, clock.at(200), WITH_OTHERS),
+            [HoldEvent::NotArmed]
+        );
         assert!(!machine.is_armed());
         assert_eq!(run_until(&mut machine, clock.at(2000), ALONE), []);
     }
 
     #[test]
-    fn a_key_found_up_at_arming_time_starts_nothing() {
+    fn a_key_found_up_at_arming_time_is_not_armed() {
         let clock = Clock::new();
         let mut machine = HoldMachine::new();
         machine.hold_key_changed(clock.at(0), ALONE);
 
-        assert_eq!(run_until(&mut machine, clock.at(200), UP), []);
+        assert_eq!(
+            run_until(&mut machine, clock.at(200), UP),
+            [HoldEvent::NotArmed]
+        );
         assert_eq!(machine.next_tick(), None);
     }
 
@@ -440,6 +477,16 @@ mod tests {
     }
 
     #[test]
+    fn a_repeated_down_report_while_pressed_is_not_a_second_press() {
+        let clock = Clock::new();
+        let mut machine = HoldMachine::new();
+        machine.hold_key_changed(clock.at(0), ALONE);
+
+        assert_eq!(machine.hold_key_changed(clock.at(100), ALONE), None);
+        assert_eq!(machine.next_tick(), Some(clock.at(200)));
+    }
+
+    #[test]
     fn a_repeated_down_report_while_armed_changes_nothing() {
         let clock = Clock::new();
         let mut machine = armed_machine(&clock);
@@ -449,14 +496,82 @@ mod tests {
     }
 
     #[test]
-    fn reset_cancels_a_running_take_and_only_that() {
+    fn reset_cancels_a_running_take_and_ends_a_press_not_yet_armed() {
         let clock = Clock::new();
         let mut machine = armed_machine(&clock);
         assert_eq!(machine.reset(), Some(HoldEvent::Cancelled));
         assert_eq!(machine.next_tick(), None);
 
         machine.hold_key_changed(clock.at(1000), ALONE);
-        assert_eq!(machine.reset(), None);
+        assert_eq!(machine.reset(), Some(HoldEvent::NotArmed));
         assert_eq!(machine.next_tick(), None);
+
+        machine.hold_key_changed(clock.at(2000), WITH_OTHERS);
+        assert_eq!(machine.reset(), None);
+        assert_eq!(machine.reset(), None);
+    }
+
+    /// Where a caller stands after the events so far: whether a microphone opened at the press is still
+    /// open, and whether a take is running.
+    #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+    enum Expect {
+        Nothing,
+        ArmedOrNotArmed,
+        TakeEnd,
+    }
+
+    fn follow(expect: Expect, event: HoldEvent) -> Expect {
+        match (expect, event) {
+            (Expect::Nothing, HoldEvent::Pressed { .. }) => Expect::ArmedOrNotArmed,
+            (Expect::ArmedOrNotArmed, HoldEvent::Armed { .. }) => Expect::TakeEnd,
+            (Expect::ArmedOrNotArmed, HoldEvent::NotArmed) => Expect::Nothing,
+            (
+                Expect::TakeEnd,
+                HoldEvent::Released | HoldEvent::ReleaseMissed | HoldEvent::Cancelled,
+            ) => Expect::Nothing,
+            (expect, event) => panic!("{event:?} while expecting {expect:?}"),
+        }
+    }
+
+    #[test]
+    fn every_press_ends_in_armed_or_not_armed_and_every_take_ends_once() {
+        // A small linear congruential generator, so the sequences are the same on every run.
+        let mut seed: u64 = 0x5eed;
+        let mut next = |below: u64| {
+            seed = seed
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1_442_695_040_888_963_407);
+            (seed >> 33) % below
+        };
+        let samples = [ALONE, WITH_OTHERS, UP];
+        for _ in 0..200 {
+            let clock = Clock::new();
+            let mut machine = HoldMachine::new();
+            let mut expect = Expect::Nothing;
+            let mut ms = 0;
+            for _ in 0..60 {
+                ms += next(400);
+                let now = clock.at(ms);
+                let sample = samples[next(3) as usize];
+                let event = match next(4) {
+                    0 => machine.hold_key_changed(now, sample),
+                    1 => machine.other_key_pressed(now),
+                    2 => machine.tick(now, sample),
+                    _ => (next(10) == 0).then(|| machine.reset()).flatten(),
+                };
+                if let Some(event) = event {
+                    expect = follow(expect, event);
+                }
+                assert_eq!(
+                    machine.is_armed(),
+                    expect == Expect::TakeEnd,
+                    "{machine:?} at {ms} ms"
+                );
+            }
+            if let Some(event) = machine.reset() {
+                expect = follow(expect, event);
+            }
+            assert_eq!(expect, Expect::Nothing);
+        }
     }
 }

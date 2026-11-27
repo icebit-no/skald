@@ -1,6 +1,7 @@
 //! The start and end sounds: macOS's «Tink» when a take arms and «Pop» as its text is inserted. Each plays
 //! in an `afplay` process of its own, so a sound output that will not start, which can hold a thread for
-//! seconds, holds up neither the keys nor the insertion.
+//! seconds, holds up neither the keys nor the insertion. Linux plays its sound theme's files the same way
+//! (`linux::sounds`).
 
 use std::process::{Command, Stdio};
 use std::thread;
@@ -24,6 +25,12 @@ impl Sound {
 pub(crate) trait Chime: Send + Sync {
     fn play(&self, sound: Sound);
 }
+
+/// The sounds of this system.
+#[cfg(not(target_os = "linux"))]
+pub(crate) type SystemChime = Afplay;
+#[cfg(target_os = "linux")]
+pub(crate) type SystemChime = crate::linux::sounds::ThemeSounds;
 
 #[derive(Debug, Clone, Copy, Default)]
 pub(crate) struct Afplay;

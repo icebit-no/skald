@@ -15,7 +15,7 @@ env:
   RUSTFLAGS: -D warnings
 
 jobs:
-  check:
+  windows:
     # GitHub's own runner, as for macOS. Formatting is checked in the macOS job alone; it does not depend on
     # the system. transcribe.cpp builds for the CPU here, with MSVC and the runner's CMake.
     runs-on: windows-latest

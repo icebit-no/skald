@@ -17,7 +17,13 @@ pub struct FirstRunModel {
     pub model: ModelCard,
     pub download: Download,
     pub test: TestDictation,
+    /// The machine has no GPU with a Vulkan driver, so the model will compute on the CPU, and the model's
+    /// step says so.
+    pub no_vulkan: bool,
 }
+
+/// What the model's step says when [`FirstRunModel::no_vulkan`] holds.
+pub const NO_VULKAN: &str = "Fant ingen skjermkortdriver med Vulkan, så talemodellen regner på prosessoren og bruker lengre tid.";
 
 impl FirstRunModel {
     /// For this machine, with the default hold key.
@@ -28,6 +34,7 @@ impl FirstRunModel {
             model,
             download: Download::from_status(status),
             test: TestDictation::NotStarted,
+            no_vulkan: false,
         }
     }
 

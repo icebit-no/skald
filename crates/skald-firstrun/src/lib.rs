@@ -52,7 +52,8 @@ pub use action::{Action, Permission};
 pub use button::ButtonSpec;
 pub use download::{Download, DownloadError, Retry, Throughput};
 pub use model::{
-    Access, FirstRunModel, ModelCard, PermissionChecks, Permissions, Platform, TestDictation,
+    Access, FirstRunModel, ModelCard, NO_VULKAN, PermissionChecks, Permissions, Platform,
+    TestDictation,
 };
 pub use steps::Step;
 pub use ui::FirstRunWindow;

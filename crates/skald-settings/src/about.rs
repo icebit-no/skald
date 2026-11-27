@@ -3,7 +3,7 @@
 
 use skald_models::MODELS;
 
-use crate::model::SettingsModel;
+use crate::model::{Compute, SettingsModel};
 
 pub const SOURCE: &str = "https://github.com/icebit-no/skald";
 pub const NOTHING_LEAVES: &str = "Ingenting sendes fra maskinen";
@@ -11,6 +11,9 @@ pub const NOTHING_LEAVES: &str = "Ingenting sendes fra maskinen";
 pub const NETWORK: &str =
     "Nettet brukes bare til å laste ned en talemodell og til å se etter en ny versjon.";
 pub const LICENCE: &str = "Fri programvare med åpen kildekode, under MIT-lisensen.";
+pub const ON_METAL: &str = "Talemodellen regner på skjermkortet med Metal.";
+pub const ON_VULKAN: &str = "Talemodellen regner på skjermkortet med Vulkan.";
+pub const ON_CPU: &str = "Talemodellen regner på prosessoren.";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AboutTab {
@@ -18,6 +21,8 @@ pub struct AboutTab {
     pub title: String,
     pub models: Vec<Credit>,
     pub engine: Vec<Credit>,
+    /// What the model computes on, once one has loaded.
+    pub compute: Option<&'static str>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -66,6 +71,11 @@ impl AboutTab {
                 })
                 .collect(),
             engine: ENGINE.to_vec(),
+            compute: model.compute.map(|compute| match compute {
+                Compute::Metal => ON_METAL,
+                Compute::Vulkan => ON_VULKAN,
+                Compute::Cpu => ON_CPU,
+            }),
         }
     }
 }
@@ -73,6 +83,21 @@ impl AboutTab {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn says_what_the_model_computes_on_once_one_has_loaded() {
+        let on = |compute| {
+            AboutTab::of(&SettingsModel {
+                compute,
+                ..SettingsModel::default()
+            })
+            .compute
+        };
+        assert_eq!(on(None), None);
+        assert_eq!(on(Some(Compute::Metal)), Some(ON_METAL));
+        assert_eq!(on(Some(Compute::Vulkan)), Some(ON_VULKAN));
+        assert_eq!(on(Some(Compute::Cpu)), Some(ON_CPU));
+    }
 
     #[test]
     fn names_the_version_and_credits_the_national_library_for_its_models() {

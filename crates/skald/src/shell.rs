@@ -405,6 +405,7 @@ impl Shell {
                 Pill::Inserted(text) => self.overlay.inserted(&text, cx),
                 Pill::HeardNothing(microphone) => self.overlay.heard_nothing(&microphone, cx),
                 Pill::NotInserted => self.overlay.not_inserted(cx),
+                Pill::AdministratorWindow => self.overlay.administrator_window(cx),
                 Pill::TranscriptionFailed => self.overlay.transcription_failed(cx),
                 Pill::NoMicrophone => self.overlay.no_microphone(cx),
                 Pill::MicrophoneChanged(microphone) => {

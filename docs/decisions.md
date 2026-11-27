@@ -24,6 +24,39 @@ glslc, and has no GPU, so its tests compute on the CPU. Evidence: in a container
 Skald with NB-Whisper loaded pass with lavapipe and with no Vulkan driver at all, and the binary links
 `libvulkan.so.1`. Changed: [design.md](design.md#first-run), [plan.md](plan.md) M5.
 
+## D-49 — Skald runs its screen on Windows; the overlay lets clicks through as a layered window
+
+2026-11-27, Claude; the administrator window's words, the windowed program and where the backend is shown
+settled by the lead.
+
+`skald` on Windows runs as on macOS and Linux (D-44): GPUI on the main thread with the icon in the
+notification area (D-48), the overlay, the first-run window while the model is missing and the settings
+window, and the dictation loop on a thread of its own; `--terminal` keeps the loop alone.
+
+The overlay is GPUI's pop-up, a topmost tool window shown without activation. GPUI has no option for
+click-through, so the overlay makes the native window layered, transparent to the mouse and never activated,
+which is what Windows needs to pass a click to the window below; a layered window shows only once its opacity
+is set, here whole, so the drawing's own alpha applies. It goes to the monitor of the window in front, where
+the text lands; GPUI names a monitor by its handle. Kjedelig's acrylic, GPUI's blur behind the whole window,
+is cut to the pill by a window region. The accent colour is Windows' own, and «Animation effects» turned off
+counts as reduced motion.
+
+When the window in front runs as administrator, the overlay says «Administratorvindu · ligger i Siste
+tekster» (D-41), and the text is in «Siste tekster». The pill's fit test allows 0.6 em a letter, a third
+above what Alegreya Sans and SF Pro measure, so Segoe UI in Kjedelig has room.
+
+Decided by the lead: `skald.exe` is a windowed program, so no console opens beside the app when it starts
+from the Start menu or at login, and it stays one binary (D-25). A command, `--terminal`, `--help` and a
+wrong argument attach to the console of the program that ran them, so `skald last` prints in PowerShell; a
+pipe an agent reads is used as it is. PowerShell and cmd.exe do not wait for a windowed program unless its
+output is piped, so in an interactive console the prompt can come back before the answer.
+
+Decided by the lead: Om shows under «Motoren» what the loaded model computes on, Metal, Vulkan or the CPU, and
+the first-run window's «Talemodell» step says «Fant ingen skjermkortdriver med Vulkan, …» (D-43) when the
+machine has no GPU with a Vulkan driver; it asks the engine as the window opens, which loads the backends the
+model would load anyway. The overlay shows no message for it. Changed: [design.md](design.md#overlay)
+(Overlay, First run, Settings).
+
 ## D-48 — Skald's item on Windows is an icon in the notification area with the rune drawn at its size
 
 2026-11-27, Claude.
@@ -110,6 +143,7 @@ process exits, and a second one ends the process at once. Closing the console wi
 seconds before Windows ends the process. The command the terminal prints for a missing model is `curl.exe`
 with the path in double quotes on Windows, which PowerShell and cmd.exe both read.
 
+Windows runs its screen from D-49.
 
 ## D-44 — On Linux the overlay is a layer-shell surface, and the app's screen runs there
 
@@ -190,9 +224,10 @@ The hands-free chord on Windows is Ctrl+Win+X, the counterpart of ⌃⌘X: the W
 as right Ctrl stands for right ⌘, and Ctrl+Alt is AltGr. handy-keys keeps the chord from the app in front, as
 on macOS, and keeps the Windows key's release from opening the Start menu.
 
-When the window in front runs as administrator (D-38), the overlay says «Kan ikke sette inn i et
-administratorvindu · ligger i Siste tekster» for 2 s, as the other messages stand, rather than the general
-«Ikke satt inn»: the user can act on it.
+When the window in front runs as administrator (D-38), the overlay says «Administratorvindu · ligger i Siste
+tekster» for 2 s, as the other messages stand, rather than the general «Ikke satt inn»: the user can act on
+it. It follows «Ikke satt inn · ligger i Siste tekster» and fits the pill; «Kan ikke sette inn i et
+administratorvindu» did not.
 
 Skald does not ask for UI Access, which would let it hear the key in an administrator window and paste into
 it: Windows grants it only to a signed binary installed under Program Files, which belongs to M4's packaging

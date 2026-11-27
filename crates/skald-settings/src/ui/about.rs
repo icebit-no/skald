@@ -56,7 +56,7 @@ impl SettingsView {
             ))
             .child(section(
                 "Motoren",
-                None,
+                tab.compute,
                 p,
                 [credits("engine", &tab.engine, p)],
             ))

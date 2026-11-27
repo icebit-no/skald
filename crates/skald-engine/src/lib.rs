@@ -25,6 +25,27 @@ pub use vad::{Speech, TRIM_MARGIN, Vad};
 /// The rate of the samples every take is given in.
 pub const SAMPLE_RATE: u32 = 16_000;
 
+/// What a loaded model computes on.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Compute {
+    Metal,
+    Vulkan,
+    Cpu,
+}
+
+impl Compute {
+    /// From the device a loaded model names, such as «MTL0», «Vulkan0» or «CPU».
+    pub fn of_device(device: &str) -> Self {
+        if device.starts_with("MTL") {
+            Compute::Metal
+        } else if device.starts_with("Vulkan") {
+            Compute::Vulkan
+        } else {
+            Compute::Cpu
+        }
+    }
+}
+
 /// The tokens the prompt may take (docs/design.md, Vocabulary and corrections): half of Whisper's
 /// 448-token decoder window, less one, comes before each 30-second window's own text. Skald's build of
 /// transcribe.cpp lets the prompt and the text before the window share that room, the prompt first
@@ -293,6 +314,13 @@ impl CountTokens for Engine {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_device_names_what_the_model_computes_on() {
+        assert_eq!(Compute::of_device("MTL0"), Compute::Metal);
+        assert_eq!(Compute::of_device("Vulkan0"), Compute::Vulkan);
+        assert_eq!(Compute::of_device("CPU"), Compute::Cpu);
+    }
 
     #[test]
     fn bokmal_and_nynorsk_have_their_own_language_codes() {

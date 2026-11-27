@@ -108,7 +108,8 @@ Design: [Audio in](design.md#audio-in).
 - [ ] Right Ctrl hold; a Vulkan build that runs on NVIDIA, AMD and Intel, and says so plainly on a machine
       without Vulkan. The hold (#30) and the Vulkan build (#34) are built; ticked once Vulkan has run on
       NVIDIA, AMD and Intel GPUs.
-- [ ] Icon and menu in the notification area; the overlay as a topmost window that takes no focus.
+- [ ] Icon and menu in the notification area; the overlay as a topmost window that takes no focus. Built in
+      #42 and #43; ticked once Thomas has seen them work on Windows.
 - [ ] Paste with Ctrl+V; windows running as administrator cannot receive it, and Skald says so. Built in
       skald-input (#30); ticked once the app runs on Windows and shows it.
 - [ ] Zip and manifest in `icebit-no/scoop-bucket`, a winget manifest, signing through SignPath Foundation.

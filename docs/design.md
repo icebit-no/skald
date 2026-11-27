@@ -47,7 +47,7 @@ The colours named below are the two Viking themes'; Kjedelig uses the system's a
 | Satt inn | A gold tick and the start of the text, in plain type, for about 1.5 s |
 | Hørte ingenting | «Hørte ingenting · lyttet på <mikrofon>» |
 | Ikke satt inn | «Ikke satt inn · ligger i Siste tekster», when the text could not be inserted |
-| Administratorvindu | «Kan ikke sette inn i et administratorvindu · ligger i Siste tekster», on Windows, when the window in front runs as administrator |
+| Administratorvindu | «Administratorvindu · ligger i Siste tekster», on Windows, when the window in front runs as administrator and refuses the text |
 | Transkriberingen feilet | «Transkriberingen feilet», when the model failed on the take |
 | Ingen mikrofon | «Ingen mikrofon er koblet til», when a take arms without one |
 | Mikrofon byttet | «<mikrofon> · koblet til, brukes nå», once, when the active microphone changes |
@@ -164,12 +164,14 @@ words, since the menu there has no pin, and the menu has no shortcuts and no too
 | Generelt | Hold-to-talk key; bokmål or nynorsk; microphone order; talemodell (NB-Whisper Large, NB-ASR Bokfink beta, Nordlyd greyed until open); «Overleggets utseende» (Runepinne, Smidd jern, Kjedelig); «Kopier også teksten til utklippstavlen»; start at login; sounds |
 | Ordskatt | The sentence, the words with the token meter, the corrections with their counts, «+ Ny retting», «Prøv på en tekst» |
 | Historikk | The five latest texts, «Kopier», correct a word |
-| Om | Version, models and engine with their licences, source link, «Ingenting sendes fra maskinen» |
+| Om | Version, models and engine with their licences, what the model computes on, source link, «Ingenting sendes fra maskinen» |
 
 The settings are named «Tasten du holder inne for å snakke» (Høyre ⌘ or Høyre Control on macOS, Høyre Ctrl
 elsewhere), «Skriftspråk», «Mikrofoner», «Talemodell», «Overleggets utseende», «Kopier også teksten til
 utklippstavlen», «Start Skald ved innlogging» and «Lyd når opptaket starter og slutter»; Ordskatt holds
-«Setningen», «Ord og navn» and «Rettinger». The window follows the system's light or dark mode, in its UI font.
+«Setningen», «Ord og navn» and «Rettinger». Om says under «Motoren» what the loaded model computes on:
+«Talemodellen regner på skjermkortet med Metal», «… med Vulkan» or «Talemodellen regner på prosessoren». The
+window follows the system's light or dark mode, in its UI font.
 
 ## First run
 
@@ -191,8 +193,9 @@ not arrive there, the window shows «Skald hørte:» and the text. «Hopp over»
 «Ferdig» once a take was heard; both wait until the model is checked and the permissions are granted.
 
 On Windows and Linux the model computes on the GPU through Vulkan, on NVIDIA, AMD and Intel alike. A machine
-with no Vulkan driver runs it on the CPU, and Skald says so when the model loads: «Fant ingen skjermkortdriver med
-Vulkan, så talemodellen regner på prosessoren og bruker lengre tid.»
+with no Vulkan driver runs it on the CPU, and the window's «Talemodell» step says so: «Fant ingen
+skjermkortdriver med Vulkan, så talemodellen regner på prosessoren og bruker lengre tid.» `skald --terminal`
+prints the same line when the model loads, and Om shows what the model computes on (Settings).
 
 ## Command line
 

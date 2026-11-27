@@ -23,4 +23,4 @@ unchanged checkout and `git status` stays clean.
 The copy goes when an upstream release carries both changes, or changes that do the same; then Skald pins
 that release from crates.io again and drops the root `Cargo.toml` patch (docs/decisions.md, D-23). Until
 then a new transcribe.cpp release means changing the version and hash in the script, running it, and
-fixing any patch that no longer applies.
+fixing any patch that does not apply to it.

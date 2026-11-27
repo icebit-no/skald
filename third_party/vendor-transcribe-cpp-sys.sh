@@ -2,7 +2,7 @@
 # Writes third_party/transcribe-cpp-sys: the transcribe-cpp-sys crate as published on crates.io, checked
 # against its SHA-256, with every patch in third_party/patches/transcribe-cpp-sys applied in name order.
 # Running it again on an unchanged checkout changes nothing; to move to a new release, change the version
-# and the hash below, run it, and fix or drop each patch that no longer applies.
+# and the hash below, run it, and fix or drop each patch that does not apply.
 #
 # Needs curl, tar, git and shasum (macOS) or sha256sum.
 

@@ -5,6 +5,27 @@ decision, and that pull request also edits the page where the rule lives ([desig
 [plan.md](plan.md)). Those pages say what holds; this one says when and why it came to hold. A later decision
 that undoes one adds an entry of its own, and the earlier entry gets one line naming it.
 
+## D-34 — Skald.app is `app.icebit.skald`, for Apple Silicon, with the microphone entitlement alone
+
+2026-11-27, the lead (Apple Silicon only, the microphone reason), Claude (the rest).
+
+The bundle identifier is `app.icebit.skald`, the site's domain reversed. macOS files the microphone and
+Accessibility grants under the identifier and the signing team, so neither changes once a release is out: a new
+identifier or team would make every user grant both again. `LSUIElement` keeps Skald out of the Dock, as a menu
+bar app. The bundle's development region is `nb`, so the system's own words inside the app are bokmål. The
+microphone question gives the reason design.md, First run, quotes.
+
+Every build, ad hoc ones too, is signed with the hardened runtime and the one entitlement the runtime would
+otherwise withhold that Skald uses: audio input. Accessibility is a grant the user gives, not an entitlement;
+Metal, GPUI and the event tap need none. Releases are signed with the Developer ID in the login keychain,
+notarized with an App Store Connect API key and stapled (packaging/macos/README.md). The `.icns` is packed from
+`assets/icon/` on every build rather than kept in the repository, so the icon has one source.
+
+Skald ships for Apple Silicon only (arm64). An Intel Mac would run NB-Whisper Large slowly, and Metal hangs on
+Intel Macs with AMD GPUs in Handy (research.md, Existing tools). M6 may reopen this. Changed:
+[design.md](design.md#first-run) (the microphone question), [research.md](research.md#stack) (Packaging),
+[plan.md](plan.md) M2.
+
 ## D-33 — The settings window draws gpui-kit's headless controls and sends each change to the app
 
 2026-11-27, Claude; the light colours, the type, what «Bytt» keeps and the settings' names settled by the lead

@@ -145,7 +145,9 @@ utklippstavlen», «Start Skald ved innlogging» and «Lyd når opptaket starter
 
 1. Download the model, NbAiLab's own `ggml-model.bin` at a pinned revision, with size, progress and SHA-256.
    Silero VAD (MIT, 1.2 MB) ships inside the app and is credited with the other notices; it is not downloaded.
-2. Permissions: Microphone, and on macOS Accessibility «for tasten og innsettingen».
+2. Permissions: Microphone, and on macOS Accessibility «for tasten og innsettingen». macOS asks for the
+   microphone with Skald's reason: «Skald tar opp det du sier mens du dikterer, og gjør det om til tekst på
+   maskinen. Ingenting sendes fra maskinen.»
 3. A test: «Hold høyre ⌘ og si "Hei, dette er en prøve"».
 
 ## Command line

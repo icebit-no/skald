@@ -77,7 +77,7 @@ overlay has set GPUI up). The binary joins them.
 - [ ] First run: model download with progress (pinned revision, SHA-256), permissions, a test dictation.
 - [x] `skald` command line over a local socket only the user can open; `--json` on every command; writes the
       configuration file directly when the app is not running.
-- [ ] Claude skill in `packaging/skills/skald/`, installed with `skald skill install`; `skald mcp`.
+- [x] Claude skill in `packaging/skills/skald/`, installed with `skald skill install`; `skald mcp`.
 - [x] App icon in granite: 1024, 512, 256, 128 and 64 px from the chosen drawing, own drawings for 32 and
       16 px, and the one-colour ᚨ for the menu bar, with the source they are rendered from.
 - [ ] `.app` bundle signed with Developer ID and notarized.

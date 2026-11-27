@@ -30,4 +30,5 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # rustup installs the toolchain rust-toolchain.toml pins on the first cargo call.
       - run: cargo clippy --workspace --all-targets --locked
-      - run: cargo test --workspace --locked
+      # Every crate's tests run even when one fails, so a run on this system shows all it breaks.
+      - run: cargo test --workspace --locked --no-fail-fast

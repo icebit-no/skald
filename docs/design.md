@@ -54,9 +54,15 @@ utklippstavlen» is ticked. Corrections are applied before insertion.
 ## Microphones
 
 The user orders the microphones in Generelt. Skald uses the first one that is connected and falls back to the
-next when it disappears. The menu's «Mikrofon» submenu switches at once and has «Bruk den første som er koblet
-til». Bluetooth headsets drop to call quality while their microphone is open, so the help text suggests putting
-them last.
+next when it disappears. When none of them is connected, it uses the system's default input, then the first
+connected microphone. A microphone whose id has changed, as when it is plugged into another port, is
+recognised by its name. A microphone that disappears during a take ends the take with what was recorded; the
+next take uses the next one.
+
+The menu's «Mikrofon» submenu switches at once by pinning the chosen microphone ahead of the order; while it
+is unplugged the order applies, and «Bruk den første som er koblet til» removes the pin. `skald mic use` sets
+the same pin. Bluetooth headsets drop to call quality while their microphone is open, so the help text
+suggests putting them last.
 
 ## Vocabulary and corrections
 

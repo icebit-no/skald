@@ -10,6 +10,7 @@ pub mod history;
 pub mod paths;
 pub mod silence;
 pub mod silence_gate;
+pub mod state;
 mod text;
 pub mod vocabulary;
 

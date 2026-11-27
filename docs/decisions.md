@@ -5,6 +5,34 @@ decision, and that pull request also edits the page where the rule lives ([desig
 [plan.md](plan.md)). Those pages say what holds; this one says when and why it came to hold. A later decision
 that undoes one adds an entry of its own, and the earlier entry gets one line naming it.
 
+## D-28 — The overlay window opens per appearance; the runes show once the text has arrived
+
+2026-11-27, Claude. The timing of the runes and of the two messages, and the bars under reduced motion, wait on
+Thomas.
+
+`skald-overlay` opens the overlay's window when the pill appears and closes it once the pill has faded out,
+on the screen with the keyboard focus each time (AppKit's main screen), centred 32 pt above the Dock. GPUI
+cannot move a window, and a closed window draws nothing between takes. The window is a GPUI PopUp, a
+non-activating panel that never takes focus. GPUI caps a window without focus at about 30 frames a second
+through `inactive_frame_interval`, and the pill never has focus, so the overlay turns the cap off; the window
+draws at the display's rate while it shows. GPUI has no option for click-through or for leaving out AppKit's
+window shadow, so both are set on the native window. GPUI's blurred background, which Kjedelig uses, covers the
+whole window as a rectangle, the shadow's room included; the overlay sizes the blur to the pill and masks it to
+the capsule.
+
+The chisel's pace is the median of the latest eight takes' seconds of work, from the release to the text, per
+second of audio, starting from 0.12 (NB-Whisper Large on an M4 Pro, M1a). It is kept while the app runs. The
+bars run linear in decibels from −60 dBFS, below the room tone skald-core measured, to −15 dBFS. A letter with
+an accent is carved as the letter without it.
+
+The text does not exist while the chisel moves, so the runes cannot stand behind it from the start as the
+drawings show. Until the text arrives, the bars the chisel has passed are drawn as fresh cuts; when it arrives,
+the runes of the carved stretch appear, the chisel runs out in 150 ms, the row of at most 40 runes, the start
+of the text, stands 0.4 s, and Satt inn follows. Hørte ingenting stands 2 s and Mikrofon byttet 2.5 s; a
+microphone change during a take waits until the take is done. With reduced motion the recording bars are a
+still picture of the last 2.4 s, replaced once a second with the time, so the pill still shows that the
+microphone hears. Changed: [plan.md](plan.md) M2.
+
 ## D-27 — The menu ticks the microphone in use and pins the pinned one
 
 2026-11-27, Claude.

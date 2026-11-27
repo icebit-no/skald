@@ -10,10 +10,9 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 
 use gpui_kit::{
-    App, AppContext, Bounds, Context, DisplayId, Entity, IntoElement,
-    ParentElement, Pixels, Render, RenderImage, Rgba, Styled, Window, WindowAppearance,
-    WindowBackgroundAppearance, WindowBounds, WindowHandle, WindowKind, WindowOptions, canvas, div,
-    point, px, size,
+    App, AppContext, Bounds, Context, DisplayId, Entity, IntoElement, ParentElement, Pixels,
+    Render, RenderImage, Rgba, Styled, Window, WindowAppearance, WindowBackgroundAppearance,
+    WindowBounds, WindowHandle, WindowKind, WindowOptions, canvas, div, point, px, size,
 };
 use skald_core::config::OverlayTheme;
 

@@ -1,6 +1,7 @@
 //! Microphone capture: the device chosen by the priority list, resampled to 16 kHz mono, with level
-//! readings for the meter.
+//! readings for the meter, and whether the system lets this program record at all.
 
+mod access;
 mod capture;
 mod level;
 mod microphone;
@@ -9,6 +10,7 @@ mod resample;
 mod take;
 mod watch;
 
+pub use access::{MicrophoneAccess, microphone_access};
 pub use capture::{CaptureError, Take, connected_microphones};
 pub use level::{LEVEL_FLOOR_DBFS, LEVEL_INTERVAL};
 pub use microphone::{Connected, MicId, Microphone, MicrophoneChange, choose};

@@ -1,26 +1,27 @@
-//! The window's colours: the identity's in dark mode (docs/design.md, Identity), and the same roles on
-//! light ground in light mode, so the window follows the system as it switches. The settings window has
-//! no themes (D-24).
+//! The windows' colours: the identity's in dark mode (docs/design.md, Identity), and the same roles on light
+//! ground in light mode, so a window follows the system as it switches.
 
 use gpui_kit::{Hsla, Rgba, WindowAppearance};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub(crate) struct Palette {
+pub struct Palette {
     pub dark: bool,
     pub ground: Hsla,
     pub surface: Hsla,
-    /// Fields and buttons.
+    /// Fields, buttons and the track of a progress bar.
     pub raised: Hsla,
     pub line: Hsla,
     pub text: Hsla,
     pub quiet: Hsla,
-    /// What cannot be chosen now, and words the model will not see.
+    /// What cannot be chosen or done now.
     pub faint: Hsla,
     /// Buttons, what is chosen, highlights.
     pub gold: Hsla,
     pub on_gold: Hsla,
     pub link: Hsla,
-    /// A warning: the ordskatt is too long.
+    /// What is done, as a tick or a word on the ground.
+    pub done: Hsla,
+    /// A warning or an error.
     pub ochre: Hsla,
     pub selection: Hsla,
 }
@@ -46,6 +47,7 @@ impl Palette {
             gold: color(0xd9a94e),
             on_gold: color(0x12100d),
             link: color(0xf0c674),
+            done: color(0xd9a94e),
             // The lighter ochre stands out on dark ground.
             ochre: color(0xe2664e),
             selection: with_alpha(color(0xd9a94e), 0.35),
@@ -66,8 +68,10 @@ impl Palette {
             faint: color(0xa89e8b),
             gold: color(0xd9a94e),
             on_gold: color(0x12100d),
-            // Gold is too light to read as text on light ground.
+            // Gold is too light to read as text on light ground: links take soot, and what is done a
+            // darker gold.
             link: color(0x12100d),
+            done: color(0x9a6f1f),
             ochre: color(0xc2412d),
             selection: with_alpha(color(0xd9a94e), 0.4),
         }
@@ -84,7 +88,30 @@ fn color(rgb: u32) -> Hsla {
     .into()
 }
 
-pub(crate) fn with_alpha(mut color: Hsla, alpha: f32) -> Hsla {
+pub fn with_alpha(mut color: Hsla, alpha: f32) -> Hsla {
     color.a = alpha;
     color
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn dark_mode_takes_the_identitys_colours() {
+        let dark = Palette::of(WindowAppearance::Dark);
+        assert!(dark.dark);
+        assert_eq!(dark.ground, color(0x12100d));
+        assert_eq!(dark.text, color(0xede4d0));
+        assert_eq!(Palette::of(WindowAppearance::VibrantDark), dark);
+    }
+
+    #[test]
+    fn light_mode_turns_ground_and_text_around() {
+        let light = Palette::of(WindowAppearance::Light);
+        assert!(!light.dark);
+        assert_eq!(light.text, color(0x12100d));
+        assert_eq!(light.gold, Palette::of(WindowAppearance::Dark).gold);
+        assert_eq!(with_alpha(light.gold, 0.5).a, 0.5);
+    }
 }

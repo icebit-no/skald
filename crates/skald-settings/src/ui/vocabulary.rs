@@ -6,9 +6,9 @@ use gpui_kit::{AnyElement, Context, Focusable, Window, div, px, relative};
 
 use super::controls::{Kind, SMALL_SIZE, button, field, message, section};
 use super::general::{list, row, tab_column};
-use super::palette::{Palette, with_alpha};
 use super::view::{Editing, SettingsView};
 use crate::vocabulary::{VocabularyTab, try_corrections};
+use skald_ui::{Palette, with_alpha};
 
 const SENTENCE_HELP: &str =
     "Én setning med ordene dine bøyd slik du sier dem. Modellen får den før ordene.";

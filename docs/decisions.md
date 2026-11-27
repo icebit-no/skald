@@ -32,6 +32,42 @@ crossterm_winapi (Windows only), mio, signal-hook and signal-hook-mio.
 the built-in microphone and 15 to 25 cm for the USB microphone. Evidence: the tests in
 `crates/skald-bench/src/record`. Changed: [plan.md](plan.md) M3 and Waiting on Thomas.
 
+## D-35 — The first-run window is a view over the app's download and test, and reads the permissions itself
+
+2026-11-27, Claude; the test's text field, «Hopp over», skald-ui and the permission checks as functions settled
+by the lead in review.
+
+`skald-firstrun` draws the three steps of First run as the settings window draws its tabs (D-33): gpui-kit's
+headless button, progress bar and text input, the same colours in light and dark mode, the system's UI font.
+The colours, a text field's colours in them and gpui-kit's setup are in a small crate of their own,
+`skald-ui`, which both windows take, so they cannot drift apart and gpui-kit is set up once whichever window
+opens first. The overlay has its themes (D-24) and takes neither.
+
+The window is a view over a model the app hands it, and each request goes back as an action. It does no file
+or network work: the app runs the download through skald-models (D-26), asks the system for the permissions
+and runs the test take. The model takes skald-models' status, events and errors as they are, so the app passes
+them on, and the window turns each error into words the user can act on. The permissions the window reads
+itself, through two functions the app passes in, when it opens and each time it comes to the front, as it does
+when the user comes back from System Settings; the app can also tell it to read them, as when a prompt was
+answered while the window kept the front. macOS says whether the microphone was refused or never asked for,
+but not for Accessibility, so Accessibility counts as not asked until the window has asked for it once and
+as refused after that, which turns «Gi tilgang» into «Åpne Systeminnstillinger».
+
+The speed is what arrived over the last five seconds, shown once a second has passed, so a stall shows soon
+and a burst does not swing the time left. A retry starts the measure over, since the wait before it says
+nothing about the connection. A file of the pinned size that was never checked offers «Kontroller filen», and
+a stopped download goes on from what it kept with «Fortsett».
+
+The user moves between the steps freely, and on while the model downloads, so the permissions are granted in
+the minutes a 3.1 GB file takes. The test take is inserted as every take is, into a text field in the window
+that has the focus while the test listens, so the key, the microphone, the model and the insertion are all
+tried, and macOS asks its clipboard question at first run rather than in the middle of work. Each take starts
+with the field empty. When the text did not reach the field, as when the focus moved, the window shows what
+Skald heard and says so. gpui-kit's text field takes ⌘V. The insertion waits on its own thread to put the
+clipboard back while the window reads the paste on the main thread, so the app runs it on another thread.
+The test may be skipped with «Hopp over», which becomes «Ferdig» once a take was heard; either waits until
+Skald can take dictation. Changed: [design.md](design.md#first-run), [plan.md](plan.md) M2.
+
 ## D-34 — Skald.app is `app.icebit.skald`, for Apple Silicon, with the microphone entitlement alone
 
 2026-11-27, the lead (Apple Silicon only, the microphone reason), Claude (the rest).

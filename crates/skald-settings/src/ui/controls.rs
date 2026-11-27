@@ -1,7 +1,7 @@
 //! The window's controls: gpui-kit's headless button, switch, checkbox and text input, dressed in the
 //! window's colours.
 
-use gpui_kit::base::input::{InputEditorStyle, InputState};
+use gpui_kit::base::input::InputState;
 use gpui_kit::base::{Button, Checkbox, Input, Switch};
 use gpui_kit::prelude::*;
 use gpui_kit::{
@@ -9,8 +9,8 @@ use gpui_kit::{
     Window, div, px,
 };
 
-use super::palette::{Palette, with_alpha};
 use crate::general::Choices;
+use skald_ui::{Palette, with_alpha};
 
 pub(crate) type OnClick = Box<dyn Fn(&ClickEvent, &mut Window, &mut App)>;
 
@@ -207,17 +207,6 @@ pub(crate) fn field(
         .border_color(if focused { palette.gold } else { palette.line })
         .text_size(px(TEXT_SIZE))
         .child(Input::new(input))
-}
-
-/// The input's own colours: its text, placeholder, selection and caret.
-pub(crate) fn input_style(palette: &Palette) -> InputEditorStyle {
-    InputEditorStyle {
-        foreground: palette.text,
-        muted_foreground: palette.faint,
-        selection: palette.selection,
-        caret: palette.gold,
-        ..InputEditorStyle::default()
-    }
 }
 
 /// A part of a tab: its heading, an optional line of help, and what it holds.

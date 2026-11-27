@@ -6,10 +6,10 @@ use gpui_kit::{AnyElement, Context, Div, FontWeight, div, px, relative};
 use super::controls::{
     self, Kind, SMALL_SIZE, button, disabled, section, segmented, switch_row, tag,
 };
-use super::palette::Palette;
 use super::view::SettingsView;
 use crate::action::Change;
 use crate::general::{General, MicrophoneRow, ModelRow};
+use skald_ui::Palette;
 
 const MICROPHONE_HELP: &str = "Skald bruker den første som er koblet til. Bluetooth-hodesett får \
      telefonlyd mens mikrofonen er åpen, så sett dem sist.";

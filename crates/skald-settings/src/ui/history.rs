@@ -5,9 +5,9 @@ use gpui_kit::{AnyElement, ClickEvent, ClipboardItem, Context, FontWeight, Windo
 
 use super::controls::{Kind, SMALL_SIZE, button, checkbox_row, field, message};
 use super::general::tab_column;
-use super::palette::{Palette, with_alpha};
 use super::view::SettingsView;
 use crate::history::{self, HistoryRow, HistoryTab};
+use skald_ui::{Palette, with_alpha};
 
 const HELP: &str =
     "Klikk på et ord som ble feil for å rette det. Hold ⇧ og klikk for å ta med flere ord.";

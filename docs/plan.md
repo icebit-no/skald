@@ -61,12 +61,13 @@ by a script from a pinned source with SHA-256 checks, not committed.
 ## M2 The app on macOS
 
 Design: [Overlay](design.md#overlay), [Menu](design.md#menu), [Settings](design.md#settings),
-[Command line](design.md#command-line), [Identity](design.md#identity).
+[First run](design.md#first-run), [Command line](design.md#command-line), [Identity](design.md#identity).
 
 One binary, `skald` (D-25). New crates, one area each: `skald-overlay` (the GPUI overlay and its themes),
 `skald-tray` (the menu bar item and its menu), `skald-control` (the local socket, its protocol and the command
-line's commands), `skald-models` (downloading a model), and `skald-settings` (the settings window, after the
-overlay has set GPUI up). The binary joins them.
+line's commands), `skald-models` (downloading a model), `skald-settings` (the settings window, after the
+overlay has set GPUI up), `skald-firstrun` (the first-run window), and `skald-ui` (what the two windows share).
+The binary joins them.
 
 - [x] Overlay on GPUI: a PopUp window that takes no focus, lets clicks through, is transparent and draws at
       60 fps; the states recording, carving, inserted, heard nothing, microphone changed and hands-free, in the
@@ -75,7 +76,7 @@ overlay has set GPUI up). The binary joins them.
 - [x] Menu bar item with the ᚨ template icon: microphone, latest texts, bokmål or nynorsk, ordskatt,
       settings, quit.
 - [x] Settings window with the tabs Generelt, Ordskatt, Historikk and Om.
-- [ ] First run: model download with progress (pinned revision, SHA-256), permissions, a test dictation.
+- [x] First run: model download with progress (pinned revision, SHA-256), permissions, a test dictation.
 - [x] `skald` command line over a local socket only the user can open; `--json` on every command; writes the
       configuration file directly when the app is not running.
 - [x] Claude skill in `packaging/skills/skald/`, installed with `skald skill install`; `skald mcp`.

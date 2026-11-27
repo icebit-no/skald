@@ -67,10 +67,10 @@ One binary, `skald` (D-25). New crates, one area each: `skald-overlay` (the GPUI
 line's commands), `skald-models` (downloading a model), and `skald-settings` (the settings window, after the
 overlay has set GPUI up). The binary joins them.
 
-- [ ] Overlay on GPUI: a PopUp window that takes no focus, lets clicks through, is transparent and draws at
+- [x] Overlay on GPUI: a PopUp window that takes no focus, lets clicks through, is transparent and draws at
       60 fps; the states recording, carving, inserted, heard nothing, microphone changed and hands-free, in the
       three themes Runepinne (the default), Smidd jern and Kjedelig.
-- [ ] Carving paced by the measured seconds of work per second of audio on this machine.
+- [x] Carving paced by the measured seconds of work per second of audio on this machine.
 - [x] Menu bar item with the ᚨ template icon: microphone, latest texts, bokmål or nynorsk, ordskatt,
       settings, quit.
 - [ ] Settings window with the tabs Generelt, Ordskatt, Historikk and Om.

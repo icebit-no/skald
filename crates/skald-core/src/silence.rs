@@ -1,4 +1,4 @@
-//! The last of the silence checks (docs/design.md, Silence, point 4): Whisper turns silence into «ja»,
+//! The last of the silence checks (docs/design.md, Silence, point 3): Whisper turns silence into «ja»,
 //! «ja takk» or «den satt», so a take whose whole text is such a phrase, and in which VAD found almost no
 //! speech, ends with «Hørte ingenting».
 
@@ -23,7 +23,9 @@ pub struct Silence {
 impl Default for Silence {
     fn default() -> Self {
         Self {
-            known_phrases: ["ja", "ja takk", "den satt"].map(String::from).to_vec(),
+            known_phrases: ["ja", "ja takk", "den satt", "det er"]
+                .map(String::from)
+                .to_vec(),
             known_phrase_max_speech_ms: 1000,
             unknown: toml::Table::new(),
         }
@@ -60,6 +62,12 @@ mod tests {
         assert!(silence.is_known_phrase("Ja.", LITTLE));
         assert!(silence.is_known_phrase(" Ja takk.", LITTLE));
         assert!(silence.is_known_phrase("Den satt.", LITTLE));
+    }
+
+    #[test]
+    fn bokfinks_text_for_silence_in_nynorsk_is_known() {
+        assert!(Silence::default().is_known_phrase("Det er.", LITTLE));
+        assert!(!Silence::default().is_known_phrase("Det er fint.", LITTLE));
     }
 
     #[test]

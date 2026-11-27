@@ -26,7 +26,8 @@ own words.
 
 ## Overlay
 
-A pill near the bottom of the active screen, about 430 × 58 pt. It never takes focus and lets clicks through. Its
+A pill near the bottom of the active screen, about 430 × 58 pt. It never takes focus and lets clicks through. On
+Linux under Wayland it is a layer-shell surface, which the compositor puts on the output with the focus. Its
 look is a theme, chosen under «Overleggets utseende» in Generelt; the states, their texts and their timing are the
 same in every theme. The settings window has no themes.
 
@@ -40,7 +41,7 @@ The colours named below are the two Viking themes'; Kjedelig uses the system's a
 
 | State | What it shows |
 |---|---|
-| Opptak | A glowing ember-red dot, the elapsed time, the last 2.4 s as 40 bars (3 pt wide, 6 pt apart) scrolling smoothly at 60 fps, and «slipp ⌘» |
+| Opptak | A glowing ember-red dot, the elapsed time, the last 2.4 s as 40 bars (3 pt wide, 6 pt apart) scrolling smoothly at 60 fps, and «slipp ⌘» («slipp Ctrl» on Windows and Linux) |
 | Rister | On release the bars fold into the whole take; a gold chisel line moves across it, and behind it the bars, now 8 pt apart so each holds one rune, become runes: the dictated text transliterated to the Younger Futhark. «rister …» |
 | Satt inn | A gold tick and the start of the text, in plain type, for about 1.5 s |
 | Hørte ingenting | «Hørte ingenting · lyttet på <mikrofon>» |
@@ -49,7 +50,7 @@ The colours named below are the two Viking themes'; Kjedelig uses the system's a
 | Transkriberingen feilet | «Transkriberingen feilet», when the model failed on the take |
 | Ingen mikrofon | «Ingen mikrofon er koblet til», when a take arms without one |
 | Mikrofon byttet | «<mikrofon> · koblet til, brukes nå», once, when the active microphone changes |
-| Håndfritt | A padlock instead of the dot, and «⌃⌘X stopper» («Ctrl+Win+X stopper» on Windows) |
+| Håndfritt | A padlock instead of the dot, and «⌃⌘X stopper» («Ctrl+Win+X stopper» on Windows, «Ctrl+Super+X stopper» on Linux) |
 
 The chisel's speed comes from this machine's measured seconds of work per second of audio, kept from recent
 takes, so it reaches the end about when the text arrives. Past 96 % it slows down instead of stopping. It never

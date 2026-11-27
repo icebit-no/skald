@@ -5,6 +5,27 @@ decision, and that pull request also edits the page where the rule lives ([desig
 [plan.md](plan.md)). Those pages say what holds; this one says when and why it came to hold. A later decision
 that undoes one adds an entry of its own, and the earlier entry gets one line naming it.
 
+## D-44 — On Linux the overlay is a layer-shell surface, and the app's screen runs there
+
+2026-11-27, Claude; the layer-shell surface before the tray agreed with the lead.
+
+`skald` on Linux runs the screen as on macOS (D-36): the overlay, the first-run window while the model is
+missing, and the settings window, which the menu item reaches once StatusNotifierItem comes; until then the
+settings are changed with `skald config`, and `--terminal` keeps the loop alone. On Wayland the overlay is a
+layer-shell surface on the overlay layer, anchored to the bottom of the output and 32 pt above the area other
+surfaces leave free, with no keyboard and an empty input region, so it takes no focus and every click goes
+through. The compositor puts it on the output with the focus, so the window names no display. Hyprland and
+the other wlroots compositors offer the protocol; GPUI has the surface and the input region, so nothing is
+added. On X11 the overlay stays GPUI's pop-up, which is not tried. The accent colour and reduced motion are
+not read on Linux, so Kjedelig draws in its own colours, and its blur comes on Hyprland from a layer rule.
+
+Windows and Linux name the keys in the pill in words, «slipp Ctrl» and «Ctrl+Win+X stopper» or
+«Ctrl+Super+X stopper», where macOS draws ⌘ and ⌃. The words are wider, so the oldest recording bars give way
+to the hint rather than run under it.
+
+Evidence: the overlay on a headless sway with software Vulkan, photographed recording, hands-free, after a
+take that heard nothing, and in Kjedelig. Changed: [design.md](design.md#overlay), [plan.md](plan.md) M5.
+
 ## D-42 — On Wayland the clipboard goes through data-control in Skald itself, and Ctrl+V through wtype
 
 2026-11-27, Claude; data-control or wl-clipboard, and wtype, offered by the lead's brief for M5.
@@ -104,7 +125,7 @@ the key's real state, with `invalid`. They are no MCP tools, since an agent has 
 (the tray and the overlay, later in M5), `skald` there runs the loop in the terminal, as `--terminal` does,
 and text is not inserted: each take is kept in the history and printed. Changed:
 [design.md](design.md#recording) (Recording, Command line), [plan.md](plan.md) M5.
-Insertion on Linux: D-42.
+Insertion on Linux: D-42. The screen on Linux: D-44.
 
 
 ## D-38 — Right Ctrl, Ctrl+V and the clipboard on Windows; a window run as administrator is checked first

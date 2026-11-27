@@ -5,6 +5,31 @@ decision, and that pull request also edits the page where the rule lives ([desig
 [plan.md](plan.md)). Those pages say what holds; this one says when and why it came to hold. A later decision
 that undoes one adds an entry of its own, and the earlier entry gets one line naming it.
 
+## D-26 — The microphone opens at the press; model files by id; one Skald at a time
+
+2026-11-27, the lead (the press, the permission check, the model files), Claude (the rest).
+
+The microphone opens when the hold key goes down rather than when the take arms 200 ms later, so the first
+words are kept. skald-input reports the press, and every press ends in either armed or not armed, so a
+microphone opened for a shortcut such as right ⌘C is closed again and its audio thrown away. The price is that
+macOS shows its microphone indicator for a moment at each right-⌘ shortcut, and a Bluetooth headset in use as
+the microphone drops to call quality for that moment; design.md already suggests putting headsets last.
+
+macOS gives a program it refused the microphone digital silence rather than an error, so skald-audio asks
+AVFoundation whether access is granted, which never prompts. Without Accessibility or the microphone, Skald
+says which and where in System Settings to grant it, and stops.
+
+The speech model is `<models>/<id>/ggml-model.bin`, NbAiLab's own file name in a folder named after the
+model's id, and Silero VAD is `<models>/silero-vad-v6.2-F32.gguf`; `--model` and `--vad` give other files.
+
+A lock beside the state file lets one Skald at a time take dictation, so a second one started by mistake says
+so and stops instead of pasting every take twice.
+
+The configuration is read again when the file changes. A file that cannot be read keeps the settings in use
+and says why, as does a file that disappears, since an editor may remove it for a moment while saving; a new
+model is used from the next start, since loading one takes seconds. Changed: [design.md](design.md#recording),
+[plan.md](plan.md) M1b.
+
 ## D-25 — One binary is both the app and its command line
 
 2026-11-27, Claude.

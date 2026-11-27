@@ -7,3 +7,11 @@ repository.workspace = true
 publish.workspace = true
 
 [dependencies]
+skald-audio.workspace = true
+skald-core.workspace = true
+skald-engine.workspace = true
+skald-input.workspace = true
+
+[target.'cfg(unix)'.dependencies]
+# sigaction, for Ctrl-C and the other signals that end the loop; already in the tree through cpal.
+libc = "=0.2.191"

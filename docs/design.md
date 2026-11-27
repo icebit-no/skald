@@ -7,6 +7,9 @@ own words.
 
 - Hold right ⌘ (macOS) or right Ctrl (Windows, Linux). The take arms after 200 ms; another key pressed while it
   is held cancels the take. A mouse click counts as another key, since ⌘-click is a shortcut.
+- The microphone opens when the key goes down, so the words said before the take arms are kept. A press that
+  does not arm, as in ⌘C, closes it again and throws its audio away.
+- A take ends when the key is released, at the cap, or when its microphone disappears.
 - ⌃⌘X starts and stops a hands-free take on macOS. The key on Windows and Linux is chosen in M4 and M5; Ctrl+Alt is AltGr on Norwegian layouts.
 - A take is capped at 120 seconds. Start and end sounds can be turned off.
 

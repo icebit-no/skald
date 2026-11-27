@@ -925,13 +925,22 @@ checksum = "e3a9fe34e3e7a50316060351f37187a3f546bce95496156754b601a5fa71b76e"
 [[package]]
 name = "skald"
 version = "0.1.0"
+dependencies = [
+ "libc",
+ "skald-audio",
+ "skald-core",
+ "skald-engine",
+ "skald-input",
+]
 
 [[package]]
 name = "skald-audio"
 version = "0.1.0"
 dependencies = [
  "cpal",
+ "objc2",
  "objc2-core-audio",
+ "objc2-foundation",
  "rtrb",
  "rubato",
 ]

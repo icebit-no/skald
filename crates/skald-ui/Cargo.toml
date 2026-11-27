@@ -1,0 +1,11 @@
+[package]
+name = "skald-ui"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+# GPUI through gpui-kit at the revision skald-overlay takes, with its component library and icons left out.
+gpui-kit = { git = "https://github.com/longbridge/gpui-kit", rev = "1e7ffaa6d1c0c230cb84099584e6c057531d5a5d", version = "=0.7.1", default-features = false }

@@ -4,7 +4,6 @@ mod about;
 mod controls;
 mod general;
 mod history;
-mod palette;
 mod view;
 mod vocabulary;
 
@@ -55,9 +54,9 @@ pub struct SettingsWindow {
     open: Option<(AnyWindowHandle, WeakEntity<SettingsView>)>,
 }
 
-struct Initialized;
+struct KeysBound;
 
-impl Global for Initialized {}
+impl Global for KeysBound {}
 
 const WINDOW_SIZE: (f32, f32) = (640.0, 640.0);
 const MIN_SIZE: (f32, f32) = (520.0, 420.0);
@@ -66,14 +65,14 @@ impl SettingsWindow {
     /// `on_action` runs once the window's own update is done, so it may hand the window a new model
     /// at once. Sets up gpui-kit's controls and their keys the first time.
     pub fn new(on_action: impl Fn(Action, &mut App) + 'static, cx: &mut App) -> Self {
-        if !cx.has_global::<Initialized>() {
-            gpui_kit::init(cx);
+        skald_ui::init(cx);
+        if !cx.has_global::<KeysBound>() {
             cx.bind_keys([KeyBinding::new(
                 "cmd-w",
                 CloseWindow,
                 Some(view::KEY_CONTEXT),
             )]);
-            cx.set_global(Initialized);
+            cx.set_global(KeysBound);
         }
         Self {
             on_action: Rc::new(on_action),

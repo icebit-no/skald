@@ -16,8 +16,9 @@ Design: [Recording](design.md#recording), [Silence](design.md#silence), [Inserti
 
 ### M1a Engine check
 
-Two pull requests, each with a report in `docs/research/`; they can run side by side. Nothing else in M1 starts
-before both are merged, because they decide the binding and which models Skald can offer. Test clips are fetched
+Two pull requests, each with a report in `docs/research/`; they can run side by side. The engine and silence
+items in M1b wait until both are merged, because they decide the binding and which models Skald can offer; the
+workspace, the core, audio and input do not depend on them. Test clips are fetched
 by a script from a pinned source with SHA-256 checks, not committed.
 
 **NB-Whisper and VAD** (`docs/research/engine-check.md`):
@@ -40,7 +41,7 @@ by a script from a pinned source with SHA-256 checks, not committed.
 
 ### M1b The core
 
-- [ ] Cargo workspace: `skald-core` (configuration, vocabulary, corrections, history; no I/O), `skald-engine`
+- [x] Cargo workspace: `skald-core` (configuration, vocabulary, corrections, history; no I/O), `skald-engine`
       (transcribe.cpp), `skald-audio` (capture, resampling, levels), `skald-input` (hotkey and paste), and the
       `skald` binary.
 - [ ] Right ⌘ hold with handy-keys: arm after 200 ms, cancel when another key joins, a watchdog for a missed

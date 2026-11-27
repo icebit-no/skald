@@ -5,6 +5,42 @@ decision, and that pull request also edits the page where the rule lives ([desig
 [plan.md](plan.md)). Those pages say what holds; this one says when and why it came to hold. A later decision
 that undoes one adds an entry of its own, and the earlier entry gets one line naming it.
 
+## D-31 — `skald bench` reads spacing errors from the word alignment; RNNoise through nnnoiseless
+
+2026-11-27, Claude.
+
+`skald bench <folder>` runs a test set through configurations and counts word errors, and spacing errors apart
+from them. The reference and the text go through one normalisation (`crates/skald-bench/src/normalise.rs`):
+lower case, punctuation removed, a hyphen, full stop or apostrophe inside a word kept, digit groups and decimal
+marks written one way, and numbers not turned into words. Word errors are the usual count. A split (one
+reference word against two or more words of the text that join to it, hyphens ignored) and a join (the other
+way round) are steps of that same alignment, each costing the substitution and insertions or deletions it
+stands for, so they never change the word error count; of the alignments with the fewest errors, the one with
+the most splits and joins is taken. Read from the alignment, every spacing error is counted in the word error
+rate exactly once, and the rate without spacing errors is the rest. A word that differs only in its hyphens
+(«nord-østersjøen», «nordøstersjøen») is a substitution, not a spacing error. On the 20 FLEURS clips, before
+it split letters from the number they follow, the bench gave what engine-check.md measured with its own
+helper: 5.6 % word errors with the silence cut and 5.2 % without, over 426 words. Splitting them makes
+FLEURS's «2.4GHz» the same words as the model's «2,4 GHz», and the two rates 4.9 % and 4.4 % over 429 words.
+
+A configuration is a list of words (`nb-whisper-large,greedy,trim,highpass`). Skald's own is the default, and
+without `--config` the bench runs it and then each setting changed on its own. The level check reads the take
+as recorded, as the meter does; the filters run before VAD, in the order high-pass, RNNoise, level
+normalisation. Beam search and Bokfink are named and report that they are not available until the engine has
+them. The command speaks bokmål and fails as the other commands do (D-28).
+
+The high-pass (80 Hz, second-order Butterworth) and level normalisation (one gain per take, the loudest 60 ms
+reading to −14 dBFS, no sample above −1 dBFS) are in `skald-audio`, where the app would take them from. RNNoise
+comes from nnnoiseless 0.5.2, a Rust port of Xiph's RNNoise with its original weights (BSD-3-Clause; its last
+functional release was in December 2022, a test fix followed in December 2025). RNNoise works at 48 kHz, so
+the bench converts the take there and back. It stays in `skald-bench` until M3 shows it helps; if it does not,
+the option and the crate go. It adds five crates: nnnoiseless, easyfft, array-init, generic_singleton and
+anymap3. Once the binary takes the command, nnnoiseless ships in `skald`, and its BSD notice belongs in
+THIRD-PARTY-NOTICES.
+
+Evidence: the tests in `crates/skald-bench/src` and `crates/skald-audio/src/filter.rs`, and the smoke run in
+the pull request. Changed: [plan.md](plan.md) M3.
+
 ## D-30 — The overlay window opens per appearance; the runes show once the text has arrived
 
 2026-11-27, Claude; the runes, how long the two messages stand and the bars under reduced motion settled by the

@@ -47,12 +47,11 @@ struct Manifest {
 
 /// The takes of a test set, in the order of their names.
 pub fn load(folder: &Path) -> Result<Vec<Clip>, String> {
-    let entries = std::fs::read_dir(folder).map_err(|e| format!("{}: {e}", folder.display()))?;
+    let unreadable = |e: std::io::Error| format!("Kan ikke lese mappen {}: {e}", folder.display());
+    let entries = std::fs::read_dir(folder).map_err(unreadable)?;
     let mut wavs = Vec::new();
     for entry in entries {
-        let path = entry
-            .map_err(|e| format!("{}: {e}", folder.display()))?
-            .path();
+        let path = entry.map_err(unreadable)?.path();
         let is_wav = path
             .extension()
             .is_some_and(|ext| ext.eq_ignore_ascii_case("wav"));

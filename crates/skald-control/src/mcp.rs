@@ -1,5 +1,5 @@
 //! `skald mcp`: the commands as tools of the Model Context Protocol, for an agent that speaks it over
-//! standard input and output (D-29).
+//! standard input and output (D-31).
 //!
 //! Each tool is a command, named as the request it makes and taking the request's fields as its
 //! arguments. A call is carried out as the command line carries out the command, through the running

@@ -48,6 +48,10 @@ pub trait Skald {
     /// hear the keyboard itself. A take follows the same rules as with a key Skald hears: it arms once the
     /// key has been down for 200 ms and ends when it comes up.
     fn press_hold_key(&self, down: bool) -> Result<(), Error>;
+
+    /// Presses the hands-free chord, for a key binding of the desktop where Skald cannot hear the keyboard
+    /// itself: a hands-free take starts, or the one running stops.
+    fn toggle_hands_free(&self) -> Result<(), Error>;
 }
 
 /// What the command line asks of this machine itself while Skald is not running. The binary implements

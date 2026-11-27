@@ -16,7 +16,8 @@ own words.
   does not arm, as in ⌘C, closes it again and throws its audio away.
 - So macOS shows its microphone indicator for a moment at each right-⌘ shortcut; that is accepted for the first words.
 - A take ends when the key is released, at the cap, or when its microphone disappears.
-- ⌃⌘X starts and stops a hands-free take on macOS. The key on Windows and Linux is chosen in M4 and M5; Ctrl+Alt is AltGr on Norwegian layouts.
+- ⌃⌘X starts and stops a hands-free take on macOS, and Ctrl+Super+X on Linux, where a key binding of the
+  desktop runs `skald toggle`. The key on Windows is chosen in M4; Ctrl+Alt is AltGr on Norwegian layouts.
   While a hands-free take runs, the hold key starts nothing and other keys cancel nothing, so the user can type
   and use shortcuts; ⌃⌘X itself never reaches the app in front.
 - A take is capped at 120 seconds. On macOS the system sound Tink plays when a take arms and Pop as its text is
@@ -186,6 +187,7 @@ writes the configuration file directly. Every command takes `--json`.
 | `skald model list\|use` | Models, and which are downloaded |
 | `skald transcribe <file.wav>` | Transcribe a file, so an agent can try a correction |
 | `skald start`, `skald stop` | Press and release the hold key, for a key binding of the desktop on Linux |
+| `skald toggle` | Start or stop a hands-free take, for a key binding of the desktop on Linux |
 | `skald bench <folder>` | Run a test set through the configurations and count errors |
 | `skald skill install\|uninstall [--dir DIR]` | Install the Claude skill that teaches an agent these commands, or take it out |
 | `skald mcp` | The same commands as MCP tools over standard input and output |

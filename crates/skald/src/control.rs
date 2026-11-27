@@ -199,15 +199,25 @@ impl Skald for Control {
     }
 
     fn press_hold_key(&self, down: bool) -> Result<(), Error> {
-        skald_input::press_hold_key(down).map_err(|refused| match refused {
-            PressRefused::KeyHeard => Error::new(
-                ErrorCode::Invalid,
-                "Her hører Skald tasten selv, så «skald start» og «skald stop» trengs ikke.",
-            ),
-            PressRefused::NotListening => {
-                Error::new(ErrorCode::Failed, "Skald lytter ikke etter tasten nå.")
-            }
-        })
+        skald_input::press_hold_key(down).map_err(refused)
+    }
+
+    fn toggle_hands_free(&self) -> Result<(), Error> {
+        skald_input::toggle_hands_free().map_err(refused)
+    }
+}
+
+/// Why a key binding's press reached no take, for the command line.
+fn refused(refused: PressRefused) -> Error {
+    match refused {
+        PressRefused::KeyHeard => Error::new(
+            ErrorCode::Invalid,
+            "Her lytter Skald selv på tastaturet, så «skald start», «skald stop» og «skald toggle» \
+             trengs ikke.",
+        ),
+        PressRefused::NotListening => {
+            Error::new(ErrorCode::Failed, "Skald lytter ikke etter tasten nå.")
+        }
     }
 }
 
@@ -527,17 +537,21 @@ mod tests {
     #[test]
     fn the_hold_key_is_pressed_only_where_a_key_binding_holds_it() {
         let run = running("control-hold-key", Vec::new());
-        let refused = run.control.press_hold_key(true).unwrap_err();
-        if cfg!(target_os = "linux") {
-            // No listener runs in the test, so the press reaches nothing.
-            assert_eq!(refused.code, ErrorCode::Failed);
-        } else {
-            assert_eq!(refused.code, ErrorCode::Invalid);
-            assert!(
-                refused.message.contains("«skald start»"),
-                "{}",
-                refused.message
-            );
+        for refused in [
+            run.control.press_hold_key(true).unwrap_err(),
+            run.control.toggle_hands_free().unwrap_err(),
+        ] {
+            if cfg!(target_os = "linux") {
+                // No listener runs in the test, so the press reaches nothing.
+                assert_eq!(refused.code, ErrorCode::Failed);
+            } else {
+                assert_eq!(refused.code, ErrorCode::Invalid);
+                assert!(
+                    refused.message.contains("«skald start»"),
+                    "{}",
+                    refused.message
+                );
+            }
         }
     }
 

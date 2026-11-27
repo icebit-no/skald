@@ -400,13 +400,16 @@ fn a_key_binding_presses_and_releases_the_hold_key_of_the_running_skald() {
     assert_eq!(released.code, 0, "{released:?}");
     assert_eq!(released.out, "Tasten er sluppet.\n");
     assert_eq!(*app.presses.lock().unwrap(), [true, false]);
+    let toggled = skald(&paths, &["toggle", "--json"]);
+    assert_eq!(toggled.json(), json!({"running": true}));
+    assert_eq!(app.toggles.load(std::sync::atomic::Ordering::SeqCst), 1);
     serving.stop();
 }
 
 #[test]
 fn without_a_running_skald_there_is_no_hold_key_to_press() {
     let (_folder, paths) = folder();
-    for command in ["start", "stop"] {
+    for command in ["start", "stop", "toggle"] {
         let ran = skald(&paths, &[command, "--json"]);
         assert_eq!(ran.code, 1, "{command}: {ran:?}");
         assert_eq!(ran.json()["error"]["code"], "not_running", "{command}");
@@ -414,6 +417,6 @@ fn without_a_running_skald_there_is_no_hold_key_to_press() {
     let ran = skald(&paths, &["start"]);
     assert_eq!(
         ran.err,
-        "Skald kjører ikke. «skald start» og «skald stop» virker bare mens Skald kjører.\n"
+        "Skald kjører ikke. «skald start», «skald stop» og «skald toggle» virker bare mens Skald kjører.\n"
     );
 }

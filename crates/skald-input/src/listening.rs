@@ -34,7 +34,7 @@ impl fmt::Display for Unavailable {
 /// Why a press from a key binding of the desktop reached no listener.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PressRefused {
-    /// Skald hears the hold key itself on this system, so a binding has nothing to add.
+    /// Skald listens to the keyboard itself on this system, so a binding has nothing to add.
     KeyHeard,
     /// No hold listener runs.
     NotListening,
@@ -43,7 +43,7 @@ pub enum PressRefused {
 impl fmt::Display for PressRefused {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.write_str(match self {
-            PressRefused::KeyHeard => "Skald hears the hold key itself on this system",
+            PressRefused::KeyHeard => "Skald listens to the keyboard itself on this system",
             PressRefused::NotListening => "no hold listener runs",
         })
     }

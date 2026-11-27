@@ -1,7 +1,8 @@
 //! The hold key on Linux. A Wayland compositor gives the keyboard to no other program, so the desktop's own
 //! key binding reports the hold key: it runs `skald start` as the key goes down and `skald stop` as it comes
-//! up, and the running Skald hands each to [`press_hold_key`]. A desktop with the GlobalShortcuts portal
-//! can report the key there instead (`portal`). The presses go through the same rules as a key heard from
+//! up, and the running Skald hands each to [`press_hold_key`]. The hands-free chord, Ctrl+Super+X, is a
+//! binding of its own that runs `skald toggle` ([`toggle_hands_free`]). A desktop with the GlobalShortcuts
+//! portal can report both there instead (`portal`). The presses go through the same rules as a key heard from
 //! the keyboard ([`HoldMachine`]): a take arms once the key has been down for 200 ms and ends when it comes
 //! up. A press reported twice, as by two bindings for the same key, counts once.
 //!
@@ -35,6 +36,7 @@ struct Listening {
 #[derive(Debug)]
 enum Command {
     HoldKey { down: bool },
+    HandsFreeChord,
     HandsFreeEnded,
 }
 
@@ -93,11 +95,21 @@ impl Drop for HoldListener {
 
 /// Presses the hold key (`down`) or releases it, as the desktop's key binding reports it.
 pub fn press_hold_key(down: bool) -> Result<(), PressRefused> {
+    send(Command::HoldKey { down })
+}
+
+/// Presses the hands-free chord once, as its key binding reports it: starts a hands-free take, or stops the
+/// one running.
+pub fn toggle_hands_free() -> Result<(), PressRefused> {
+    send(Command::HandsFreeChord)
+}
+
+fn send(command: Command) -> Result<(), PressRefused> {
     let listening = listening();
     let running = listening.as_ref().ok_or(PressRefused::NotListening)?;
     running
         .commands
-        .send(Command::HoldKey { down })
+        .send(command)
         .map_err(|_| PressRefused::NotListening)
 }
 
@@ -157,6 +169,13 @@ impl Driver {
                 if let Some(event) = self.machine.hold_key_changed(Instant::now(), self.sample()) {
                     self.send(ListenerEvent::Hold(event));
                 }
+            }
+            Command::HandsFreeChord => {
+                if let Some(event) = self.machine.hands_free_pressed(Instant::now()) {
+                    self.send(ListenerEvent::Hold(event));
+                }
+                // A binding reports a press and no release, so the chord is up again at once.
+                self.machine.hands_free_released();
             }
             Command::HandsFreeEnded => self.machine.hands_free_ended(),
         }
@@ -243,6 +262,38 @@ mod tests {
         assert_eq!(next(&listener), ListenerEvent::Hold(HoldEvent::NotArmed));
         quiet(&listener, ARM_AFTER * 2);
 
+        // The hands-free chord starts a take, the hold key does nothing meanwhile, and the chord stops it.
+        toggle_hands_free().unwrap();
+        assert!(matches!(
+            next(&listener),
+            ListenerEvent::Hold(HoldEvent::HandsFreeStarted { .. })
+        ));
+        press_hold_key(true).unwrap();
+        press_hold_key(false).unwrap();
+        quiet(&listener, ARM_AFTER * 2);
+        toggle_hands_free().unwrap();
+        assert_eq!(
+            next(&listener),
+            ListenerEvent::Hold(HoldEvent::HandsFreeStopped)
+        );
+        // A take that ended at the cap leaves the next chord to start a new one.
+        toggle_hands_free().unwrap();
+        assert!(matches!(
+            next(&listener),
+            ListenerEvent::Hold(HoldEvent::HandsFreeStarted { .. })
+        ));
+        listener.hands_free_ended();
+        toggle_hands_free().unwrap();
+        assert!(matches!(
+            next(&listener),
+            ListenerEvent::Hold(HoldEvent::HandsFreeStarted { .. })
+        ));
+        toggle_hands_free().unwrap();
+        assert_eq!(
+            next(&listener),
+            ListenerEvent::Hold(HoldEvent::HandsFreeStopped)
+        );
+
         // A listener started in its place takes the presses; dropping the old one leaves the new one.
         let replacement = HoldListener::start(HoldKey::RightControl).unwrap();
         assert_eq!(next(&replacement), ListenerEvent::Ready);
@@ -255,5 +306,6 @@ mod tests {
 
         drop(replacement);
         assert_eq!(press_hold_key(false), Err(PressRefused::NotListening));
+        assert_eq!(toggle_hands_free(), Err(PressRefused::NotListening));
     }
 }

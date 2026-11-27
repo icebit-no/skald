@@ -33,13 +33,15 @@ To start it with Hyprland, add `exec-once = skald` to its configuration (on Omar
 
 ## The key
 
-A Wayland desktop gives the keyboard to no program, so Hyprland holds the key for Skald. Add the two lines to
+A Wayland desktop gives the keyboard to no program, so Hyprland holds the key for Skald. Add these lines to
 Hyprland's configuration (on Omarchy, `~/.config/hypr/bindings.conf`):
 
 ```ini
 # Hold right Ctrl to talk to Skald. The n lets right Ctrl through, so right Ctrl+C still copies.
 bindn = , Control_R, exec, skald start
 bindrn = CTRL, Control_R, exec, skald stop
+# Ctrl+Super+X starts and stops a hands-free take, and reaches no other app.
+bind = CTRL SUPER, X, exec, skald toggle
 ```
 
 The release line names CTRL because Hyprland matches the release of a modifier with that modifier still in
@@ -51,17 +53,21 @@ the key the binding reports, so another key pressed with right Ctrl does not can
 longer than 200 ms records, and a take without speech never becomes text. A release Hyprland never reports
 leaves the take running until the 120-second cap.
 
-`skald start` and `skald stop` answer only while Skald runs, and say so otherwise.
+While a hands-free take runs, right Ctrl starts nothing, so you can type and use shortcuts; the take ends at
+the next Ctrl+Super+X or at the cap.
+
+`skald start`, `skald stop` and `skald toggle` answer only while Skald runs, and say so otherwise.
 
 ### Through the GlobalShortcuts portal
 
-Skald also registers the shortcut `hold` with the GlobalShortcuts portal when it starts. On Hyprland, with
-xdg-desktop-portal-hyprland, `hyprctl globalshortcuts` lists it as `app.icebit.skald:hold` (or `:hold`, where
-the portal keeps no names for programs started outside a sandbox), and one line binds it in place of the two
-above:
+Skald also registers the shortcuts `hold` and `hands-free` with the GlobalShortcuts portal when it starts. On
+Hyprland, with xdg-desktop-portal-hyprland, `hyprctl globalshortcuts` lists them as `app.icebit.skald:hold`
+and `app.icebit.skald:hands-free` (or `:hold` and `:hands-free`, where the portal keeps no names for programs
+started outside a sandbox), and these lines bind them in place of the three above:
 
 ```ini
 bindn = , Control_R, global, app.icebit.skald:hold
+bind = CTRL SUPER, X, global, app.icebit.skald:hands-free
 ```
 
 Hyprland then sends the press and the release through the portal, and no `skald` process starts at each

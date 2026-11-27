@@ -109,11 +109,12 @@ itself first.
 
 ## The key, from a key binding
 
-**`skald start`** and **`skald stop`** press and release the key the user holds to talk. They are for a key
-binding of the desktop on Linux, where Skald cannot hear the keyboard itself, as in Hyprland's
-`bindn = , Control_R, exec, skald start` and `bindrn = CTRL, Control_R, exec, skald stop`; they are no tools,
-and an agent has no reason to run them. `{"running"}`; `not_running` while Skald is not running, and `invalid`
-on a system where Skald hears the key itself.
+**`skald start`** and **`skald stop`** press and release the key the user holds to talk, and **`skald toggle`**
+starts or stops a hands-free take. They are for key bindings of the desktop on Linux, where Skald cannot hear
+the keyboard itself, as in Hyprland's `bindn = , Control_R, exec, skald start`,
+`bindrn = CTRL, Control_R, exec, skald stop` and `bind = CTRL SUPER, X, exec, skald toggle`; they are no
+tools, and an agent has no reason to run them. `{"running"}`; `not_running` while Skald is not running, and
+`invalid` on a system where Skald listens to the keyboard itself.
 
 ## Errors
 

@@ -160,7 +160,15 @@ impl fmt::Display for Line {
             Line::HoldKeyChanged(key) => write!(f, "Hold {} for å snakke.", key_name(*key)),
             Line::MicrophoneChanged(Some(name)) => write!(f, "{name} · koblet til, brukes nå"),
             Line::Recording(name) => write!(f, "Opptak · {name}"),
-            Line::RecordingHandsFree(name) => write!(f, "Håndfritt opptak · {name} · ⌃⌘X stopper"),
+            Line::RecordingHandsFree(name) => write!(
+                f,
+                "Håndfritt opptak · {name} · {} stopper",
+                if cfg!(target_os = "linux") {
+                    "Ctrl+Super+X"
+                } else {
+                    "⌃⌘X"
+                }
+            ),
             Line::Carving => f.write_str("rister …"),
             Line::Cancelled => f.write_str("Avbrutt."),
             Line::Capped => write!(

@@ -76,6 +76,9 @@ pub enum Request {
     Start,
     /// The hold key came up, as [`Request::Start`] reports the press.
     Stop,
+    /// The hands-free chord was pressed, as a key binding of the desktop reports it: a hands-free take
+    /// starts, or the one running stops.
+    Toggle,
 }
 
 impl Request {
@@ -118,6 +121,7 @@ pub enum Output {
     Transcription(Transcription),
     Pressed,
     Released,
+    Toggled,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -492,6 +496,7 @@ mod tests {
             },
             Request::Start,
             Request::Stop,
+            Request::Toggle,
         ]
     }
 
@@ -557,6 +562,7 @@ mod tests {
             }),
             Output::Pressed,
             Output::Released,
+            Output::Toggled,
         ];
         for output in outputs {
             let line = encode_response(&Ok(output.clone()));

@@ -91,11 +91,19 @@ impl Skald for Offline<'_> {
 
     /// The hold key belongs to the running Skald's takes, so with none running there is nothing to press.
     fn press_hold_key(&self, _down: bool) -> Result<(), Error> {
-        Err(Error::new(
-            ErrorCode::NotRunning,
-            "Skald kjører ikke. «skald start» og «skald stop» virker bare mens Skald kjører.",
-        ))
+        Err(not_running())
     }
+
+    fn toggle_hands_free(&self) -> Result<(), Error> {
+        Err(not_running())
+    }
+}
+
+fn not_running() -> Error {
+    Error::new(
+        ErrorCode::NotRunning,
+        "Skald kjører ikke. «skald start», «skald stop» og «skald toggle» virker bare mens Skald kjører.",
+    )
 }
 
 /// The configuration in the file, or the default when there is no file yet.

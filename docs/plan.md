@@ -86,7 +86,8 @@ overlay has set GPUI up). The binary joins them.
 - [x] Claude skill in `packaging/skills/skald/`, installed with `skald skill install`; `skald mcp`.
 - [x] App icon in granite: 1024, 512, 256, 128 and 64 px from the chosen drawing, own drawings for 32 and
       16 px, and the one-colour ᚨ for the menu bar, with the source they are rendered from.
-- [ ] `.app` bundle signed with Developer ID and notarized.
+- [ ] `.app` bundle signed with Developer ID and notarized: built and signed in `packaging/macos/`; ticked once
+      Apple has notarized it.
 
 ## M3 Measurement
 

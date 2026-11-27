@@ -3,9 +3,9 @@
 //! [`TrayModel`] whenever its state changes and receives an [`Action`] for each entry chosen.
 //!
 //! What the menu holds is decided in [`menu`], as data with no platform in it, so it is tested on any
-//! machine. The item that draws it is AppKit's `NSStatusItem` on macOS and an icon in the notification
-//! area on Windows. A StatusNotifierItem on Linux, which Waybar shows, comes with that platform
-//! (docs/plan.md); until then [`Tray::new`] says [`TrayError::Unsupported`] there.
+//! machine. The item that draws it is AppKit's `NSStatusItem` on macOS, an icon in the notification area on
+//! Windows, and a StatusNotifierItem on Linux, which Waybar shows. Elsewhere [`Tray::new`] says
+//! [`TrayError::Unsupported`].
 //!
 //! # Wiring it into the app
 //!
@@ -65,9 +65,13 @@ pub struct Tray {
 }
 
 impl Tray {
-    /// Puts the item in the menu bar showing `model`; each entry chosen calls `on_action` on the main
-    /// thread. Call it on the main thread once the application has launched.
-    pub fn new(model: &TrayModel, on_action: impl Fn(Action) + 'static) -> Result<Self, TrayError> {
+    /// Puts the item in the menu bar showing `model`; each entry chosen calls `on_action`, on the main
+    /// thread on macOS and on the item's own thread on Linux. Call it on the main thread once the
+    /// application has launched.
+    pub fn new(
+        model: &TrayModel,
+        on_action: impl Fn(Action) + Send + Sync + 'static,
+    ) -> Result<Self, TrayError> {
         Ok(Self {
             item: platform::StatusItem::new(model, Box::new(on_action))?,
             _main_thread: PhantomData,
@@ -80,7 +84,7 @@ impl Tray {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TrayError {
     /// The item is made on the main thread only, where the application's run loop runs.
     NotMainThread,
@@ -88,15 +92,20 @@ pub enum TrayError {
     Unsupported,
     /// The system would not show the item.
     Refused,
+    /// The item's service on the session's message bus did not start, for the reason given.
+    NoService(String),
 }
 
 impl fmt::Display for TrayError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.write_str(match self {
-            Self::NotMainThread => "the menu bar item can only be made on the main thread",
-            Self::Unsupported => "there is no menu bar item on this platform yet",
-            Self::Refused => "the system would not show the menu bar item",
-        })
+        match self {
+            Self::NotMainThread => {
+                f.write_str("the menu bar item can only be made on the main thread")
+            }
+            Self::Unsupported => f.write_str("there is no menu bar item on this platform yet"),
+            Self::Refused => f.write_str("the system would not show the menu bar item"),
+            Self::NoService(reason) => write!(f, "the item's service did not start: {reason}"),
+        }
     }
 }
 

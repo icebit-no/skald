@@ -152,6 +152,10 @@ unplugged stays listed, greyed, and «Bruk den første som er koblet til» is ti
 «Siste tekster» is greyed while it holds no text, and a long text is cut with «…» and shown whole as its
 tooltip.
 
+On Linux the item is a StatusNotifierItem, which Waybar shows: the rune in bone, for the dark panels Hyprland
+desktops have, with the same dots. A click on it opens the menu. The pinned microphone is marked «festet» in
+words, since the menu there has no pin, and the menu has no shortcuts and no tooltips.
+
 ## Settings
 
 | Tab | Holds |

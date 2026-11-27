@@ -5,7 +5,7 @@ decision, and that pull request also edits the page where the rule lives ([desig
 [plan.md](plan.md)). Those pages say what holds; this one says when and why it came to hold. A later decision
 that undoes one adds an entry of its own, and the earlier entry gets one line naming it.
 
-## D-27 — The microphone opens at the press; one Skald at a time
+## D-29 — The microphone opens at the press; one Skald at a time
 
 2026-11-27, the lead (the press, the permission check), Claude (the rest).
 
@@ -28,6 +28,23 @@ The configuration is read again when the file changes. A file that cannot be rea
 and says why, as does a file that disappears, since an editor may remove it for a moment while saving; a new
 model is used from the next start, since loading one takes seconds. Changed: [design.md](design.md#recording),
 [plan.md](plan.md) M1b.
+
+## D-27 — The menu ticks the microphone in use and pins the pinned one
+
+2026-11-27, Claude.
+
+design.md named the «Mikrofon» submenu's entries but not how it shows the pin. The tick marks the microphone
+a take uses now, which is what the menu is opened to check; the system's pin symbol marks the microphone
+chosen in the menu, and «Bruk den første som er koblet til» is ticked while nothing is pinned. A pinned
+microphone that is unplugged stays listed, greyed with its pin, so the user sees why the order applies and
+can remove the pin.
+
+On macOS the heading «Skald · bokmål» is AppKit's section header from macOS 14 on: a disabled line is greyed
+whatever colour its title is given, and only the hint is meant to be greyed. The dot is drawn by a view over
+the template icon rather than inside it, so the menu bar still tints the rune for a light or dark bar; it is
+the darker of the identity's ochre or gold on a light bar and the lighter on a dark one. A separator stands
+before «Avslutt Skald», as in macOS menus; design.md's single line for the last group was a compact list.
+Changed: [design.md](design.md#menu).
 
 ## D-26 — Models downloaded with ureq over rustls, checked by the system's verifier
 

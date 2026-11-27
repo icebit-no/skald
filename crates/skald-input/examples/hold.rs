@@ -1,4 +1,4 @@
-//! Hold right ⌘ and see what each hold means: armed, released, cancelled.
+//! Hold right ⌘ and see what each hold means: pressed, armed or not armed, released, cancelled.
 //!
 //! ```sh
 //! cargo run -p skald-input --example hold                      # print only
@@ -55,6 +55,8 @@ mod macos {
                         let _ = open_accessibility_settings();
                     }
                 }
+                ListenerEvent::Hold(HoldEvent::Pressed { .. }) => println!("{at}  pressed"),
+                ListenerEvent::Hold(HoldEvent::NotArmed) => println!("{at}  not armed"),
                 ListenerEvent::Hold(HoldEvent::Armed { pressed_at }) => {
                     let held = pressed_at.elapsed().as_millis();
                     println!("{at}  armed (key down {held} ms)");

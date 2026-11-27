@@ -5,6 +5,21 @@ decision, and that pull request also edits the page where the rule lives ([desig
 [plan.md](plan.md)). Those pages say what holds; this one says when and why it came to hold. A later decision
 that undoes one adds an entry of its own, and the earlier entry gets one line naming it.
 
+## D-17 — The app icon is ᚨ cut in light granite
+
+2026-11-27, Thomas.
+
+Four stones were drawn, each with the rune cut as a V-groove and painted red ochre: light granite, dark gneiss,
+granite with a cut frame line, and a free-standing standing stone. Light, coarse granite without a frame line was
+chosen. The standing stone was liked best, but its outline does not fit among the macOS icons, which share a
+rounded square. The frame line was left out; it makes the rune smaller at the small sizes.
+
+The groove's free ends are square at every size, as the rule for free ends says; the chosen drawing had round
+ones. From 64 px up the files are the large drawing, which still reads at 64 px when halved down from one large
+render. At 32 and 16 px the rune is two to four pixels wide, so those sizes are drawn again with a wider groove,
+half the grain at 32 px and none at 16 px. The menu bar rune has a 2 pt stroke, which stays sharp at 1x; 1.5 pt
+blurs on one side. Changed: [design.md](design.md#identity), [plan.md](plan.md) M2.
+
 ## D-16 — Spacing errors are measured before anything is tuned
 
 2026-11-27, Thomas.

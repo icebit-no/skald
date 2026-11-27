@@ -50,7 +50,7 @@ merged, because it decides the binding and which models Skald can offer.
 ## M2 The app on macOS
 
 Design: [Overlay](design.md#overlay), [Menu](design.md#menu), [Settings](design.md#settings),
-[Command line](design.md#command-line).
+[Command line](design.md#command-line), [Identity](design.md#identity).
 
 - [ ] Overlay on GPUI: a PopUp window that takes no focus, lets clicks through, is transparent and draws at
       60 fps; the states recording, carving, inserted, heard nothing, microphone changed and hands-free.
@@ -62,6 +62,8 @@ Design: [Overlay](design.md#overlay), [Menu](design.md#menu), [Settings](design.
 - [ ] `skald` command line over a local socket only the user can open; `--json` on every command; writes the
       configuration file directly when the app is not running.
 - [ ] Claude skill in `packaging/skills/skald/`, installed with `skald skill install`; `skald mcp`.
+- [ ] App icon in granite: 1024, 512, 256, 128 and 64 px from the chosen drawing, own drawings for 32 and
+      16 px, and the one-colour ᚨ for the menu bar, with the source they are rendered from.
 - [ ] `.app` bundle signed with Developer ID and notarized.
 
 ## M3 Measurement
@@ -102,7 +104,6 @@ Design: [Site](design.md#site).
 
 ## Waiting on Thomas
 
-- The app icon: a rune cut into stone and painted red in the groove. A graphics round is in progress.
 - The hero of the site: concept A, «Skalden i stamnen», is chosen; it needs final polish and a bokmål version.
 - Nordlyd: access to `NbAiLab/nordlyd-asr-qwen06B-nov26preview` must be requested on Hugging Face before it
   can be evaluated.

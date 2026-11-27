@@ -1,5 +1,5 @@
-//! Windows (the notification area) and Linux (a StatusNotifierItem, which Waybar shows) have no item
-//! yet; each will draw [`crate::TrayModel::menu`] here, behind its own `cfg`.
+//! Windows (the notification area) has no item yet; it will draw [`crate::TrayModel::menu`] here, behind
+//! its own `cfg`.
 
 use std::convert::Infallible;
 

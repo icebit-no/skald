@@ -5,6 +5,26 @@ decision, and that pull request also edits the page where the rule lives ([desig
 [plan.md](plan.md)). Those pages say what holds; this one says when and why it came to hold. A later decision
 that undoes one adds an entry of its own, and the earlier entry gets one line naming it.
 
+## D-46 — The tray on Linux is a StatusNotifierItem through ksni
+
+2026-11-27, Claude.
+
+Waybar and the other panels on Linux show a program's item through StatusNotifierItem, and its menu through
+dbusmenu, both over D-Bus. Skald speaks them through ksni 0.3.8 (Unlicense), on the zbus already in the tree
+through GPUI and with its executor, rather than an implementation of its own: the two specifications, the
+watcher that comes and goes with the panel, and the panels' differences are the hard part, and ksni has them.
+It adds five crates: ksni, arc-swap, crossbeam-queue, task-local and a second pastey. The rune is the menu
+bar icon's PNG drawn in bone, since a StatusNotifierItem has no template image the panel tints; the dot sits
+where it does on macOS. The menu is skald-tray's, entry for entry: ticks where an entry chooses one of many,
+the pinned microphone marked «festet» in words, and no shortcuts or tooltips, which dbusmenu panels do not
+show. A click on the rune opens the menu, as on macOS.
+
+ksni answers on a thread of its own, so the handler the app gives `Tray::new` is called from there on Linux,
+and the handler must be `Send` and `Sync` on every system; the app's sends each action to its inbox, which
+already was. Evidence: on a headless sway with Waybar, the item registers with Waybar's watcher, the bar
+shows the rune with the red dot while a take records, the menu read over D-Bus holds every entry, and
+«Avslutt Skald» clicked over D-Bus quits the app. Changed: [design.md](design.md#menu), [plan.md](plan.md) M5.
+
 ## D-44 — On Linux the overlay is a layer-shell surface, and the app's screen runs there
 
 2026-11-27, Claude; the layer-shell surface before the tray agreed with the lead.
@@ -125,7 +145,7 @@ the key's real state, with `invalid`. They are no MCP tools, since an agent has 
 (the tray and the overlay, later in M5), `skald` there runs the loop in the terminal, as `--terminal` does,
 and text is not inserted: each take is kept in the history and printed. Changed:
 [design.md](design.md#recording) (Recording, Command line), [plan.md](plan.md) M5.
-Insertion on Linux: D-42. The screen on Linux: D-44.
+Insertion on Linux: D-42. The screen on Linux: D-44. The tray on Linux: D-46.
 
 
 ## D-38 — Right Ctrl, Ctrl+V and the clipboard on Windows; a window run as administrator is checked first

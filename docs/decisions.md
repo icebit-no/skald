@@ -5,6 +5,18 @@ decision, and that pull request also edits the page where the rule lives ([desig
 [plan.md](plan.md)). Those pages say what holds; this one says when and why it came to hold. A later decision
 that undoes one adds an entry of its own, and the earlier entry gets one line naming it.
 
+## D-24 — The overlay has three themes, Runepinne by default
+
+2026-11-27, Thomas.
+
+Three Viking directions were drawn for the overlay: forged iron, a rune stick of dark oak, and a strip of the
+icon's granite. Thomas liked the rune stick best and made it the default, kept forged iron as a choice, and left
+out the stone. A plain theme that looks like the rest of the system joins them, because the iron plate looked
+more like macOS than Windows, and a dictation overlay sits over everyone's work: on macOS it follows the HUD
+style, on Windows 11 its acrylic surface. It is called Kjedelig, which says what it is. The theme applies to the
+overlay only. In the rune stick the bars stand 8 pt apart while carving so each holds one rune. Changed:
+[design.md](design.md#overlay), [plan.md](plan.md) M2.
+
 ## D-22 — transcribe.cpp's Rust crates, a patched build, NbAiLab's model file, no no-speech check
 
 2026-11-27, Claude; the patched build, the model file and the silence gate settled by the lead in review.

@@ -27,10 +27,24 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # The system libraries the crates link: ALSA for cpal; Wayland, xkbcommon, X11's xcb and fontconfig
       # for GPUI. The runner already has the C++ compiler and cmake that transcribe.cpp's CPU build takes.
+      # Insertion is tried on a headless sway, which has the data-control and virtual-keyboard protocols,
+      # with wl-clipboard and wev to look at what Skald does and wtype to send its Ctrl+V.
       - run: >-
           sudo apt-get update &&
           sudo apt-get install -y --no-install-recommends
           libasound2-dev libfontconfig-dev libwayland-dev libxkbcommon-x11-dev libx11-xcb-dev
+          sway wl-clipboard wtype wev
       # rustup installs the toolchain rust-toolchain.toml pins on the first cargo call.
       - run: cargo clippy --workspace --all-targets --locked
       - run: cargo test --workspace --locked
+      - name: cargo test insertion on a headless sway
+        run: |
+          export XDG_RUNTIME_DIR="$(mktemp -d)"
+          printf 'output HEADLESS-1 resolution 1280x720\n' > "$RUNNER_TEMP/sway.conf"
+          WLR_BACKENDS=headless WLR_RENDERER=pixman WLR_LIBINPUT_NO_DEVICES=1 \
+            sway -c "$RUNNER_TEMP/sway.conf" > "$RUNNER_TEMP/sway.log" 2>&1 &
+          for _ in $(seq 50); do
+            socket=$(ls "$XDG_RUNTIME_DIR" | grep -m1 -x 'wayland-[0-9]*') && break
+            sleep 0.1
+          done
+          WAYLAND_DISPLAY="$socket" cargo test -p skald-input --locked --test wayland -- --ignored

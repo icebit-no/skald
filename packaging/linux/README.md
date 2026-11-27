@@ -2,8 +2,8 @@
 
 How to build and run Skald on Linux, on Omarchy and other Hyprland desktops first (D-7), and how the desktop
 holds the key you talk with (D-39). Linux is M5 in [plan.md](../../docs/plan.md). Skald runs there in the
-terminal: the tray, the overlay and the windows have not come to Linux, and text is not inserted yet, so each
-take is printed and kept in «Siste tekster» (`skald last`).
+terminal: the tray, the overlay and the windows have not come to Linux. The text is inserted where the cursor
+is, through the clipboard and Ctrl+V (D-42).
 
 ## Build
 
@@ -11,12 +11,13 @@ Needs Rust through rustup (the toolchain in `rust-toolchain.toml` is installed o
 CMake for transcribe.cpp, and the libraries the crates link. On Arch and Omarchy:
 
 ```sh
-sudo pacman -S --needed base-devel cmake alsa-lib wayland libxkbcommon-x11 libx11 fontconfig
+sudo pacman -S --needed base-devel cmake alsa-lib wayland libxkbcommon-x11 libx11 fontconfig wtype
 cargo build --release
 install -m 755 target/release/skald ~/.local/bin/skald
 ```
 
-transcribe.cpp is built for the CPU.
+transcribe.cpp is built for the CPU. wtype sends the Ctrl+V that pastes the text; the clipboard needs no
+program of its own, only a compositor with the wlroots data-control protocol, as Hyprland has.
 
 ## Run
 

@@ -3,6 +3,7 @@
 
 mod access;
 mod capture;
+pub mod filter;
 mod level;
 mod microphone;
 mod platform;

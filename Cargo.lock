@@ -5411,6 +5411,7 @@ name = "skald"
 version = "0.1.0"
 dependencies = [
  "async-channel",
+ "block2 0.6.2",
  "gpui-kit",
  "hound",
  "libc",
@@ -5421,6 +5422,7 @@ dependencies = [
  "skald-control",
  "skald-core",
  "skald-engine",
+ "skald-firstrun",
  "skald-input",
  "skald-models",
  "skald-overlay",

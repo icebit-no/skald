@@ -9,11 +9,13 @@ use std::sync::Arc;
 use skald_core::Config;
 use skald_core::config::OverlayTheme;
 use skald_core::state::State;
+use skald_firstrun::TestDictation;
 use skald_models::MODELS;
 use skald_settings::{Change, ModelState, SettingsModel, TokenCounter};
 use skald_tray::{Action as TrayAction, Activity, Microphone, TrayModel};
 
 use crate::events::{Ending, Event, MicrophoneList};
+use crate::say::Line;
 
 /// One call to skald-overlay's `Overlay`.
 #[derive(Debug, Clone, PartialEq)]
@@ -108,8 +110,8 @@ impl Screen {
                     changed.pills.push(match ending {
                         Ending::Inserted(text) => Pill::Inserted(text),
                         Ending::HeardNothing { microphone } => Pill::HeardNothing(microphone),
-                        Ending::NotInserted => Pill::NotInserted,
-                        Ending::Failed => Pill::TranscriptionFailed,
+                        Ending::NotInserted(_) => Pill::NotInserted,
+                        Ending::Failed(_) => Pill::TranscriptionFailed,
                     });
                 }
             }
@@ -227,6 +229,36 @@ pub(crate) fn change_for(action: &TrayAction) -> Option<Change> {
     }
 }
 
+/// What the first run's test shows after an event of the loop it started; `None` for an event that does
+/// not change it.
+pub(crate) fn test_dictation(event: &Event) -> Option<TestDictation> {
+    Some(match event {
+        Event::ModelLoaded | Event::Cancelled { .. } => TestDictation::Listening,
+        Event::Recording { .. } => TestDictation::Recording,
+        Event::Carving { .. } => TestDictation::Transcribing,
+        Event::NoMicrophone => TestDictation::Failed {
+            reason: Line::NoMicrophone.to_string(),
+        },
+        Event::Ended { ending, .. } => match ending {
+            Ending::Inserted(text) | Ending::NotInserted(text) => {
+                TestDictation::Heard { text: text.clone() }
+            }
+            Ending::HeardNothing { microphone } => TestDictation::HeardNothing {
+                microphone: microphone.clone(),
+            },
+            Ending::Failed(reason) => TestDictation::Failed {
+                reason: Line::TranscriptionFailed(reason.clone()).to_string(),
+            },
+        },
+        Event::Level(_)
+        | Event::MicrophoneChanged(_)
+        | Event::Microphones(_)
+        | Event::State(_)
+        | Event::Settings(_)
+        | Event::Stopped => return None,
+    })
+}
+
 /// What of each model Skald can download is on disk, or how much of it has arrived while it downloads.
 pub(crate) fn model_states(
     models_dir: &Path,
@@ -338,7 +370,7 @@ mod tests {
                 Event::Cancelled { take: 2 },
                 Event::Ended {
                     take: 2,
-                    ending: Ending::Failed,
+                    ending: Ending::Failed("out of memory".into()),
                 },
             ],
         );
@@ -365,13 +397,13 @@ mod tests {
                     Event::Carving { take: 1 },
                     Event::Ended {
                         take: 1,
-                        ending: Ending::NotInserted,
+                        ending: Ending::NotInserted("Hei.".into()),
                     },
                     recording(2),
                     Event::Carving { take: 2 },
                     Event::Ended {
                         take: 2,
-                        ending: Ending::Failed,
+                        ending: Ending::Failed("out of memory".into()),
                     },
                     Event::MicrophoneChanged("Shure MV7".into()),
                     Event::Level(-20.0),
@@ -429,12 +461,12 @@ mod tests {
         screen.apply(Event::Carving { take: 2 });
         screen.apply(Event::Ended {
             take: 1,
-            ending: Ending::Failed,
+            ending: Ending::Failed("out of memory".into()),
         });
         assert_eq!(activity(&screen), Activity::Transcribing, "take 2 waits");
         screen.apply(Event::Ended {
             take: 2,
-            ending: Ending::Failed,
+            ending: Ending::Failed("out of memory".into()),
         });
         assert_eq!(activity(&screen), Activity::Idle);
         screen.apply(recording(3));
@@ -556,6 +588,66 @@ mod tests {
         ] {
             assert_eq!(change_for(&action), None, "{action:?}");
         }
+    }
+
+    #[test]
+    fn the_first_run_s_test_follows_the_take_from_the_key_to_its_text() {
+        assert_eq!(
+            test_dictation(&Event::ModelLoaded),
+            Some(TestDictation::Listening)
+        );
+        assert_eq!(
+            test_dictation(&recording(1)),
+            Some(TestDictation::Recording)
+        );
+        assert_eq!(
+            test_dictation(&Event::Carving { take: 1 }),
+            Some(TestDictation::Transcribing)
+        );
+        for ending in [
+            Ending::Inserted("Hei, dette er en prøve.".into()),
+            Ending::NotInserted("Hei, dette er en prøve.".into()),
+        ] {
+            assert_eq!(
+                test_dictation(&Event::Ended { take: 1, ending }),
+                Some(TestDictation::Heard {
+                    text: "Hei, dette er en prøve.".into()
+                }),
+                "the window says whether the text reached its field"
+            );
+        }
+        assert_eq!(
+            test_dictation(&Event::Ended {
+                take: 1,
+                ending: Ending::HeardNothing {
+                    microphone: "Yeti".into()
+                }
+            }),
+            Some(TestDictation::HeardNothing {
+                microphone: "Yeti".into()
+            })
+        );
+        assert_eq!(
+            test_dictation(&Event::Ended {
+                take: 1,
+                ending: Ending::Failed("out of memory".into())
+            }),
+            Some(TestDictation::Failed {
+                reason: "Transkriberingen feilet: out of memory".into()
+            })
+        );
+        assert_eq!(
+            test_dictation(&Event::NoMicrophone),
+            Some(TestDictation::Failed {
+                reason: "Ingen mikrofon er koblet til.".into()
+            })
+        );
+        assert_eq!(
+            test_dictation(&Event::Cancelled { take: 1 }),
+            Some(TestDictation::Listening)
+        );
+        assert_eq!(test_dictation(&Event::Level(-20.0)), None);
+        assert_eq!(test_dictation(&Event::State(State::default())), None);
     }
 
     #[test]

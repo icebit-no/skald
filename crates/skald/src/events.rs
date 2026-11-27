@@ -52,10 +52,10 @@ pub(crate) enum Ending {
     HeardNothing {
         microphone: String,
     },
-    /// The text is in the history but could not be inserted.
-    NotInserted,
-    /// The model failed on the take.
-    Failed,
+    /// The text, which is in the history but could not be inserted.
+    NotInserted(String),
+    /// Why the model failed on the take.
+    Failed(String),
 }
 
 impl Ending {
@@ -65,8 +65,8 @@ impl Ending {
             Outcome::HeardNothing(_) => Self::HeardNothing {
                 microphone: report.microphone.clone(),
             },
-            Outcome::NotInserted { .. } => Self::NotInserted,
-            Outcome::Failed(_) => Self::Failed,
+            Outcome::NotInserted { text, .. } => Self::NotInserted(text.clone()),
+            Outcome::Failed(reason) => Self::Failed(reason.clone()),
         }
     }
 }
@@ -120,11 +120,11 @@ mod tests {
                 error: InsertError::KeysHeld,
                 complete: true,
             })),
-            Ending::NotInserted
+            Ending::NotInserted("Hei.".into())
         );
         assert_eq!(
             Ending::of(&report(Outcome::Failed("out of memory".into()))),
-            Ending::Failed
+            Ending::Failed("out of memory".into())
         );
     }
 }

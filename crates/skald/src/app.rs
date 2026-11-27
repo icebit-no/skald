@@ -4,9 +4,11 @@
 //! each line a user reads is printed as it happens.
 //!
 //! Start-up checks what can stop Skald before the model takes seconds to load: the files, Accessibility,
-//! then the microphone permission. The screen appears once they have passed, and the model loads on the
-//! pipeline's thread while the keys already work, so a take made meanwhile waits for it. The command
-//! line's socket answers for as long as the loop runs.
+//! then the microphone permission. When the app finds the model or a permission missing, it opens the
+//! first-run window instead and starts the loop once the window is done with them; otherwise the screen
+//! appears once the checks have passed. The model loads on the pipeline's thread while the keys already
+//! work, so a take made meanwhile waits for it. The command line's socket answers for as long as the loop
+//! runs.
 
 #[cfg(unix)]
 use skald_control::{BindError, Server, Serving};
@@ -14,7 +16,7 @@ use skald_control::{BindError, Server, Serving};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError};
-use std::thread;
+use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
 use skald_audio::MicrophoneAccess;
@@ -22,7 +24,9 @@ use skald_core::config::HoldKey as ConfigHoldKey;
 use skald_core::paths::Paths;
 use skald_core::state::State;
 use skald_engine::Engine;
+use skald_firstrun::{FirstRunModel, ModelCard};
 use skald_input::{HoldKey, HoldListener, Inserter, ListenerEvent, Unavailable};
+use skald_models::Status;
 
 use crate::cli::Options;
 use crate::control::{Control, Settings};
@@ -80,12 +84,11 @@ pub(crate) fn open_settings_for(exit: &Exit) {
     }
 }
 
-/// What the screen needs of the running loop: the same running Skald the socket answers for, the model's
-/// thread for what needs the model, and the folders.
+/// What the screen needs of the running loop: the same running Skald the socket answers for, and the
+/// model's thread for what needs the model.
 pub(crate) struct Ready {
     pub(crate) control: Arc<Control>,
     pub(crate) worker: WorkerHandle,
-    pub(crate) paths: Paths,
 }
 
 /// The loop's side of the screen: where its events go, the screen's wish that it stop, and where it says
@@ -93,36 +96,124 @@ pub(crate) struct Ready {
 pub(crate) struct Link {
     events: async_channel::Sender<Event>,
     stop: Arc<AtomicBool>,
-    ready: mpsc::Sender<Ready>,
+    ready: async_channel::Sender<Ready>,
 }
 
-/// Starts the loop on a thread of its own and, once it is ready, the screen on this one. A loop that
-/// stops before it is ready never shows a screen, and its reason is returned.
+/// The loop's thread, which returns why the loop stopped.
+pub(crate) type LoopThread = JoinHandle<Result<(), Exit>>;
+
+/// Starts the dictation loop on a thread of its own, linked to the screen, as often as the screen asks:
+/// once, or again after a loop the first run started has stopped.
+pub(crate) struct Launcher {
+    options: Options,
+    events: async_channel::Sender<Event>,
+    stop: Arc<AtomicBool>,
+}
+
+impl Launcher {
+    /// The loop's thread, and where it says it is ready; that ends without a word when the loop stops
+    /// before it is ready, and the thread then holds the reason.
+    pub(crate) fn start(&self) -> Result<(LoopThread, async_channel::Receiver<Ready>), Exit> {
+        self.stop.store(false, Ordering::Release);
+        let (ready, readied) = async_channel::bounded(1);
+        let link = Link {
+            events: self.events.clone(),
+            stop: Arc::clone(&self.stop),
+            ready,
+        };
+        let options = self.options.clone();
+        let events = self.events.clone();
+        let thread = thread::Builder::new()
+            .name("skald-dictation".into())
+            .spawn(move || {
+                let result = dictate(options, Some(link));
+                // The screen may already be gone, and then no one needs to know.
+                let _ = events.send_blocking(Event::Stopped);
+                result
+            })
+            .map_err(|error| Exit::CannotStart(error.to_string()))?;
+        Ok((thread, readied))
+    }
+
+    /// Asks the running loop to stop; it says so with [`Event::Stopped`].
+    pub(crate) fn stop(&self) {
+        self.stop.store(true, Ordering::Release);
+    }
+}
+
+/// How the screen starts: with the loop running and ready, or with the first-run window.
+pub(crate) enum Start {
+    Ready(Ready, LoopThread),
+    FirstRun(FirstRun),
+}
+
+/// The first run, for a model or permission found missing.
+pub(crate) struct FirstRun {
+    pub(crate) model: FirstRunModel,
+    /// The configured model, which the window downloads.
+    pub(crate) model_id: &'static str,
+}
+
+/// Starts the screen on this thread. With nothing missing the loop starts first, and the screen appears
+/// once it is ready, so a loop that stops before then never shows a screen and its reason is returned.
 fn run_app(options: Options) -> Result<(), Exit> {
     let printer = Printer {
         verbose: options.verbose,
     };
+    let paths = files::paths(options.dir.as_deref())?;
+    let first_run = first_run(&options, &paths)?;
     let (events, inbox) = async_channel::unbounded();
-    let stop = Arc::new(AtomicBool::new(false));
-    let (ready, started) = mpsc::channel();
-    let link = Link {
-        events: events.clone(),
-        stop: Arc::clone(&stop),
-        ready,
+    let launcher = Launcher {
+        options,
+        events,
+        stop: Arc::new(AtomicBool::new(false)),
     };
-    let dictation = thread::Builder::new()
-        .name("skald-dictation".into())
-        .spawn(move || {
-            let result = dictate(options, Some(link));
-            // The screen may already be gone, and then no one needs to know.
-            let _ = events.send_blocking(Event::Stopped);
-            result
-        })
-        .map_err(|error| Exit::CannotStart(error.to_string()))?;
-    match started.recv() {
-        Ok(ready) => shell::run(ready, inbox, stop, dictation, printer),
-        Err(_) => dictation.join().unwrap_or(Err(Exit::Stopped)),
+    let start = match first_run {
+        Some(first_run) => Start::FirstRun(first_run),
+        None => {
+            let (thread, readied) = launcher.start()?;
+            match readied.recv_blocking() {
+                Ok(ready) => Start::Ready(ready, thread),
+                Err(_) => return thread.join().unwrap_or(Err(Exit::Stopped)),
+            }
+        }
+    };
+    shell::run(start, launcher, inbox, paths, printer)
+}
+
+/// The first-run window's model when the configured model or a permission is missing (docs/design.md,
+/// First run). A model given with `--model` is the developer's to have in place.
+fn first_run(options: &Options, paths: &Paths) -> Result<Option<FirstRun>, Exit> {
+    if options.model.is_some() {
+        return Ok(None);
     }
+    let (_, config) = ConfigFile::open(paths.config_file()).map_err(Exit::Config)?;
+    let Some(model) = skald_models::find(&config.model) else {
+        return Ok(None);
+    };
+    let (Some(card), Some(status)) = (ModelCard::of(model), model.status(&paths.models_dir()))
+    else {
+        return Ok(None);
+    };
+    let needed = needs_first_run(
+        status,
+        skald_audio::microphone_access(),
+        skald_input::accessibility_granted(),
+    );
+    Ok(needed.then(|| {
+        let mut first_run = FirstRunModel::new(card, status);
+        first_run.hold_key = config.hold_key.clone();
+        FirstRun {
+            model: first_run,
+            model_id: model.id,
+        }
+    }))
+}
+
+/// Whether Skald cannot take dictation until the first run is done: the model is not in place and
+/// checked, or a permission is not granted.
+fn needs_first_run(status: Status, microphone: MicrophoneAccess, accessibility: bool) -> bool {
+    status != Status::Ready || microphone != MicrophoneAccess::Granted || !accessibility
 }
 
 /// Where the loop's news goes: the terminal, and the screen when there is one.
@@ -155,7 +246,8 @@ impl Out {
 
     fn ready(&self, ready: Ready) {
         if let Some(link) = &self.link {
-            let _ = link.ready.send(ready);
+            // A channel of its own for this loop, with room for the one message.
+            let _ = link.ready.try_send(ready);
         }
     }
 }
@@ -257,7 +349,6 @@ fn dictate(options: Options, link: Option<Link>) -> Result<(), Exit> {
     running.out.ready(Ready {
         control,
         worker: worker.handle(),
-        paths: paths.clone(),
     });
     let result = running.listen();
     // The event tap goes first, then the socket and the microphones; the worker finishes the takes it has
@@ -531,11 +622,11 @@ mod tests {
         Out,
         async_channel::Receiver<Event>,
         Arc<AtomicBool>,
-        Receiver<Ready>,
+        async_channel::Receiver<Ready>,
     ) {
         let (events, inbox) = async_channel::unbounded();
         let stop = Arc::new(AtomicBool::new(false));
-        let (ready, started) = mpsc::channel();
+        let (ready, started) = async_channel::bounded(1);
         let out = Out {
             printer: Printer { verbose: false },
             link: Some(Link {
@@ -562,6 +653,54 @@ mod tests {
         // The screen gone, the loop still runs.
         drop(inbox);
         out.show(Event::ModelLoaded);
+    }
+
+    #[test]
+    fn the_first_run_opens_while_the_model_or_a_permission_is_missing() {
+        use MicrophoneAccess::{Denied, Granted, NotAsked, Restricted};
+        assert!(!needs_first_run(Status::Ready, Granted, true));
+        for status in [
+            Status::Missing,
+            Status::Unchecked,
+            Status::Partial { received: 9 },
+            Status::Other { size: 3 },
+        ] {
+            assert!(needs_first_run(status, Granted, true), "{status:?}");
+        }
+        for microphone in [NotAsked, Denied, Restricted] {
+            assert!(needs_first_run(Status::Ready, microphone, true));
+        }
+        assert!(needs_first_run(Status::Ready, Granted, false));
+    }
+
+    #[test]
+    fn a_model_given_on_the_command_line_or_one_with_nothing_to_fetch_has_no_first_run() {
+        let scratch = crate::files::tests::Scratch::new("app-first-run");
+        let paths = Paths::in_one_folder(&scratch.0);
+        let given = Options {
+            model: Some("/m.bin".into()),
+            ..Options::default()
+        };
+        assert!(first_run(&given, &paths).unwrap().is_none());
+
+        std::fs::write(paths.config_file(), "model = \"nordlyd\"\n").unwrap();
+        assert!(first_run(&Options::default(), &paths).unwrap().is_none());
+
+        std::fs::write(paths.config_file(), "hold_key = \"right-control\"\n").unwrap();
+        let first = first_run(&Options::default(), &paths).unwrap().unwrap();
+        assert_eq!(first.model_id, "nb-whisper-large");
+        assert_eq!(first.model.model.name, "NB-Whisper Large");
+        assert_eq!(
+            first.model.hold_key,
+            skald_core::config::HoldKey::RightControl
+        );
+        assert_eq!(first.model.download, skald_firstrun::Download::NotStarted);
+
+        std::fs::write(paths.config_file(), "sounds = \"ja\"\n").unwrap();
+        assert!(matches!(
+            first_run(&Options::default(), &paths),
+            Err(Exit::Config(_))
+        ));
     }
 
     #[test]

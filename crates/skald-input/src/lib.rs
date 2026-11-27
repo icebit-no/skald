@@ -28,4 +28,6 @@ pub use insert::{InsertError, InsertOptions, Inserted};
 #[cfg(target_os = "macos")]
 pub use listener::{HoldListener, ListenerEvent, Unavailable};
 #[cfg(target_os = "macos")]
-pub use macos::access::{accessibility_granted, open_accessibility_settings};
+pub use macos::access::{
+    accessibility_granted, open_accessibility_settings, request_accessibility,
+};

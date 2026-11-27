@@ -24,6 +24,7 @@ libc = "=0.2.191"
 
 # The app's screen: the overlay, the menu bar item and the settings window, on GPUI.
 [target.'cfg(target_os = "macos")'.dependencies]
+skald-firstrun = { path = "../skald-firstrun" }
 skald-overlay = { path = "../skald-overlay" }
 skald-settings = { path = "../skald-settings" }
 skald-tray.workspace = true
@@ -33,6 +34,8 @@ gpui-kit = { git = "https://github.com/longbridge/gpui-kit", rev = "1e7ffaa6d1c0
 # Carries the loop's events, the menu's actions and download progress to tasks on GPUI's main thread;
 # already in the tree through GPUI.
 async-channel = "=2.5.0"
-# SMAppService for start at login, through the Objective-C runtime; in the tree through skald-input.
+# SMAppService for start at login and AVFoundation's microphone request, through the Objective-C runtime,
+# the request's completion block with block2; all in the tree through skald-input and skald-overlay.
+block2 = "=0.6.2"
 objc2 = "=0.6.5"
 objc2-foundation = { version = "=0.3.2", default-features = false, features = ["std", "NSError", "NSString"] }

@@ -8,14 +8,23 @@
 use std::ffi::{CStr, c_char, c_int, c_void};
 use std::ptr::NonNull;
 
+use objc2::rc::Retained;
 use objc2_core_foundation::CFMachPort;
 use objc2_core_graphics::{
     CGEvent, CGEventTapLocation, CGEventTapOptions, CGEventTapPlacement, CGEventTapProxy,
     CGEventType,
 };
+use objc2_foundation::{NSDictionary, NSNumber, NSString};
 
 /// tccd posts this Darwin notification after any privacy permission changes.
 const TCC_ACCESS_CHANGED: &CStr = c"com.apple.tcc.access.changed";
+
+#[link(name = "ApplicationServices", kind = "framework")]
+unsafe extern "C" {
+    /// The options key that asks AXIsProcessTrustedWithOptions to show the system's prompt.
+    static kAXTrustedCheckOptionPrompt: &'static NSString;
+    fn AXIsProcessTrustedWithOptions(options: *const c_void) -> bool;
+}
 
 unsafe extern "C" {
     fn notify_register_check(name: *const c_char, out_token: *mut c_int) -> u32;
@@ -95,6 +104,20 @@ fn active_tap_allowed() -> bool {
         )
     };
     tap.inspect(|tap| CFMachPort::invalidate(tap)).is_some()
+}
+
+/// Asks the system for Accessibility: macOS shows its prompt, which lists Skald under Privacy & Security ›
+/// Accessibility and offers to open it there. It shows the prompt once per app; after that, and when the
+/// permission is granted, it shows nothing. Returns whether the permission is granted now, as the system's
+/// cache has it.
+pub fn request_accessibility() -> bool {
+    // SAFETY: a constant ApplicationServices exports, which the link above has loaded.
+    let key: &NSString = unsafe { kAXTrustedCheckOptionPrompt };
+    let yes = NSNumber::new_bool(true);
+    let options: Retained<NSDictionary<NSString, NSNumber>> =
+        NSDictionary::from_slices(&[key], &[&*yes]);
+    // SAFETY: an NSDictionary is a CFDictionary toll-free, and the call only reads it.
+    unsafe { AXIsProcessTrustedWithOptions(Retained::as_ptr(&options).cast()) }
 }
 
 /// Opens System Settings at Privacy & Security › Accessibility.

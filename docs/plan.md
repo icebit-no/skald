@@ -78,8 +78,9 @@ The binary joins them.
 - [x] Settings window with the tabs Generelt, Ordskatt, Historikk and Om.
 - [ ] The app: `skald` runs the overlay, the menu bar item and the settings window on GPUI, the dictation loop
       on a thread of its own and the socket beside them, `--terminal` without them; ⌃⌘X for a hands-free take;
-      the overlay's messages for a text not inserted, a failed transcription and no microphone; Silero VAD
-      inside the binary; start at login through SMAppService; `skald bench`. Built in #26; ticked
+      the overlay's messages for a text not inserted, a failed transcription and no microphone; the first-run
+      window while the model or a permission is missing; Silero VAD inside the binary; start at login through
+      SMAppService; `skald bench`. Built in #26; ticked
       when Thomas's real test (#22) passes.
 - [x] First run: model download with progress (pinned revision, SHA-256), permissions, a test dictation.
 - [x] `skald` command line over a local socket only the user can open; `--json` on every command; writes the

@@ -19,6 +19,16 @@ second; a word corrected in Historikk goes to the pipeline's thread, which keeps
 Moving the loop into GPUI's tasks would have meant making its blocking wait for keys asynchronous for no gain.
 `--terminal` runs the loop on the main thread without the screen, as #18 did, for debugging.
 
+When the configured model is not in place and checked, or the microphone or Accessibility is not granted,
+the app opens the first-run window (D-35) before the loop. It runs the window's download, asks for each
+permission with the system's own prompt (AVFoundation's request for the microphone, and for Accessibility
+the prompt that also lists Skald in System Settings), starts the loop when the test asks for it, and shows
+the menu bar item once the window is done. A loop the test started that stops, as when the model will not
+load, says why in the window, which can start it again; closing the window before Skald can take dictation
+quits the app. The insertion runs on the pipeline's thread, as every take's does, so the window reads the
+test's paste on the main thread while the insertion waits to put the clipboard back. A model given with
+`--model` is the developer's, with no first run, and `--terminal` stops at what is missing as #18 did.
+
 The engine must be dropped before the process exits (D-23), so «Avslutt Skald» asks the loop to stop and the
 app quits once the loop has dropped the model; when the system ends the app, as at log out, the main thread
 waits for the loop. The overlay shows a take's end only while that take is the one on screen, so a take

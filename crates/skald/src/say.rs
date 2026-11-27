@@ -89,6 +89,8 @@ pub(crate) enum Line {
         reason: String,
     },
     Downloaded(&'static str),
+    /// The loop the first run's test started stopped, and why.
+    LoopStopped(String),
     Stopping,
 }
 
@@ -234,6 +236,7 @@ impl fmt::Display for Line {
                 write!(f, "Nedlastingen av {model} stoppet: {reason}")
             }
             Line::Downloaded(model) => write!(f, "{model} er lastet ned og sjekket."),
+            Line::LoopStopped(reason) => write!(f, "Dikteringen stoppet: {reason}"),
             Line::Stopping => f.write_str("Avslutter …"),
         }
     }

@@ -15,6 +15,8 @@ mod files;
 #[cfg(target_os = "macos")]
 mod login;
 mod models;
+#[cfg(target_os = "macos")]
+mod permissions;
 mod pipeline;
 mod say;
 #[cfg(target_os = "macos")]

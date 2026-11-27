@@ -25,6 +25,34 @@ version transcribe.cpp's own Windows build uses, checked by its SHA-256. The run
 there compute on the CPU module; the Vulkan path is tried on Thomas's RTX machine. Changed:
 [design.md](design.md#first-run), [research.md](research.md#stack).
 
+## D-42 — On Wayland the clipboard goes through data-control in Skald itself, and Ctrl+V through wtype
+
+2026-11-27, Claude; data-control or wl-clipboard, and wtype, offered by the lead's brief for M5.
+
+Skald reads and sets the clipboard on Linux through the wlroots data-control protocol, which Hyprland, the
+other wlroots compositors and KDE Plasma offer, rather than through wl-copy and wl-paste. wl-copy offers one
+type per copy, so contents put back through it would lose their other types: the HTML beside a browser's
+text, the file manager's own type beside a list of files. Through the protocol Skald puts every type back,
+as D-21 does on macOS, and counts the selections the compositor announces, which stands in for macOS's
+change count, so a copy made while the text is on the clipboard is left in place. wayland-client and the
+protocol's crate are in the tree through GPUI at the same versions, so nothing is added; GNOME, which has
+neither data-control nor a virtual keyboard for programs, is not served.
+
+Wayland keeps no copy of what is copied: whoever set the selection is asked for it at each paste. A thread
+of Skald's keeps the connection and answers for the text and for the contents it put back, so those stay on
+the clipboard while Skald runs and go when it quits, unless a clipboard manager keeps them. The text on the
+clipboard only for the paste is offered with `x-kde-passwordManagerHint`, the mark of a secret that
+clipboard managers there skip, which stands in for macOS's transient type; contents a password manager
+marked that way are neither read nor put back, as D-21 has it. A program that takes more than two seconds
+per type to hand over its contents, or offers more than 256 MB, leaves the text on the clipboard.
+
+Ctrl+V is sent by wtype, from a virtual keyboard with its own keymap, so it reads as Ctrl+V whatever the
+layout. A Wayland program cannot see which keys are down, so the paste is sent as soon as the text is on the
+clipboard; the hold key is up by then, since its release ended the take. The insertion is tried in CI on a
+headless sway, with wl-clipboard and wev to look at the clipboard and the window in front. Changed:
+[design.md](design.md#insertion).
+
+
 ## D-41 — Ctrl+Win+X on Windows; the overlay names an administrator window; no UI Access yet
 
 2026-11-27, the lead.
@@ -97,6 +125,7 @@ the key's real state, with `invalid`. They are no MCP tools, since an agent has 
 (the tray and the overlay, later in M5), `skald` there runs the loop in the terminal, as `--terminal` does,
 and text is not inserted: each take is kept in the history and printed. Changed:
 [design.md](design.md#recording) (Recording, Command line), [plan.md](plan.md) M5.
+Insertion on Linux: D-42.
 
 
 ## D-38 — Right Ctrl, Ctrl+V and the clipboard on Windows; a window run as administrator is checked first

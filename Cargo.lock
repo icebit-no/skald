@@ -5569,6 +5569,9 @@ dependencies = [
  "objc2-core-foundation",
  "objc2-core-graphics",
  "objc2-foundation 0.3.2",
+ "rustix",
+ "wayland-client",
+ "wayland-protocols-wlr",
  "windows-sys 0.61.2",
 ]
 

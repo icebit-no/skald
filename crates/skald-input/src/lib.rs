@@ -4,17 +4,21 @@
 //! [`HoldListener`] reports [`HoldEvent`]s for the hold key and for the chord that starts and stops a
 //! hands-free take, ⌃⌘X on macOS and Ctrl+Win+X on Windows; [`Inserter`] pastes a take's text and puts the
 //! previous clipboard back. The rules of a hold live in [`HoldMachine`], free of any platform. On Linux the
-//! desktop's key binding reports the hold key through [`press_hold_key`], and Skald inserts no text there.
+//! desktop's key bindings report the hold key and the hands-free chord through [`press_hold_key`] and
+//! [`toggle_hands_free`], and the text goes in through Wayland's clipboard and a virtual keyboard.
 //!
 //! Known limit: on macOS, ⌘V is sent as the key in V's place on a QWERTY keyboard, which the Norwegian
 //! layout shares. On a layout that moves V, such as Dvorak, it is another shortcut. Windows sends Ctrl+V by
 //! its virtual key, which every layout reads as Ctrl+V.
 
 mod hold;
-// Their crate-private parts serve the macOS and Windows listener and inserter only.
+// Its crate-private parts serve the macOS and Windows listener only.
 #[cfg_attr(not(any(target_os = "macos", windows)), allow(dead_code))]
 mod hotkey;
-#[cfg_attr(not(any(target_os = "macos", windows)), allow(dead_code))]
+#[cfg_attr(
+    not(any(target_os = "macos", target_os = "linux", windows)),
+    allow(dead_code)
+)]
 mod insert;
 #[cfg(target_os = "linux")]
 mod linux;

@@ -1,11 +1,10 @@
 //! The hold-to-talk key, the hands-free chord and insertion: arming, cancelling and the watchdog, and
 //! pasting the text where the cursor is.
 //!
-//! [`HoldListener`] reports [`HoldEvent`]s for the hold key and for ⌃⌘X, which starts and stops a
-//! hands-free take on macOS; [`Inserter`] pastes a take's text and puts the previous clipboard back. The
-//! rules of a hold live in [`HoldMachine`], free of any platform. macOS and Windows are supported; Windows
-//! has no hands-free chord yet. On Linux the desktop's key binding reports the hold key through
-//! [`press_hold_key`], and Skald inserts no text there.
+//! [`HoldListener`] reports [`HoldEvent`]s for the hold key and for the chord that starts and stops a
+//! hands-free take, ⌃⌘X on macOS and Ctrl+Win+X on Windows; [`Inserter`] pastes a take's text and puts the
+//! previous clipboard back. The rules of a hold live in [`HoldMachine`], free of any platform. On Linux the
+//! desktop's key binding reports the hold key through [`press_hold_key`], and Skald inserts no text there.
 //!
 //! Known limit: on macOS, ⌘V is sent as the key in V's place on a QWERTY keyboard, which the Norwegian
 //! layout shares. On a layout that moves V, such as Dvorak, it is another shortcut. Windows sends Ctrl+V by

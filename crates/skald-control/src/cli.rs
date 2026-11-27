@@ -229,7 +229,7 @@ pub(crate) fn send(
     json: bool,
     err: &mut dyn Write,
 ) -> (Result<Output, Error>, bool) {
-    #[cfg(unix)]
+    #[cfg(any(unix, windows))]
     match crate::socket::Client::connect(&paths.socket()) {
         Ok(Some(mut client)) => return (client.send(request), true),
         Ok(None) => {}

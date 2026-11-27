@@ -29,7 +29,7 @@ use skald_input::{HoldKey, HoldListener, Inserter, ListenerEvent, Unavailable};
 use skald_models::Status;
 
 use crate::cli::Options;
-use crate::control::{Control, Settings};
+use crate::control::{Control, Settings, computes_on_vulkan};
 use crate::dictation::{Dictation, Microphones, SystemMicrophones, microphone_order};
 use crate::events::{Ending, Event, MicrophoneList};
 use crate::files::{self, ConfigFile};
@@ -204,8 +204,8 @@ fn first_run(options: &Options, paths: &Paths) -> Result<Option<FirstRun>, Exit>
     Ok(needed.then(|| {
         let mut first_run = FirstRunModel::new(card, status);
         first_run.hold_key = config.hold_key.clone();
-        // Asking loads the backends, which the model would load anyway; only Windows decides at run time.
-        first_run.no_vulkan = cfg!(windows) && !skald_engine::gpu_available();
+        // Asking loads the backends, which the model would load anyway; a Mac always has Metal.
+        first_run.no_vulkan = computes_on_vulkan() && !skald_engine::gpu_available();
         FirstRun {
             model: first_run,
             model_id: model.id,
@@ -471,7 +471,7 @@ impl Running<'_> {
             WorkerEvent::Loaded { device, took } => {
                 let compute = skald_engine::Compute::of_device(&device);
                 self.out.say(Line::ModelLoaded { device, took });
-                if cfg!(windows) && !skald_engine::gpu_available() {
+                if computes_on_vulkan() && !skald_engine::gpu_available() {
                     self.out.say(Line::NoVulkan);
                 }
                 self.out.say(Line::Ready(self.keys.key));

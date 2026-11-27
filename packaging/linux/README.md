@@ -11,15 +11,18 @@ Needs Rust through rustup (the toolchain in `rust-toolchain.toml` is installed o
 CMake for transcribe.cpp, and the libraries the crates link. On Arch and Omarchy:
 
 ```sh
-sudo pacman -S --needed base-devel cmake alsa-lib wayland libxkbcommon-x11 libx11 fontconfig wtype
+sudo pacman -S --needed base-devel cmake alsa-lib wayland libxkbcommon-x11 libx11 fontconfig wtype \
+  vulkan-headers vulkan-icd-loader spirv-headers shaderc
 cargo build --release
 install -m 755 target/release/skald ~/.local/bin/skald
 ```
 
-transcribe.cpp is built for the CPU. wtype sends the Ctrl+V that pastes the text; the clipboard needs no
-program of its own, only a compositor with the wlroots data-control protocol, as Hyprland has. The start and
-end sounds are the freedesktop sound theme's (`sound-theme-freedesktop`), played with PipeWire's `pw-play`;
-without them Skald is silent.
+transcribe.cpp is built with its Vulkan backend (D-50), so the model computes on the GPU through the
+driver's Vulkan (`vulkan-radeon`, `vulkan-intel` or NVIDIA's `nvidia-utils`). Without a Vulkan driver it
+computes on the CPU, several times slower, and Skald says so when the model loads. wtype sends the Ctrl+V that
+pastes the text; the clipboard needs no program of its own, only a compositor with the wlroots data-control
+protocol, as Hyprland has. The start and end sounds are the freedesktop sound theme's
+(`sound-theme-freedesktop`), played with PipeWire's `pw-play`; without them Skald is silent.
 
 Skald is built for Wayland compositors. X11 is out of scope for now: it is not tried, and insertion needs
 Wayland's data-control protocol and virtual keyboard.

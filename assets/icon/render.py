@@ -84,9 +84,6 @@ class Stone:
     half_side: float
     strokes: tuple[Stroke, ...]
     groove_half_width: float
-    # Square ends follow the stroke rule exactly: flat at free ends, butt where a twig starts.
-    # Round ends are what a groove of even depth around the centre line gives.
-    square_ends: bool
     # 1 is the stone as chosen at the large sizes. A lower grain flattens pits, speckles and the
     # rough groove floor; a higher grain size makes each grain cover more of the stone.
     grain: float = 1.0
@@ -102,7 +99,7 @@ ANSUZ = (
     Stroke(0.39, 0.43, 0.61, 0.60, starts_on_stroke=True),
 )
 
-GRANITE = Stone(half_side=0.402, strokes=ANSUZ, groove_half_width=0.045, square_ends=False)
+GRANITE = Stone(half_side=0.402, strokes=ANSUZ, groove_half_width=0.045)
 
 
 def ansuz_on_grid(side: float, stave_x: float, top: float, bottom: float, twig_tops: tuple, run: float, drop: float):
@@ -113,14 +110,13 @@ def ansuz_on_grid(side: float, stave_x: float, top: float, bottom: float, twig_t
 
 
 # The small sizes are drawn for their own pixel grid: the stone's sides and the stave on pixel edges,
-# a groove a quarter of the stone wide, twigs moved apart so stone shows between them, a straight cut,
+# a groove a quarter of the stone wide, twigs moved apart so stone shows between them, a steady cut,
 # and grain that is coarser and fainter (32 px) or left out (16 px).
 SMALL_DRAWINGS = {
     32: Stone(
         half_side=13 / 32,
         strokes=ansuz_on_grid(32, 12, 7, 25, (8.5, 16), 7, 5.25),
         groove_half_width=2 / 32,
-        square_ends=True,
         grain=0.5,
         grain_size=6,
         unsteadiness=0,
@@ -129,7 +125,6 @@ SMALL_DRAWINGS = {
         half_side=7 / 16,
         strokes=ansuz_on_grid(16, 6, 4, 12.5, (4.25, 7.75), 3.5, 2.6),
         groove_half_width=1 / 16,
-        square_ends=True,
         grain=0,
         unsteadiness=0,
     ),
@@ -158,20 +153,19 @@ def outline_distance(stone: Stone, u: float, v: float) -> float:
 
 
 def groove_distance(stone: Stone, u: float, v: float) -> float:
-    """Distance from a point to the nearest stroke; the groove is cut where it is below the half width."""
+    """Distance from a point to the nearest stroke; the groove is cut where it is below the half width.
+
+    Measured squarely along and across each stroke, so the cut ends flat at a free end and butt
+    where a twig starts on the stave's centre line.
+    """
     nearest = 1.0
     for s in stone.strokes:
         dx, dy = s.x1 - s.x0, s.y1 - s.y0
-        if stone.square_ends:
-            length = math.hypot(dx, dy)
-            along = ((u - s.x0) * dx + (v - s.y0) * dy) / length
-            across = abs((v - s.y0) * dx - (u - s.x0) * dy) / length
-            before_start = stone.groove_half_width - along if s.starts_on_stroke else -along
-            d = max(across, before_start, along - length)
-        else:
-            t = clamp(((u - s.x0) * dx + (v - s.y0) * dy) / (dx * dx + dy * dy), 0, 1)
-            d = math.hypot(u - s.x0 - dx * t, v - s.y0 - dy * t)
-        nearest = min(nearest, d)
+        length = math.hypot(dx, dy)
+        along = ((u - s.x0) * dx + (v - s.y0) * dy) / length
+        across = abs((v - s.y0) * dx - (u - s.x0) * dy) / length
+        before_start = stone.groove_half_width - along if s.starts_on_stroke else -along
+        nearest = min(nearest, max(across, before_start, along - length))
     return nearest
 
 

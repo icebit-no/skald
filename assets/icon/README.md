@@ -28,8 +28,10 @@ To check a change, render to another folder with `--out DIR` and compare.
   noise.
 - **32 and 16 px.** Not downscales. The stone's sides and the stave sit on pixel edges, the groove is a
   quarter of the stone wide (4 px and 2 px) against a ninth in the large drawing, and the twigs are moved apart
-  so stone shows between them. The cut is straight and its free ends square. The 32 px stone has half the
-  grain, with grains about a pixel wide; the 16 px stone has none, only the mottling.
+  so stone shows between them. The cut is steady, without the large drawing's wobble. The 32 px stone has
+  half the grain, with grains about a pixel wide; the 16 px stone has none, only the mottling.
+- **Groove ends.** At every size the groove ends flat at a free end, and the twigs start butt on the stave's
+  centre line.
 - **Menu bar.** Three filled strokes, 2 pt wide, black with alpha. The stave has square ends; the twigs start
   butt on the stave's centre line and end square. The stave lies on whole points, so it is sharp at 1x and 2x.
 

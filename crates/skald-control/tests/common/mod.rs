@@ -259,7 +259,7 @@ pub fn folder() -> (Folder, Paths) {
 }
 
 /// The same folder with Skald running on it, holding the same configuration and state.
-#[cfg(unix)]
+#[cfg(any(unix, windows))]
 pub fn running(paths: &Paths) -> (std::sync::Arc<FakeApp>, skald_control::Serving) {
     let config = Config::from_toml(CONFIG).unwrap();
     let State { history, counts } = state(&config);

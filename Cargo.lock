@@ -5526,6 +5526,7 @@ dependencies = [
  "serde_json",
  "skald-core",
  "toml 1.2.3+spec-1.1.0",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

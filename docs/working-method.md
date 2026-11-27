@@ -37,7 +37,8 @@ hc run --bg --name skald-<slug> --cwd ../skald-worktrees/<slug> \
   pull request is merged (`hc kill skald-<slug>; hc rm skald-<slug>`).
 - Names are unique: `skald-<slug>`. The branch `thomastvedt/<slug>` is created from local `main` and tracks
   nothing.
-- At most two code workers at a time, on separate areas, so they do not get in each other's way.
+- The lead decides how many workers run at once. Each has an area of its own (a crate, a report), so no two
+  change the same files; the workspace root (`Cargo.toml`, `rust-toolchain.toml`, CI) changes through the lead.
 - The brief names the plan item, the sections of design.md and research.md it needs, the files it touches,
   what done means (it builds, the tests pass, the plan item is ticked, the pull request is open), and what the
   worker must not decide. It points at files rather than retelling them.

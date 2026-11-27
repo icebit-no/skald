@@ -1,7 +1,9 @@
 //! The overlay on Linux. On Wayland it is a layer-shell surface on the overlay layer, anchored to the bottom
 //! of the output the compositor chooses, the one with the focus; it takes no keyboard and lets every click
-//! through. On X11 it is GPUI's pop-up window, which takes no focus. The accent colour, reduced motion and
-//! the system's material are not read here, so the themes draw as they do without them.
+//! through. On X11 it is GPUI's pop-up window, which takes no focus. The accent colour and reduced motion
+//! come from the desktop's Settings portal (`appearance`); the system's material is not drawn here.
+
+mod appearance;
 
 use gpui_kit::layer_shell::{Anchor, KeyboardInteractivity, Layer, LayerShellOptions};
 use gpui_kit::{Rgba, Window, WindowKind, px};
@@ -20,11 +22,11 @@ pub(crate) fn active_display() -> Option<u64> {
 }
 
 pub(crate) fn accent_color() -> Option<Rgba> {
-    None
+    appearance::current().accent
 }
 
 pub(crate) fn prefers_reduced_motion() -> bool {
-    false
+    appearance::current().reduced_motion
 }
 
 pub(crate) fn shape_material(_: &Window, _: PillFrame) {}

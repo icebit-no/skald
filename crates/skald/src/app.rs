@@ -39,7 +39,7 @@ use crate::pipeline::{Worker, WorkerEvent, WorkerHandle};
 use crate::say::{Exit, Line, Printer, report_lines};
 use crate::shell;
 use crate::signals;
-use crate::sounds::{Afplay, Chime};
+use crate::sounds::{Chime, SystemChime};
 
 /// The longest the loop waits for a key before it looks at everything else.
 const TICK: Duration = Duration::from_millis(100);
@@ -306,7 +306,7 @@ fn dictate(options: Options, link: Option<Link>) -> Result<(), Exit> {
     }
 
     out.say(Line::LoadingModel);
-    let chime: Arc<dyn Chime> = Arc::new(Afplay);
+    let chime: Arc<dyn Chime> = Arc::new(SystemChime::default());
     let (events, worker_events) = mpsc::channel();
     let ModelFiles { model, vad, .. } = models;
     let worker = Worker::spawn(

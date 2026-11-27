@@ -166,17 +166,9 @@ impl fmt::Display for Line {
             Line::HoldKeyChanged(key) => write!(f, "Hold {} for å snakke.", key_name(*key)),
             Line::MicrophoneChanged(Some(name)) => write!(f, "{name} · koblet til, brukes nå"),
             Line::Recording(name) => write!(f, "Opptak · {name}"),
-            Line::RecordingHandsFree(name) => write!(
-                f,
-                "Håndfritt opptak · {name} · {} stopper",
-                if cfg!(target_os = "linux") {
-                    "Ctrl+Super+X"
-                } else if cfg!(windows) {
-                    "Ctrl+Win+X"
-                } else {
-                    "⌃⌘X"
-                }
-            ),
+            Line::RecordingHandsFree(name) => {
+                write!(f, "Håndfritt opptak · {name} · {HANDS_FREE_CHORD} stopper")
+            }
             Line::Carving => f.write_str("rister …"),
             Line::Cancelled => f.write_str("Avbrutt."),
             Line::Capped => write!(
@@ -244,7 +236,7 @@ impl fmt::Display for Line {
             Line::LoginItemFailed(reason) => {
                 write!(f, "Kunne ikke endre start ved innlogging: {reason}")
             }
-            Line::NoMenuBarItem(reason) => write!(f, "Skald fikk ikke plass i menylinjen: {reason}."),
+            Line::NoMenuBarItem(reason) => write!(f, "Skald fikk ikke plass i {TRAY_PLACE}: {reason}."),
             Line::SettingNotChanged(reason) => {
                 write!(f, "Innstillingen ble ikke endret: {reason}")
             }
@@ -484,6 +476,36 @@ impl Printer {
         if self.verbose || !line.is_verbose() {
             // A terminal that has gone away leaves no one to tell.
             let _ = writeln!(std::io::stdout().lock(), "{line}");
+        }
+    }
+}
+
+/// Where this system shows Skald's item, as its users call the place.
+const TRAY_PLACE: &str = if cfg!(target_os = "macos") {
+    "menylinjen"
+} else if cfg!(windows) {
+    "systemstatusfeltet"
+} else {
+    "panelet"
+};
+
+/// The hands-free chord as this system's users press it.
+const HANDS_FREE_CHORD: &str = if cfg!(target_os = "macos") {
+    "⌃⌘X"
+} else if cfg!(windows) {
+    "Ctrl+Win+X"
+} else {
+    "Ctrl+Super+X"
+};
+
+/// Why the item in the menu bar or the panel was not made, in the words of the line that says so.
+#[cfg(any(target_os = "macos", target_os = "linux", windows))]
+pub(crate) fn tray_reason(error: &skald_tray::TrayError) -> String {
+    match error {
+        skald_tray::TrayError::NotMainThread => "den kan bare lages på hovedtråden".into(),
+        skald_tray::TrayError::Unsupported => "dette systemet har ingen plass til den ennå".into(),
+        skald_tray::TrayError::NoService(reason) => {
+            format!("tjenesten for den startet ikke ({reason})")
         }
     }
 }

@@ -17,7 +17,12 @@ install -m 755 target/release/skald ~/.local/bin/skald
 ```
 
 transcribe.cpp is built for the CPU. wtype sends the Ctrl+V that pastes the text; the clipboard needs no
-program of its own, only a compositor with the wlroots data-control protocol, as Hyprland has.
+program of its own, only a compositor with the wlroots data-control protocol, as Hyprland has. The start and
+end sounds are the freedesktop sound theme's (`sound-theme-freedesktop`), played with PipeWire's `pw-play`;
+without them Skald is silent.
+
+Skald is built for Wayland compositors. X11 is out of scope for now: it is not tried, and insertion needs
+Wayland's data-control protocol and virtual keyboard.
 
 ## Run
 
@@ -31,13 +36,23 @@ bindings below. Ctrl+C in the terminal ends it, or `pkill -INT skald` when Hyprl
 `skald --terminal` takes dictation without the overlay and the windows; it says where the model belongs and
 gives the `curl` line when it is missing.
 
-To start it with Hyprland, add `exec-once = skald` to its configuration (on Omarchy,
-`~/.config/hypr/autostart.conf`).
+«Start Skald ved innlogging» (`skald config set start_at_login true`) writes an autostart entry,
+`~/.config/autostart/skald.desktop`, which desktops that follow the autostart specification start at login,
+as Hyprland does when uwsm runs it. A compositor that ignores autostart entries starts Skald from its own
+configuration instead; for Hyprland that is `exec-once = skald` (on Omarchy, `~/.config/hypr/autostart.conf`).
+
+Hyprland tiles the first-run and settings windows like any other. To float them, add a rule for Skald's
+windows, which name themselves `app.icebit.skald`:
+
+```ini
+windowrule = float, class:^(app\.icebit\.skald)$
+```
 
 ## The key
 
-A Wayland desktop gives the keyboard to no program, so Hyprland holds the key for Skald. Add these lines to
-Hyprland's configuration (on Omarchy, `~/.config/hypr/bindings.conf`):
+A Wayland desktop gives the keyboard to no program, so Hyprland holds the key for Skald. Skald never reads
+the keyboard itself (`/dev/input`) and needs no `input` group (D-47). Add these lines to Hyprland's
+configuration (on Omarchy, `~/.config/hypr/bindings.conf`):
 
 ```ini
 # Hold right Ctrl to talk to Skald. The n lets right Ctrl through, so right Ctrl+C still copies.
@@ -86,8 +101,9 @@ Skald». Waybar needs its `tray` module, which Omarchy's bar has.
 ## The overlay
 
 The pill is a layer-shell surface named `skald`, at the bottom of the monitor with the focus. It takes no
-keyboard and lets every click through. The Kjedelig theme asks for a blurred background, which Hyprland gives a
-layer surface only through a rule:
+keyboard and lets every click through. It takes the desktop's accent colour and its wish for reduced motion
+from the Settings portal, where the desktop answers for them. The Kjedelig theme asks for a blurred
+background, which Hyprland gives a layer surface only through a rule:
 
 ```ini
 layerrule = blur, skald

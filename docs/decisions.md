@@ -5,15 +5,60 @@ decision, and that pull request also edits the page where the rule lives ([desig
 [plan.md](plan.md)). Those pages say what holds; this one says when and why it came to hold. A later decision
 that undoes one adds an entry of its own, and the earlier entry gets one line naming it.
 
-## D-18 — Clipboard and paste through NSPasteboard and CoreGraphics on macOS
+## D-21 — Clipboard and paste through NSPasteboard and CoreGraphics on macOS
 
-2026-11-27, proposed in the input pull request.
+2026-11-27, Claude.
 
 The previous clipboard is put back as it was, every item with every type it held: rich text, images, files and
 types private to an app. arboard handles plain text, HTML and images, so Skald reads and writes NSPasteboard
 items itself through objc2, which handy-keys already brings in. The text that is on the clipboard only for the
 paste is marked transient, so clipboard history tools skip it. ⌘V is two CoreGraphics key events carrying the
 Command flag, which needs no dependency beyond those; enigo is not used. Changed: [research.md](research.md#stack).
+
+## D-20 — Microphone fallback, matching by name, a lost microphone and the menu pin
+
+2026-11-27, Claude.
+
+D-10 left four cases open. When no microphone in the order is connected, Skald uses the system's default
+input, then the first connected microphone, so a take still records; while any microphone in the order is
+connected, the order wins over the default. A device can get a new id when it is plugged into another port, so
+an entry whose id is gone matches a connected microphone of the same name that no other entry holds by id. A
+microphone that disappears during a take ends the take with what was recorded, and the next take uses the next
+microphone; switching in the middle would put two microphones in one take.
+
+Choosing a microphone in the menu pins it: the app puts it first in the order it uses until «Bruk den første
+som er koblet til», and while it is unplugged the rest of the order applies. The pin is a setting, so
+`skald mic use` sets the same pin. Changed: [design.md](design.md#microphones).
+
+## D-19 — The configuration keeps the keys it does not know
+
+2026-11-27, Claude.
+
+Settings, `skald` and a person with an editor all change one TOML file, and versions of Skald will meet older
+and newer files. A missing key takes its default, so an older file loads. A key this version does not know is
+read, has no effect, and is written back as it was, at the top, in a section and in each correction, so an
+older Skald that saves its settings does not delete those of a newer one; a hold key or model it does not
+know is kept as written for the same reason. A key never changes type: a setting that needs another type gets
+a new key, so a value of the wrong type is a mistake in the file, and loading fails with the line rather than
+putting a default in place of what the user chose. Comments in the file are not kept when it is written.
+
+The file is written only when a setting changes, never after a take: the command line and a person's editor
+share it, and a write per take would race both. How often each correction applied is state, kept next to the
+history and keyed by the rule's words, whatever their case and spacing, so a rule given a new replacement
+keeps its count.
+
+## D-18 — Corrections match whole words, ignore case, and the longest match wins
+
+2026-11-27, Claude.
+
+A rule that fired inside another word would break words it was never meant for, so a rule matches only where
+its words stand alone; letters, æøå included, and digits belong to a word, and spaces, punctuation and
+hyphens end it, so «Post gres SQL-databasen» is corrected. The model capitalises at will and at the start of
+every sentence, so case is ignored when matching, and a replacement written in lower case takes a capital
+first letter where the text had one; a replacement with capitals, such as «PostgreSQL», is written as given.
+The text is read once: where rules overlap, the leftmost match is taken, then the longest, then the earlier
+rule, and what a rule writes is never read again, so the result does not depend on rules feeding each other.
+Changed: [design.md](design.md#vocabulary-and-corrections).
 
 ## D-17 — The app icon is ᚨ cut in light granite
 

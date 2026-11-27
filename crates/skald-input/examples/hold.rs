@@ -1,5 +1,5 @@
 //! Hold right ⌘ (macOS) or right Ctrl (Windows) and see what each hold means: pressed, armed or not
-//! armed, released, cancelled. On macOS ⌃⌘X starts and stops a hands-free take.
+//! armed, released, cancelled. ⌃⌘X (Ctrl+Win+X on Windows) starts and stops a hands-free take.
 //!
 //! ```sh
 //! cargo run -p skald-input --example hold                      # print only
@@ -31,6 +31,11 @@ mod listen {
         "right ⌘"
     } else {
         "right Ctrl"
+    };
+    const CHORD: &str = if cfg!(target_os = "macos") {
+        "⌃⌘X"
+    } else {
+        "Ctrl+Win+X"
     };
 
     const TEST_TEXT: &str = "Hei, dette er en prøve.";
@@ -79,7 +84,7 @@ mod listen {
                 }
                 ListenerEvent::Hold(HoldEvent::Cancelled) => println!("{at}  cancelled"),
                 ListenerEvent::Hold(HoldEvent::HandsFreeStarted { .. }) => {
-                    println!("{at}  hands-free started; ⌃⌘X stops it");
+                    println!("{at}  hands-free started; {CHORD} stops it");
                 }
                 ListenerEvent::Hold(
                     end @ (HoldEvent::Released

@@ -11,9 +11,10 @@ own words.
   does not arm, as in ⌘C, closes it again and throws its audio away.
 - So macOS shows its microphone indicator for a moment at each right-⌘ shortcut; that is accepted for the first words.
 - A take ends when the key is released, at the cap, or when its microphone disappears.
-- ⌃⌘X starts and stops a hands-free take on macOS. The key on Windows and Linux is chosen in M4 and M5; Ctrl+Alt is AltGr on Norwegian layouts.
+- ⌃⌘X starts and stops a hands-free take on macOS, and Ctrl+Win+X on Windows, where the Windows key stands
+  for ⌘. The key on Linux is chosen in M5; Ctrl+Alt is AltGr on Norwegian layouts.
   While a hands-free take runs, the hold key starts nothing and other keys cancel nothing, so the user can type
-  and use shortcuts; ⌃⌘X itself never reaches the app in front.
+  and use shortcuts; the chord itself never reaches the app in front.
 - A take is capped at 120 seconds. On macOS the system sound Tink plays when a take arms and Pop as its text is
   inserted; the sounds can be turned off.
 
@@ -38,10 +39,11 @@ The colours named below are the two Viking themes'; Kjedelig uses the system's a
 | Satt inn | A gold tick and the start of the text, in plain type, for about 1.5 s |
 | Hørte ingenting | «Hørte ingenting · lyttet på <mikrofon>» |
 | Ikke satt inn | «Ikke satt inn · ligger i Siste tekster», when the text could not be inserted |
+| Administratorvindu | «Kan ikke sette inn i et administratorvindu · ligger i Siste tekster», on Windows, when the window in front runs as administrator |
 | Transkriberingen feilet | «Transkriberingen feilet», when the model failed on the take |
 | Ingen mikrofon | «Ingen mikrofon er koblet til», when a take arms without one |
 | Mikrofon byttet | «<mikrofon> · koblet til, brukes nå», once, when the active microphone changes |
-| Håndfritt | A padlock instead of the dot, and «⌃⌘X stopper» |
+| Håndfritt | A padlock instead of the dot, and «⌃⌘X stopper» («Ctrl+Win+X stopper» on Windows) |
 
 The chisel's speed comes from this machine's measured seconds of work per second of audio, kept from recent
 takes, so it reaches the end about when the text arrives. Past 96 % it slows down instead of stopping. It never
@@ -49,8 +51,8 @@ carves the runes of a text that does not exist yet: until the text arrives, the 
 cuts. When the text arrives, the carved stretch shows its runes, the chisel runs to the end in 150 ms, the row
 stands 0.4 s, and Satt inn follows.
 
-Hørte ingenting, Ikke satt inn, Transkriberingen feilet and Ingen mikrofon stand 2 s, and Mikrofon byttet
-2.5 s.
+Hørte ingenting, Ikke satt inn, Administratorvindu, Transkriberingen feilet and Ingen mikrofon stand 2 s, and
+Mikrofon byttet 2.5 s.
 
 With reduced motion asked for, the pill shows each state without movement; the recording bars are a still picture
 of the last 2.4 s, replaced once a second.
@@ -81,6 +83,10 @@ Putting the previous clipboard back means reading it, and macOS may ask once whe
 user says no, the text stays on the clipboard. Contents marked concealed or transient, as password managers
 mark a secret, are never read or put back; the text stays on the clipboard instead, so the secret is not
 restored where the manager's own clearing can no longer reach it.
+
+On Windows a window run as administrator refuses keystrokes from an app that is not, so Skald pastes nothing
+into it, leaves the clipboard alone and says so (Administratorvindu); the text is in «Siste tekster». Windows
+does not show Skald the hold key while such a window is in front either, so a take cannot start there.
 
 ## Microphones
 

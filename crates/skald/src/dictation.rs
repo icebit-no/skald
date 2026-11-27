@@ -246,7 +246,10 @@ impl<M: Microphones> Dictation<M> {
                     hands_free,
                 });
             }
-            Err(Unopened::NoMicrophone) => self.lines.push(Line::NoMicrophone),
+            Err(Unopened::NoMicrophone) => {
+                self.lines.push(Line::NoMicrophone);
+                self.events.push(Event::NoMicrophone);
+            }
             Err(Unopened::Failed { microphone, error }) => {
                 self.lines.push(Line::CaptureFailed { microphone, error });
             }
@@ -722,8 +725,10 @@ mod tests {
         dictation.microphones.active = None;
         hold(&mut dictation, &[pressed()]);
         assert!(dictation.take_lines().is_empty(), "a shortcut says nothing");
+        assert!(dictation.take_events().is_empty());
         hold(&mut dictation, &[armed(), HoldEvent::Released]);
         assert_eq!(dictation.take_lines(), [Line::NoMicrophone]);
+        assert_eq!(dictation.take_events(), [Event::NoMicrophone]);
         assert!(dictation.take_jobs().is_empty());
         assert!(log.borrow().opened.is_empty());
     }
@@ -974,7 +979,7 @@ mod tests {
         dictation.microphones.active = None;
         hold(&mut dictation, &[hands_free_started()]);
         assert_eq!(dictation.take_lines(), [Line::NoMicrophone]);
-        assert!(dictation.take_events().is_empty());
+        assert_eq!(dictation.take_events(), [Event::NoMicrophone]);
         assert!(dictation.is_idle());
         assert!(dictation.take_hands_free_ended());
     }

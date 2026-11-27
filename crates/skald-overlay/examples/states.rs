@@ -86,6 +86,26 @@ async fn show_every_state(overlay: &Rc<RefCell<Overlay>>, cx: &mut AsyncApp) {
     act(cx, &|overlay, cx| overlay.heard_nothing(BUILT_IN, cx));
     wait(overlay, cx, Duration::from_millis(2600)).await;
 
+    println!("Ikke satt inn");
+    act(cx, &|overlay, cx| overlay.record(cx));
+    speak(overlay, cx, Duration::from_millis(1500), 1.0).await;
+    act(cx, &|overlay, cx| overlay.release(cx));
+    wait(overlay, cx, Duration::from_millis(600)).await;
+    act(cx, &|overlay, cx| overlay.not_inserted(cx));
+    wait(overlay, cx, Duration::from_millis(2600)).await;
+
+    println!("Transkriberingen feilet");
+    act(cx, &|overlay, cx| overlay.record(cx));
+    speak(overlay, cx, Duration::from_millis(1500), 1.0).await;
+    act(cx, &|overlay, cx| overlay.release(cx));
+    wait(overlay, cx, Duration::from_millis(600)).await;
+    act(cx, &|overlay, cx| overlay.transcription_failed(cx));
+    wait(overlay, cx, Duration::from_millis(2600)).await;
+
+    println!("Ingen mikrofon");
+    act(cx, &|overlay, cx| overlay.no_microphone(cx));
+    wait(overlay, cx, Duration::from_millis(2600)).await;
+
     println!("Mikrofon byttet");
     act(cx, &|overlay, cx| {
         overlay.microphone_changed(PLUGGED_IN, cx)

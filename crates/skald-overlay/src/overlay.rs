@@ -154,6 +154,21 @@ impl Overlay {
         self.drive(cx, |pill, now| pill.heard_nothing(microphone, now));
     }
 
+    /// The text could not be inserted: «Ikke satt inn · ligger i Siste tekster».
+    pub fn not_inserted(&mut self, cx: &mut App) {
+        self.drive(cx, |pill, now| pill.not_inserted(now));
+    }
+
+    /// The model failed on the take: «Transkriberingen feilet».
+    pub fn transcription_failed(&mut self, cx: &mut App) {
+        self.drive(cx, |pill, now| pill.transcription_failed(now));
+    }
+
+    /// A take armed with no microphone connected: «Ingen mikrofon er koblet til».
+    pub fn no_microphone(&mut self, cx: &mut App) {
+        self.drive(cx, |pill, now| pill.no_microphone(now));
+    }
+
     /// The active microphone changed: Mikrofon byttet, once, after the take on screen if there is one.
     pub fn microphone_changed(&mut self, microphone: &str, cx: &mut App) {
         self.drive(cx, |pill, now| pill.microphone_changed(microphone, now));

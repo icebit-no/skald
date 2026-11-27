@@ -28,7 +28,8 @@ const SHORTEST_CARVE: Duration = Duration::from_millis(250);
 const PULSE: Duration = Duration::from_millis(1800);
 
 const INSERTED_FOR: Duration = Duration::from_millis(1500);
-const HEARD_NOTHING_FOR: Duration = Duration::from_millis(2000);
+/// Hørte ingenting, and each message that a take ended without its text being inserted.
+const NOTICE_FOR: Duration = Duration::from_millis(2000);
 const MICROPHONE_CHANGED_FOR: Duration = Duration::from_millis(2500);
 
 /// Whether the pill moves.
@@ -59,6 +60,9 @@ enum State {
     MicrophoneChanged {
         microphone: String,
     },
+    NotInserted,
+    TranscriptionFailed,
+    NoMicrophone,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -193,6 +197,18 @@ impl Pill {
         );
     }
 
+    pub fn not_inserted(&mut self, now: Duration) {
+        self.show(State::NotInserted, now);
+    }
+
+    pub fn transcription_failed(&mut self, now: Duration) {
+        self.show(State::TranscriptionFailed, now);
+    }
+
+    pub fn no_microphone(&mut self, now: Duration) {
+        self.show(State::NoMicrophone, now);
+    }
+
     /// Shown at once, or after the take on screen is done.
     pub fn microphone_changed(&mut self, microphone: &str, now: Duration) {
         let notice = State::MicrophoneChanged {
@@ -264,7 +280,10 @@ impl Pill {
                     _ => return,
                 },
                 State::Inserted { .. } => message_ends(INSERTED_FOR),
-                State::HeardNothing { .. } => message_ends(HEARD_NOTHING_FOR),
+                State::HeardNothing { .. }
+                | State::NotInserted
+                | State::TranscriptionFailed
+                | State::NoMicrophone => message_ends(NOTICE_FOR),
                 State::MicrophoneChanged { .. } => message_ends(MICROPHONE_CHANGED_FOR),
                 State::Recording { .. } => return,
             };
@@ -372,6 +391,9 @@ pub(crate) enum Look<'a> {
     MicrophoneChanged {
         microphone: &'a str,
     },
+    NotInserted,
+    TranscriptionFailed,
+    NoMicrophone,
 }
 
 /// The dot's breath for a moment with no movement.
@@ -433,6 +455,9 @@ fn look(state: &State, now: Duration, still: bool) -> Look<'_> {
         State::Inserted { text } => Look::Inserted { text },
         State::HeardNothing { microphone } => Look::HeardNothing { microphone },
         State::MicrophoneChanged { microphone } => Look::MicrophoneChanged { microphone },
+        State::NotInserted => Look::NotInserted,
+        State::TranscriptionFailed => Look::TranscriptionFailed,
+        State::NoMicrophone => Look::NoMicrophone,
     }
 }
 
@@ -649,6 +674,52 @@ mod tests {
         );
         pill.advance(ms(5500) + FADE);
         assert!(pill.is_hidden());
+    }
+
+    #[test]
+    fn a_text_not_inserted_or_a_failed_transcription_shows_two_seconds_and_leaves() {
+        let ends: [(fn(&mut Pill, Duration), Look<'static>); 2] = [
+            (Pill::not_inserted, Look::NotInserted),
+            (Pill::transcription_failed, Look::TranscriptionFailed),
+        ];
+        for (end, shown) in ends {
+            let mut pill = recorded(2);
+            pill.release(ms(3000));
+            end(&mut pill, ms(3500));
+            pill.advance(ms(3700));
+            assert_eq!(only(&pill.scene(ms(3700), Motion::Full)), &shown);
+            pill.advance(ms(5499));
+            assert!(!pill.is_hidden(), "{shown:?} stands 2 s");
+            pill.advance(ms(5500) + FADE);
+            assert!(pill.is_hidden());
+        }
+    }
+
+    #[test]
+    fn no_microphone_shows_two_seconds_with_nothing_on_screen_before_it() {
+        let mut pill = Pill::default();
+        pill.no_microphone(ms(1000));
+        assert_eq!(
+            only(&pill.scene(ms(1500), Motion::Full)),
+            &Look::NoMicrophone
+        );
+        pill.advance(ms(3000) + FADE);
+        assert!(pill.is_hidden());
+    }
+
+    #[test]
+    fn a_microphone_change_waits_for_a_failed_take_s_message_to_be_done() {
+        let mut pill = recorded(2);
+        pill.microphone_changed("Shure MV7", ms(2000));
+        pill.release(ms(3000));
+        pill.transcription_failed(ms(3500));
+        pill.advance(ms(6000));
+        assert_eq!(
+            only(&pill.scene(ms(6000), Motion::Full)),
+            &Look::MicrophoneChanged {
+                microphone: "Shure MV7"
+            }
+        );
     }
 
     #[test]

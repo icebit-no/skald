@@ -25,7 +25,9 @@ pub(crate) enum Event {
     Cancelled {
         take: u64,
     },
-    /// The take's text was inserted, or there was none.
+    /// A take armed with no microphone connected, so none started.
+    NoMicrophone,
+    /// The take's text was inserted, or why not.
     Ended {
         take: u64,
         ending: Ending,
@@ -50,8 +52,10 @@ pub(crate) enum Ending {
     HeardNothing {
         microphone: String,
     },
-    /// A text that could not be inserted, or a failed transcription: nothing to show but the end.
-    NoText,
+    /// The text is in the history but could not be inserted.
+    NotInserted,
+    /// The model failed on the take.
+    Failed,
 }
 
 impl Ending {
@@ -61,7 +65,8 @@ impl Ending {
             Outcome::HeardNothing(_) => Self::HeardNothing {
                 microphone: report.microphone.clone(),
             },
-            Outcome::NotInserted { .. } | Outcome::Failed(_) => Self::NoText,
+            Outcome::NotInserted { .. } => Self::NotInserted,
+            Outcome::Failed(_) => Self::Failed,
         }
     }
 }
@@ -94,7 +99,7 @@ mod tests {
     }
 
     #[test]
-    fn a_take_s_end_is_its_text_the_microphone_it_heard_nothing_on_or_nothing() {
+    fn a_take_s_end_is_its_text_the_microphone_it_heard_nothing_on_or_what_went_wrong() {
         assert_eq!(
             Ending::of(&report(Outcome::Inserted {
                 text: "Hei.".into(),
@@ -115,11 +120,11 @@ mod tests {
                 error: InsertError::KeysHeld,
                 complete: true,
             })),
-            Ending::NoText
+            Ending::NotInserted
         );
         assert_eq!(
             Ending::of(&report(Outcome::Failed("out of memory".into()))),
-            Ending::NoText
+            Ending::Failed
         );
     }
 }

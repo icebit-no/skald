@@ -5,10 +5,10 @@ decision, and that pull request also edits the page where the rule lives ([desig
 [plan.md](plan.md)). Those pages say what holds; this one says when and why it came to hold. A later decision
 that undoes one adds an entry of its own, and the earlier entry gets one line naming it.
 
-## D-34 — The app runs the dictation loop beside GPUI; ⌃⌘X is kept from other apps
+## D-36 — The app runs the dictation loop beside GPUI; ⌃⌘X is kept from other apps
 
 2026-11-27, Claude; Silero VAD inside the binary decided in #18's review, the bench and settings wiring asked
-by the lead.
+by the lead, the three messages and keeping ⌃⌘X from other apps settled by the lead in review.
 
 `skald` with no command runs GPUI on the main thread and #18's dictation loop on a thread of its own, unchanged
 in its rules. The loop sends what happens (a take starting, its levels, its end, the microphones, the settings,
@@ -22,8 +22,10 @@ Moving the loop into GPUI's tasks would have meant making its blocking wait for 
 The engine must be dropped before the process exits (D-23), so «Avslutt Skald» asks the loop to stop and the
 app quits once the loop has dropped the model; when the system ends the app, as at log out, the main thread
 waits for the loop. The overlay shows a take's end only while that take is the one on screen, so a take
-started while the last one is carved is not replaced by the last one's text. A text that could not be
-inserted, and a failed transcription, end the pill without a message, since design.md has no state for them.
+started while the last one is carved is not replaced by the last one's text. A take that ends without its
+text says why, as Hørte ingenting does and for as long: «Ikke satt inn · ligger i Siste tekster» when the
+paste was refused, «Transkriberingen feilet» when the model failed, and «Ingen mikrofon er koblet til» when
+a take arms without one. The text not inserted is kept in the history, so «Siste tekster» has it.
 
 The microphones connected are listed every three seconds for the menu and the settings window: the system
 tells Skald only when the microphone in use changes, and the menu bar item builds its menu from the model it
@@ -43,7 +45,8 @@ changes; when System Settings must allow the item, Skald says where.
 
 Silero VAD is held in the binary and written into the models folder when the file there is missing or holds
 other bytes, compared byte for byte; a test checks the held file against the pinned SHA-256
-(`assets/models/README.md`). Changed: [design.md](design.md#recording), [plan.md](plan.md) M2.
+(`assets/models/README.md`). Changed: [design.md](design.md#recording) (Recording, Overlay),
+[plan.md](plan.md) M2.
 
 ## D-33 — The settings window draws gpui-kit's headless controls and sends each change to the app
 

@@ -23,6 +23,9 @@ pub(crate) enum Pill {
     Release,
     Inserted(String),
     HeardNothing(String),
+    NotInserted,
+    TranscriptionFailed,
+    NoMicrophone,
     MicrophoneChanged(String),
     Cancel,
 }
@@ -95,13 +98,18 @@ impl Screen {
                     changed.pills.push(Pill::Cancel);
                 }
             }
+            Event::NoMicrophone => {
+                self.on_screen = None;
+                changed.pills.push(Pill::NoMicrophone);
+            }
             Event::Ended { take, ending } => {
                 self.carving = self.carving.saturating_sub(1);
                 if self.on_screen.take_if(|shown| *shown == take).is_some() {
                     changed.pills.push(match ending {
                         Ending::Inserted(text) => Pill::Inserted(text),
                         Ending::HeardNothing { microphone } => Pill::HeardNothing(microphone),
-                        Ending::NoText => Pill::Cancel,
+                        Ending::NotInserted => Pill::NotInserted,
+                        Ending::Failed => Pill::TranscriptionFailed,
                     });
                 }
             }
@@ -330,7 +338,7 @@ mod tests {
                 Event::Cancelled { take: 2 },
                 Event::Ended {
                     take: 2,
-                    ending: Ending::NoText,
+                    ending: Ending::Failed,
                 },
             ],
         );
@@ -347,7 +355,7 @@ mod tests {
     }
 
     #[test]
-    fn a_text_that_was_not_inserted_ends_the_pill_and_microphone_changes_always_show() {
+    fn a_text_not_inserted_or_a_failed_take_says_so_and_microphone_changes_always_show() {
         let mut screen = Screen::default();
         assert_eq!(
             pills(
@@ -357,7 +365,13 @@ mod tests {
                     Event::Carving { take: 1 },
                     Event::Ended {
                         take: 1,
-                        ending: Ending::NoText,
+                        ending: Ending::NotInserted,
+                    },
+                    recording(2),
+                    Event::Carving { take: 2 },
+                    Event::Ended {
+                        take: 2,
+                        ending: Ending::Failed,
                     },
                     Event::MicrophoneChanged("Shure MV7".into()),
                     Event::Level(-20.0),
@@ -366,10 +380,39 @@ mod tests {
             [
                 Pill::Record { hands_free: false },
                 Pill::Release,
-                Pill::Cancel,
+                Pill::NotInserted,
+                Pill::Record { hands_free: false },
+                Pill::Release,
+                Pill::TranscriptionFailed,
                 Pill::MicrophoneChanged("Shure MV7".into()),
             ]
         );
+    }
+
+    #[test]
+    fn a_take_without_a_microphone_says_so_and_takes_the_pill_from_one_being_carved() {
+        let mut screen = Screen::default();
+        let shown = pills(
+            &mut screen,
+            vec![
+                recording(1),
+                Event::Carving { take: 1 },
+                Event::NoMicrophone,
+                Event::Ended {
+                    take: 1,
+                    ending: Ending::Inserted("Første.".into()),
+                },
+            ],
+        );
+        assert_eq!(
+            shown,
+            [
+                Pill::Record { hands_free: false },
+                Pill::Release,
+                Pill::NoMicrophone,
+            ]
+        );
+        assert_eq!(screen.tray().activity, Activity::Idle);
     }
 
     #[test]
@@ -386,12 +429,12 @@ mod tests {
         screen.apply(Event::Carving { take: 2 });
         screen.apply(Event::Ended {
             take: 1,
-            ending: Ending::NoText,
+            ending: Ending::Failed,
         });
         assert_eq!(activity(&screen), Activity::Transcribing, "take 2 waits");
         screen.apply(Event::Ended {
             take: 2,
-            ending: Ending::NoText,
+            ending: Ending::Failed,
         });
         assert_eq!(activity(&screen), Activity::Idle);
         screen.apply(recording(3));

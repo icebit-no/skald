@@ -85,15 +85,47 @@ pub(crate) fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Invocati
     }
 }
 
-pub(crate) const HELP: &str = "\
+// What `skald` with no command does, with this system's key, chord and place for the item: a literal, as
+// the help is put together from literals.
+#[cfg(target_os = "macos")]
+macro_rules! how_it_runs {
+    () => {
+        "Uten kommando starter skald, med ᚨ i menylinjen: hold høyre ⌘, snakk, slipp, og
+teksten settes inn der markøren er. ⌃⌘X starter og stopper et håndfritt opptak.
+Avslutt Skald fra menyen, eller med Ctrl-C i terminalen.
+"
+    };
+}
+#[cfg(target_os = "linux")]
+macro_rules! how_it_runs {
+    () => {
+        "Uten kommando starter skald, med ᚨ i panelet: hold høyre Ctrl, snakk, slipp, og
+teksten settes inn der markøren er. Ctrl+Super+X starter og stopper et håndfritt
+opptak. Skrivebordet holder tastene og kaller skald start, skald stop og skald
+toggle; Hyprland-linjene står i packaging/linux. Avslutt Skald fra menyen, eller
+med Ctrl-C i terminalen.
+"
+    };
+}
+#[cfg(not(any(target_os = "macos", target_os = "linux")))]
+macro_rules! how_it_runs {
+    () => {
+        "Uten kommando starter skald: hold høyre Ctrl, snakk, slipp, og teksten settes inn
+der markøren er. Ctrl+Win+X starter og stopper et håndfritt opptak. Avslutt Skald
+med Ctrl-C i terminalen.
+"
+    };
+}
+
+pub(crate) const HELP: &str = concat!(
+    "\
 Skald: norsk tale til tekst, rett på maskinen.
 
 Bruk: skald [valg]
 
-Uten kommando starter skald, med ᚨ i menylinjen: hold høyre ⌘, snakk, slipp, og
-teksten settes inn der markøren er. ⌃⌘X starter og stopper et håndfritt opptak.
-Avslutt Skald fra menyen, eller med Ctrl-C i terminalen.
-
+",
+    how_it_runs!(),
+    "
 Valg:
   --terminal       ta imot diktering i terminalen, uten overlegg og meny
   --dir <mappe>    hold innstillinger, historikk og modeller i denne ene mappen
@@ -104,7 +136,8 @@ Valg:
   -V, --version    vis versjonen
 
 Kommandoene for ordskatt, rettinger, innstillinger og historikk: skald help
-Testsett gjennom konfigurasjonene: skald bench --help";
+Testsett gjennom konfigurasjonene: skald bench --help"
+);
 
 #[cfg(test)]
 mod tests {

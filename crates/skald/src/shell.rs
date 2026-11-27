@@ -38,7 +38,7 @@ use crate::control::Control;
 use crate::events::Event;
 use crate::permissions;
 use crate::pipeline::WorkerHandle;
-use crate::say::{Exit, Line, Printer};
+use crate::say::{self, Exit, Line, Printer};
 use crate::screen::{self, Pill, Screen};
 
 /// The loop's thread while it runs, shared with the hook that waits for it as the app quits.
@@ -233,7 +233,9 @@ impl Shell {
             let _ = inbox.try_send(Message::Tray(action));
         }) {
             Ok(tray) => self.tray = Some(tray),
-            Err(error) => self.printer.say(Line::NoMenuBarItem(error.to_string())),
+            Err(error) => self
+                .printer
+                .say(Line::NoMenuBarItem(say::tray_reason(&error))),
         }
     }
 

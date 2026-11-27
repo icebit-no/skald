@@ -97,6 +97,8 @@ impl SettingsWindow {
                 title: Some("Innstillinger".into()),
                 ..TitlebarOptions::default()
             }),
+            // The name a Wayland compositor knows Skald's windows by, as in a Hyprland window rule.
+            app_id: Some(skald_ui::APP_ID.into()),
             window_bounds: Some(WindowBounds::Windowed(Bounds::centered(
                 None,
                 size(px(WINDOW_SIZE.0), px(WINDOW_SIZE.1)),

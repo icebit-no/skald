@@ -1,7 +1,7 @@
 //! Skald on macOS and Linux: the hold key, the microphones and the model joined into one loop. The app runs
 //! the loop on a thread of its own and the screen (`shell`: the overlay, the menu bar item, the settings
-//! window) on the main thread, which GPUI owns; with `--terminal`, and always on Linux, the loop runs on the
-//! main thread alone. Either way each line a user reads is printed as it happens.
+//! window) on the main thread, which GPUI owns; with `--terminal` the loop runs on the main thread alone.
+//! Either way each line a user reads is printed as it happens.
 //!
 //! Start-up checks what can stop Skald before the model takes seconds to load: the files, Accessibility,
 //! then the microphone permission. When the app finds the model or a permission missing, it opens the
@@ -57,8 +57,7 @@ const MICROPHONES_EVERY: Duration = Duration::from_secs(3);
 const FIRST_KEY_EVENT_WITHIN: Duration = Duration::from_secs(2);
 
 pub(crate) fn run(options: Options) -> Result<(), Exit> {
-    // Linux has no screen for Skald, so there it runs in the terminal, as with --terminal.
-    let result = if options.terminal || cfg!(target_os = "linux") {
+    let result = if options.terminal {
         dictate(options, None)
     } else {
         run_app(options)

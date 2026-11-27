@@ -214,12 +214,15 @@ impl Overlay {
             state.theme
         });
         let (display_id, bounds) = placement(cx);
+        let kind = native::window_kind(ABOVE_BOTTOM - SHADOW_ROOM);
+        // A layer surface goes where the compositor puts it.
+        let display_id = display_id.filter(|_| kind == WindowKind::PopUp);
         let options = WindowOptions {
             window_bounds: Some(WindowBounds::Windowed(bounds)),
             titlebar: None,
             focus: false,
             show: true,
-            kind: WindowKind::PopUp,
+            kind,
             is_movable: false,
             is_resizable: false,
             is_minimizable: false,

@@ -173,6 +173,10 @@ impl<'a> Message<'a> {
                 rest: " · koblet til, brukes nå".to_owned(),
             }),
             Look::NotInserted => fixed("Ikke satt inn", " · ligger i Siste tekster"),
+            Look::AdministratorWindow => fixed(
+                "Kan ikke sette inn i et administratorvindu",
+                " · ligger i Siste tekster",
+            ),
             Look::TranscriptionFailed => fixed("Transkriberingen feilet", ""),
             Look::NoMicrophone => fixed("Ingen mikrofon er koblet til", ""),
             Look::Recording { .. } | Look::Carving { .. } | Look::Inserted { .. } => None,
@@ -1013,6 +1017,13 @@ mod tests {
             ("Ikke satt inn · ligger i Siste tekster".to_owned(), true)
         );
         assert_eq!(
+            read(Look::AdministratorWindow),
+            (
+                "Kan ikke sette inn i et administratorvindu · ligger i Siste tekster".to_owned(),
+                true
+            )
+        );
+        assert_eq!(
             read(Look::TranscriptionFailed),
             ("Transkriberingen feilet".to_owned(), true)
         );
@@ -1043,6 +1054,10 @@ mod tests {
                 let letters = (message.first.chars().count() + message.rest.chars().count()) as f32;
                 assert!(letters * style.size * 0.62 < room, "{look:?} in {theme:?}");
             }
+            // The longest message keeps its fixed words whole; a wide font cuts the rest with «…».
+            let message = Message::of(&Look::AdministratorWindow).unwrap();
+            let letters = message.first.chars().count() as f32;
+            assert!(letters * style.size * 0.62 < room, "{theme:?}");
         }
     }
 

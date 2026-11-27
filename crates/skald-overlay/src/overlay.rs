@@ -159,6 +159,12 @@ impl Overlay {
         self.drive(cx, |pill, now| pill.not_inserted(now));
     }
 
+    /// The window in front runs as administrator and refused the text: «Kan ikke sette inn i et
+    /// administratorvindu · ligger i Siste tekster».
+    pub fn administrator_window(&mut self, cx: &mut App) {
+        self.drive(cx, |pill, now| pill.administrator_window(now));
+    }
+
     /// The model failed on the take: «Transkriberingen feilet».
     pub fn transcription_failed(&mut self, cx: &mut App) {
         self.drive(cx, |pill, now| pill.transcription_failed(now));

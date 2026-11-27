@@ -57,8 +57,7 @@ const MICROPHONES_EVERY: Duration = Duration::from_secs(3);
 const FIRST_KEY_EVENT_WITHIN: Duration = Duration::from_secs(2);
 
 pub(crate) fn run(options: Options) -> Result<(), Exit> {
-    // Windows has no screen for Skald yet, so there it runs in the terminal, as with --terminal.
-    let result = if options.terminal || cfg!(windows) {
+    let result = if options.terminal {
         dictate(options, None)
     } else {
         run_app(options)

@@ -26,6 +26,7 @@ pub(crate) enum Pill {
     Inserted(String),
     HeardNothing(String),
     NotInserted,
+    AdministratorWindow,
     TranscriptionFailed,
     NoMicrophone,
     MicrophoneChanged(String),
@@ -111,6 +112,7 @@ impl Screen {
                         Ending::Inserted(text) => Pill::Inserted(text),
                         Ending::HeardNothing { microphone } => Pill::HeardNothing(microphone),
                         Ending::NotInserted(_) => Pill::NotInserted,
+                        Ending::AdministratorWindow(_) => Pill::AdministratorWindow,
                         Ending::Failed(_) => Pill::TranscriptionFailed,
                     });
                 }
@@ -240,9 +242,9 @@ pub(crate) fn test_dictation(event: &Event) -> Option<TestDictation> {
             reason: Line::NoMicrophone.to_string(),
         },
         Event::Ended { ending, .. } => match ending {
-            Ending::Inserted(text) | Ending::NotInserted(text) => {
-                TestDictation::Heard { text: text.clone() }
-            }
+            Ending::Inserted(text)
+            | Ending::NotInserted(text)
+            | Ending::AdministratorWindow(text) => TestDictation::Heard { text: text.clone() },
             Ending::HeardNothing { microphone } => TestDictation::HeardNothing {
                 microphone: microphone.clone(),
             },

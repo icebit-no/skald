@@ -6,6 +6,8 @@ use std::sync::Arc;
 use skald_core::Config;
 use skald_core::state::State;
 
+use skald_input::InsertError;
+
 use crate::pipeline::{Outcome, Report};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -54,6 +56,8 @@ pub(crate) enum Ending {
     },
     /// The text, which is in the history but could not be inserted.
     NotInserted(String),
+    /// The text, which is in the history: the window in front runs as administrator and refused it.
+    AdministratorWindow(String),
     /// Why the model failed on the take.
     Failed(String),
 }
@@ -65,6 +69,11 @@ impl Ending {
             Outcome::HeardNothing(_) => Self::HeardNothing {
                 microphone: report.microphone.clone(),
             },
+            Outcome::NotInserted {
+                text,
+                error: InsertError::ElevatedWindow,
+                ..
+            } => Self::AdministratorWindow(text.clone()),
             Outcome::NotInserted { text, .. } => Self::NotInserted(text.clone()),
             Outcome::Failed(reason) => Self::Failed(reason.clone()),
         }
@@ -82,7 +91,7 @@ pub(crate) struct MicrophoneList {
 #[cfg(test)]
 mod tests {
     use skald_core::silence_gate::Reason;
-    use skald_input::{InsertError, Inserted};
+    use skald_input::Inserted;
 
     use super::*;
     use crate::pipeline::Timings;
@@ -121,6 +130,14 @@ mod tests {
                 complete: true,
             })),
             Ending::NotInserted("Hei.".into())
+        );
+        assert_eq!(
+            Ending::of(&report(Outcome::NotInserted {
+                text: "Hei.".into(),
+                error: InsertError::ElevatedWindow,
+                complete: true,
+            })),
+            Ending::AdministratorWindow("Hei.".into())
         );
         assert_eq!(
             Ending::of(&report(Outcome::Failed("out of memory".into()))),

@@ -171,6 +171,8 @@ impl fmt::Display for Line {
                 "Håndfritt opptak · {name} · {} stopper",
                 if cfg!(target_os = "linux") {
                     "Ctrl+Super+X"
+                } else if cfg!(windows) {
+                    "Ctrl+Win+X"
                 } else {
                     "⌃⌘X"
                 }
@@ -340,7 +342,7 @@ pub(crate) enum Exit {
     KeysStopped,
     /// The dictation's thread ended without saying why.
     Stopped,
-    #[cfg(not(any(target_os = "macos", target_os = "linux")))]
+    #[cfg(not(any(target_os = "macos", target_os = "linux", windows)))]
     UnsupportedSystem,
 }
 
@@ -434,8 +436,10 @@ impl fmt::Display for Exit {
             Exit::CannotStart(reason) => write!(f, "Kunne ikke starte: {reason}"),
             Exit::KeysStopped => f.write_str("Tastelytteren stoppet uventet."),
             Exit::Stopped => f.write_str("Dikteringen stoppet uventet."),
-            #[cfg(not(any(target_os = "macos", target_os = "linux")))]
-            Exit::UnsupportedSystem => f.write_str("Skald kjører foreløpig bare på macOS og Linux."),
+            #[cfg(not(any(target_os = "macos", target_os = "linux", windows)))]
+            Exit::UnsupportedSystem => {
+                f.write_str("Skald kjører foreløpig bare på macOS, Windows og Linux.")
+            }
         }
     }
 }

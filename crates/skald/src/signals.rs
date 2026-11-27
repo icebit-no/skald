@@ -15,7 +15,12 @@ pub(crate) fn install() -> std::io::Result<()> {
     install_for(&[libc::SIGINT, libc::SIGTERM, libc::SIGHUP])
 }
 
-#[cfg(not(unix))]
+#[cfg(windows)]
+pub(crate) fn install() -> std::io::Result<()> {
+    crate::windows::console::on_ctrl_c(&RECEIVED)
+}
+
+#[cfg(not(any(unix, windows)))]
 pub(crate) fn install() -> std::io::Result<()> {
     Ok(())
 }

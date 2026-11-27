@@ -37,6 +37,26 @@ can be tried on Windows without building it; it shares the Vulkan SDK's installa
 Signing through SignPath Foundation (D-14) waits for Thomas's application; `packaging/windows/README.md` lists
 what SignPath asks for. Changed: [plan.md](plan.md) M4.
 
+## D-50 — On Linux transcribe.cpp's Vulkan backend is linked in
+
+2026-11-27, Claude.
+
+skald-engine builds transcribe.cpp with its Vulkan backend on Linux too, for NVIDIA, AMD and Intel GPUs alike,
+but linked into the binary rather than loaded as a module as on Windows (D-43). What the modules guard
+against on Windows is a machine without the Vulkan loader, where Windows would not start a binary that
+links it; on Linux the loader is a package of its own (`vulkan-icd-loader` on Arch), which Skald's package
+depends on. A machine with the loader and no Vulkan driver, or a driver that fails, still starts: ggml's
+Vulkan backend catches the failure as it registers, steps aside, and the CPU computes. Linked in, Skald on
+Linux stays one binary, with no rpath and no modules to ship beside it. lavapipe, Mesa's Vulkan on the
+processor, counts as no GPU, since it is a CPU that speaks Vulkan.
+
+When the model loads on the CPU for want of Vulkan, Skald says so on Linux as on Windows (design.md, First
+run): the first-run window's «Talemodell» step, the line printed as the model loads, and `skald transcribe`. CI builds against Ubuntu's Vulkan headers and
+glslc, and has no GPU, so its tests compute on the CPU. Evidence: in a container, the engine's tests and
+Skald with NB-Whisper loaded pass with lavapipe and with no Vulkan driver at all, and the binary links
+`libvulkan.so.1`. Changed: [design.md](design.md#first-run), [plan.md](plan.md) M5.
+
+
 ## D-49 — Skald runs its screen on Windows; the overlay lets clicks through as a layered window
 
 2026-11-27, Claude; the administrator window's words, the windowed program and where the backend is shown

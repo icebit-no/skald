@@ -1,0 +1,33 @@
+[package]
+name = "skald-models"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+# HTTP over rustls, the certificates checked by the system's own verifier, ring as the crypto provider.
+ureq = { version = "=3.5.2", default-features = false, features = ["rustls-no-provider", "platform-verifier"] }
+rustls = { version = "=0.23.46", default-features = false, features = ["ring", "std", "tls12"] }
+# Already in the tree for TLS; its SHA-256 checks the model file.
+ring = "=0.17.14"
+
+[target.'cfg(unix)'.dependencies]
+libc = "=0.2.191"
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "=0.6.5"
+objc2-foundation = { version = "=0.3.2", default-features = false, features = [
+    "std",
+    "NSError",
+    "NSString",
+    "NSURL",
+    "NSValue",
+] }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "=0.61.2", features = ["Win32_Storage_FileSystem"] }
+
+[dev-dependencies]
+skald-core.workspace = true

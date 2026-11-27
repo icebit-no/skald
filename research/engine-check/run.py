@@ -146,14 +146,31 @@ def step_parity(args) -> None:
     wavs = sorted(Path(args.clips).glob(args.pattern))
     order = fleurs_order(Path(args.fleurs or args.clips))
     wavs = sorted(wavs, key=lambda p: order.index(p.stem.rsplit("-", 1)[-1]))
+    refs = {w.stem: reference(w) for w in wavs}
     configs = {
         "tc-gguf": tc_texts(probe(args, args.gguf, wavs, "--timestamps", "none")),
         "tc-bin": tc_texts(probe(args, args.bin, wavs, "--timestamps", "none")),
+    }
+    if args.also:
+        # Other files of the same model, against the converted GGUF only.
+        for model in args.also:
+            configs[f"tc-{Path(model).stem}"] = tc_texts(probe(args, model, wavs, "--timestamps", "none"))
+        save(args, args.name or "parity", {"references": refs, "texts": configs})
+        rows = []
+        for w in wavs:
+            k = w.stem
+            rows.append([k.rsplit("-", 1)[-1], *[
+                "same" if configs[c][k] == configs["tc-gguf"][k]
+                else f"{100.0 * word_errors(refs[k], configs[c][k])[0] / word_errors(refs[k], '')[1]:.1f}"
+                for c in configs]])
+        rows.append(["**WER**", *[f"**{wer([(refs[w.stem], configs[c][w.stem]) for w in wavs]):.1f}**" for c in configs]])
+        print(md_table(["clip", *configs], rows))
+        return
+    configs.update({
         "wc-greedy": {w.stem: whisper_cpp(args, w, "-bs", "1") for w in wavs},
         "wc-greedy-sns": {w.stem: whisper_cpp(args, w, "-bs", "1", "--suppress-nst") for w in wavs},
         "wc-beam5-sns": {w.stem: whisper_cpp(args, w, "-bs", "5", "--suppress-nst") for w in wavs},
-    }
-    refs = {w.stem: reference(w) for w in wavs}
+    })
     save(args, args.name or "parity", {"references": refs, "texts": configs})
 
     names = list(configs)
@@ -461,6 +478,8 @@ def main() -> None:
     parser.add_argument("--pattern", default="fleurs-nb-*.wav", help="parity: clip file pattern")
     parser.add_argument("--fleurs", help="parity: FLEURS clip directory, for the table order of other clips")
     parser.add_argument("--name", help="parity: results file name (default parity)")
+    parser.add_argument("--also", nargs="*", default=[], help="parity: other files of the model, compared with "
+                                                               "the converted GGUF instead of whisper.cpp")
     parser.add_argument("--takes", help="takes from make_clips.py")
     parser.add_argument("--prompt", help="vocabulary prompt file")
     parser.add_argument("--long-prompt", help="vocabulary prompt near the 223-token limit")

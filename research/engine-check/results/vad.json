@@ -1,0 +1,1758 @@
+{
+ "default": {
+  "fleurs-nb-1661": {
+   "file": "fleurs-nb-1661",
+   "audio_s": 10.74,
+   "speech_ms": 6328.0,
+   "frames_over_threshold_ms": 6144.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     1858,
+     3774
+    ],
+    [
+     4034,
+     8446
+    ]
+   ]
+  },
+  "fleurs-nb-1664": {
+   "file": "fleurs-nb-1664",
+   "audio_s": 10.68,
+   "speech_ms": 6328.0,
+   "frames_over_threshold_ms": 6016.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     2050,
+     6718
+    ],
+    [
+     6850,
+     8510
+    ]
+   ]
+  },
+  "fleurs-nb-1680": {
+   "file": "fleurs-nb-1680",
+   "audio_s": 16.2,
+   "speech_ms": 10640.0,
+   "frames_over_threshold_ms": 10048.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     2338,
+     6078
+    ],
+    [
+     6338,
+     7358
+    ],
+    [
+     7522,
+     8286
+    ],
+    [
+     8418,
+     13534
+    ]
+   ]
+  },
+  "fleurs-nb-1686": {
+   "file": "fleurs-nb-1686",
+   "audio_s": 13.68,
+   "speech_ms": 10104.0,
+   "frames_over_threshold_ms": 9792.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     1538,
+     5854
+    ],
+    [
+     5954,
+     11742
+    ]
+   ]
+  },
+  "fleurs-nb-1721": {
+   "file": "fleurs-nb-1721",
+   "audio_s": 11.82,
+   "speech_ms": 8764.0,
+   "frames_over_threshold_ms": 8416.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     1314,
+     10078
+    ]
+   ]
+  },
+  "fleurs-nb-1766": {
+   "file": "fleurs-nb-1766",
+   "audio_s": 11.46,
+   "speech_ms": 7832.0,
+   "frames_over_threshold_ms": 7680.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     1826,
+     4574
+    ],
+    [
+     4674,
+     9758
+    ]
+   ]
+  },
+  "fleurs-nb-1768": {
+   "file": "fleurs-nb-1768",
+   "audio_s": 11.94,
+   "speech_ms": 7996.0,
+   "frames_over_threshold_ms": 7936.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     1986,
+     9982
+    ]
+   ]
+  },
+  "fleurs-nb-1802": {
+   "file": "fleurs-nb-1802",
+   "audio_s": 9.96,
+   "speech_ms": 5596.0,
+   "frames_over_threshold_ms": 5504.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     2466,
+     8062
+    ]
+   ]
+  },
+  "fleurs-nb-1811": {
+   "file": "fleurs-nb-1811",
+   "audio_s": 6.78,
+   "speech_ms": 5884.0,
+   "frames_over_threshold_ms": 5760.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     482,
+     6366
+    ]
+   ]
+  },
+  "fleurs-nb-1833": {
+   "file": "fleurs-nb-1833",
+   "audio_s": 17.4,
+   "speech_ms": 11952.0,
+   "frames_over_threshold_ms": 11328.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     2242,
+     4190
+    ],
+    [
+     4386,
+     10014
+    ],
+    [
+     10402,
+     13502
+    ],
+    [
+     13730,
+     15006
+    ]
+   ]
+  },
+  "fleurs-nb-1898": {
+   "file": "fleurs-nb-1898",
+   "audio_s": 17.58,
+   "speech_ms": 13204.0,
+   "frames_over_threshold_ms": 12704.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     1666,
+     5822
+    ],
+    [
+     6274,
+     10078
+    ],
+    [
+     10562,
+     15806
+    ]
+   ]
+  },
+  "fleurs-nb-1906": {
+   "file": "fleurs-nb-1906",
+   "audio_s": 8.22,
+   "speech_ms": 4728.0,
+   "frames_over_threshold_ms": 4544.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     1794,
+     3198
+    ],
+    [
+     3298,
+     6622
+    ]
+   ]
+  },
+  "fleurs-nb-1930": {
+   "file": "fleurs-nb-1930",
+   "audio_s": 11.04,
+   "speech_ms": 7096.0,
+   "frames_over_threshold_ms": 6688.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     1762,
+     5118
+    ],
+    [
+     5218,
+     8958
+    ]
+   ]
+  },
+  "fleurs-nb-1970": {
+   "file": "fleurs-nb-1970",
+   "audio_s": 15.42,
+   "speech_ms": 9616.0,
+   "frames_over_threshold_ms": 9248.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     2242,
+     5982
+    ],
+    [
+     6562,
+     9502
+    ],
+    [
+     9762,
+     10910
+    ],
+    [
+     11170,
+     12958
+    ]
+   ]
+  },
+  "fleurs-nb-1971": {
+   "file": "fleurs-nb-1971",
+   "audio_s": 16.44,
+   "speech_ms": 10496.0,
+   "frames_over_threshold_ms": 10016.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     2178,
+     3102
+    ],
+    [
+     3266,
+     3934
+    ],
+    [
+     4226,
+     6206
+    ],
+    [
+     6370,
+     8638
+    ],
+    [
+     8802,
+     9918
+    ],
+    [
+     10050,
+     10910
+    ],
+    [
+     11010,
+     11870
+    ],
+    [
+     12034,
+     13854
+    ]
+   ]
+  },
+  "fleurs-nb-1981": {
+   "file": "fleurs-nb-1981",
+   "audio_s": 10.26,
+   "speech_ms": 6612.0,
+   "frames_over_threshold_ms": 6272.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     1602,
+     5182
+    ],
+    [
+     5314,
+     7294
+    ],
+    [
+     7394,
+     8446
+    ]
+   ]
+  },
+  "fleurs-nb-1994": {
+   "file": "fleurs-nb-1994",
+   "audio_s": 9.24,
+   "speech_ms": 5116.0,
+   "frames_over_threshold_ms": 4896.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     1890,
+     7006
+    ]
+   ]
+  },
+  "fleurs-nb-2000": {
+   "file": "fleurs-nb-2000",
+   "audio_s": 15.06,
+   "speech_ms": 10172.0,
+   "frames_over_threshold_ms": 9792.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     1890,
+     12062
+    ]
+   ]
+  },
+  "fleurs-nb-2001": {
+   "file": "fleurs-nb-2001",
+   "audio_s": 9.42,
+   "speech_ms": 7772.0,
+   "frames_over_threshold_ms": 7616.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     738,
+     8510
+    ]
+   ]
+  },
+  "fleurs-nb-2006": {
+   "file": "fleurs-nb-2006",
+   "audio_s": 11.1,
+   "speech_ms": 6520.0,
+   "frames_over_threshold_ms": 6272.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     2274,
+     6014
+    ],
+    [
+     6530,
+     9310
+    ]
+   ]
+  },
+  "vocab-01": {
+   "file": "vocab-01",
+   "audio_s": 4.4894,
+   "speech_ms": 4487.375,
+   "frames_over_threshold_ms": 4480.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     2,
+     4489
+    ]
+   ]
+  },
+  "vocab-02": {
+   "file": "vocab-02",
+   "audio_s": 3.0417,
+   "speech_ms": 3039.75,
+   "frames_over_threshold_ms": 3008.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     2,
+     3042
+    ]
+   ]
+  },
+  "vocab-03": {
+   "file": "vocab-03",
+   "audio_s": 4.5511,
+   "speech_ms": 4517.125,
+   "frames_over_threshold_ms": 4384.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     34,
+     4551
+    ]
+   ]
+  },
+  "vocab-04": {
+   "file": "vocab-04",
+   "audio_s": 4.1879,
+   "speech_ms": 4185.9375,
+   "frames_over_threshold_ms": 4128.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     2,
+     4188
+    ]
+   ]
+  },
+  "vocab-05": {
+   "file": "vocab-05",
+   "audio_s": 2.7348,
+   "speech_ms": 2572.8125,
+   "frames_over_threshold_ms": 2560.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     162,
+     2735
+    ]
+   ]
+  },
+  "vocab-06": {
+   "file": "vocab-06",
+   "audio_s": 2.7204,
+   "speech_ms": 2686.4375,
+   "frames_over_threshold_ms": 2656.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     34,
+     2720
+    ]
+   ]
+  },
+  "vocab-07": {
+   "file": "vocab-07",
+   "audio_s": 4.1372,
+   "speech_ms": 4103.1875,
+   "frames_over_threshold_ms": 4032.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     34,
+     4137
+    ]
+   ]
+  },
+  "vocab-08": {
+   "file": "vocab-08",
+   "audio_s": 3.2472,
+   "speech_ms": 3245.1875,
+   "frames_over_threshold_ms": 2944.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     2,
+     3247
+    ]
+   ]
+  },
+  "word-hei": {
+   "file": "word-hei",
+   "audio_s": 2.3729,
+   "speech_ms": 380.0,
+   "frames_over_threshold_ms": 320.0,
+   "max_prob": 0.9999,
+   "segments_ms": [
+    [
+     1058,
+     1438
+    ]
+   ]
+  },
+  "word-ja": {
+   "file": "word-ja",
+   "audio_s": 2.3914,
+   "speech_ms": 444.0,
+   "frames_over_threshold_ms": 384.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     994,
+     1438
+    ]
+   ]
+  },
+  "word-nei": {
+   "file": "word-nei",
+   "audio_s": 2.3565,
+   "speech_ms": 412.0,
+   "frames_over_threshold_ms": 352.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     994,
+     1406
+    ]
+   ]
+  },
+  "word-ok": {
+   "file": "word-ok",
+   "audio_s": 2.658,
+   "speech_ms": 732.0,
+   "frames_over_threshold_ms": 672.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     994,
+     1726
+    ]
+   ]
+  },
+  "word-takk": {
+   "file": "word-takk",
+   "audio_s": 2.4619,
+   "speech_ms": 476.0,
+   "frames_over_threshold_ms": 352.0,
+   "max_prob": 0.9997,
+   "segments_ms": [
+    [
+     1026,
+     1502
+    ]
+   ]
+  },
+  "silent-breath": {
+   "file": "silent-breath",
+   "audio_s": 3.0,
+   "speech_ms": -0.0,
+   "frames_over_threshold_ms": 0.0,
+   "max_prob": 0.0842,
+   "segments_ms": []
+  },
+  "silent-click": {
+   "file": "silent-click",
+   "audio_s": 3.0,
+   "speech_ms": -0.0,
+   "frames_over_threshold_ms": 0.0,
+   "max_prob": 0.0231,
+   "segments_ms": []
+  },
+  "silent-digital": {
+   "file": "silent-digital",
+   "audio_s": 3.0,
+   "speech_ms": -0.0,
+   "frames_over_threshold_ms": 0.0,
+   "max_prob": 0.0089,
+   "segments_ms": []
+  },
+  "silent-hum-50Hz": {
+   "file": "silent-hum-50Hz",
+   "audio_s": 3.0,
+   "speech_ms": -0.0,
+   "frames_over_threshold_ms": 0.0,
+   "max_prob": 0.0189,
+   "segments_ms": []
+  },
+  "silent-noise-40dB": {
+   "file": "silent-noise-40dB",
+   "audio_s": 3.0,
+   "speech_ms": -0.0,
+   "frames_over_threshold_ms": 0.0,
+   "max_prob": 0.0267,
+   "segments_ms": []
+  },
+  "silent-noise-60dB": {
+   "file": "silent-noise-60dB",
+   "audio_s": 3.0,
+   "speech_ms": -0.0,
+   "frames_over_threshold_ms": 0.0,
+   "max_prob": 0.0309,
+   "segments_ms": []
+  },
+  "silent-room-1802": {
+   "file": "silent-room-1802",
+   "audio_s": 1.5,
+   "speech_ms": -0.0,
+   "frames_over_threshold_ms": 0.0,
+   "max_prob": 0.103,
+   "segments_ms": []
+  },
+  "silent-room-1970": {
+   "file": "silent-room-1970",
+   "audio_s": 1.5,
+   "speech_ms": -0.0,
+   "frames_over_threshold_ms": 0.0,
+   "max_prob": 0.0873,
+   "segments_ms": []
+  },
+  "silent-room-2006": {
+   "file": "silent-room-2006",
+   "audio_s": 1.5,
+   "speech_ms": -0.0,
+   "frames_over_threshold_ms": 0.0,
+   "max_prob": 0.0317,
+   "segments_ms": []
+  },
+  "silent-typing": {
+   "file": "silent-typing",
+   "audio_s": 3.0,
+   "speech_ms": -0.0,
+   "frames_over_threshold_ms": 0.0,
+   "max_prob": 0.035,
+   "segments_ms": []
+  }
+ },
+ "min_speech_0": {
+  "fleurs-nb-1661": {
+   "file": "fleurs-nb-1661",
+   "audio_s": 10.74,
+   "speech_ms": 6328.0,
+   "frames_over_threshold_ms": 6144.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     1858,
+     3774
+    ],
+    [
+     4034,
+     8446
+    ]
+   ]
+  },
+  "fleurs-nb-1664": {
+   "file": "fleurs-nb-1664",
+   "audio_s": 10.68,
+   "speech_ms": 6328.0,
+   "frames_over_threshold_ms": 6016.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     2050,
+     6718
+    ],
+    [
+     6850,
+     8510
+    ]
+   ]
+  },
+  "fleurs-nb-1680": {
+   "file": "fleurs-nb-1680",
+   "audio_s": 16.2,
+   "speech_ms": 10640.0,
+   "frames_over_threshold_ms": 10048.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     2338,
+     6078
+    ],
+    [
+     6338,
+     7358
+    ],
+    [
+     7522,
+     8286
+    ],
+    [
+     8418,
+     13534
+    ]
+   ]
+  },
+  "fleurs-nb-1686": {
+   "file": "fleurs-nb-1686",
+   "audio_s": 13.68,
+   "speech_ms": 10104.0,
+   "frames_over_threshold_ms": 9792.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     1538,
+     5854
+    ],
+    [
+     5954,
+     11742
+    ]
+   ]
+  },
+  "fleurs-nb-1721": {
+   "file": "fleurs-nb-1721",
+   "audio_s": 11.82,
+   "speech_ms": 8764.0,
+   "frames_over_threshold_ms": 8416.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     1314,
+     10078
+    ]
+   ]
+  },
+  "fleurs-nb-1766": {
+   "file": "fleurs-nb-1766",
+   "audio_s": 11.46,
+   "speech_ms": 7832.0,
+   "frames_over_threshold_ms": 7680.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     1826,
+     4574
+    ],
+    [
+     4674,
+     9758
+    ]
+   ]
+  },
+  "fleurs-nb-1768": {
+   "file": "fleurs-nb-1768",
+   "audio_s": 11.94,
+   "speech_ms": 7996.0,
+   "frames_over_threshold_ms": 7936.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     1986,
+     9982
+    ]
+   ]
+  },
+  "fleurs-nb-1802": {
+   "file": "fleurs-nb-1802",
+   "audio_s": 9.96,
+   "speech_ms": 5596.0,
+   "frames_over_threshold_ms": 5504.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     2466,
+     8062
+    ]
+   ]
+  },
+  "fleurs-nb-1811": {
+   "file": "fleurs-nb-1811",
+   "audio_s": 6.78,
+   "speech_ms": 5884.0,
+   "frames_over_threshold_ms": 5760.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     482,
+     6366
+    ]
+   ]
+  },
+  "fleurs-nb-1833": {
+   "file": "fleurs-nb-1833",
+   "audio_s": 17.4,
+   "speech_ms": 11952.0,
+   "frames_over_threshold_ms": 11328.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     2242,
+     4190
+    ],
+    [
+     4386,
+     10014
+    ],
+    [
+     10402,
+     13502
+    ],
+    [
+     13730,
+     15006
+    ]
+   ]
+  },
+  "fleurs-nb-1898": {
+   "file": "fleurs-nb-1898",
+   "audio_s": 17.58,
+   "speech_ms": 13204.0,
+   "frames_over_threshold_ms": 12704.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     1666,
+     5822
+    ],
+    [
+     6274,
+     10078
+    ],
+    [
+     10562,
+     15806
+    ]
+   ]
+  },
+  "fleurs-nb-1906": {
+   "file": "fleurs-nb-1906",
+   "audio_s": 8.22,
+   "speech_ms": 4728.0,
+   "frames_over_threshold_ms": 4544.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     1794,
+     3198
+    ],
+    [
+     3298,
+     6622
+    ]
+   ]
+  },
+  "fleurs-nb-1930": {
+   "file": "fleurs-nb-1930",
+   "audio_s": 11.04,
+   "speech_ms": 7096.0,
+   "frames_over_threshold_ms": 6688.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     1762,
+     5118
+    ],
+    [
+     5218,
+     8958
+    ]
+   ]
+  },
+  "fleurs-nb-1970": {
+   "file": "fleurs-nb-1970",
+   "audio_s": 15.42,
+   "speech_ms": 9616.0,
+   "frames_over_threshold_ms": 9248.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     2242,
+     5982
+    ],
+    [
+     6562,
+     9502
+    ],
+    [
+     9762,
+     10910
+    ],
+    [
+     11170,
+     12958
+    ]
+   ]
+  },
+  "fleurs-nb-1971": {
+   "file": "fleurs-nb-1971",
+   "audio_s": 16.44,
+   "speech_ms": 10496.0,
+   "frames_over_threshold_ms": 10016.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     2178,
+     3102
+    ],
+    [
+     3266,
+     3934
+    ],
+    [
+     4226,
+     6206
+    ],
+    [
+     6370,
+     8638
+    ],
+    [
+     8802,
+     9918
+    ],
+    [
+     10050,
+     10910
+    ],
+    [
+     11010,
+     11870
+    ],
+    [
+     12034,
+     13854
+    ]
+   ]
+  },
+  "fleurs-nb-1981": {
+   "file": "fleurs-nb-1981",
+   "audio_s": 10.26,
+   "speech_ms": 6612.0,
+   "frames_over_threshold_ms": 6272.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     1602,
+     5182
+    ],
+    [
+     5314,
+     7294
+    ],
+    [
+     7394,
+     8446
+    ]
+   ]
+  },
+  "fleurs-nb-1994": {
+   "file": "fleurs-nb-1994",
+   "audio_s": 9.24,
+   "speech_ms": 5116.0,
+   "frames_over_threshold_ms": 4896.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     1890,
+     7006
+    ]
+   ]
+  },
+  "fleurs-nb-2000": {
+   "file": "fleurs-nb-2000",
+   "audio_s": 15.06,
+   "speech_ms": 10172.0,
+   "frames_over_threshold_ms": 9792.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     1890,
+     12062
+    ]
+   ]
+  },
+  "fleurs-nb-2001": {
+   "file": "fleurs-nb-2001",
+   "audio_s": 9.42,
+   "speech_ms": 7772.0,
+   "frames_over_threshold_ms": 7616.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     738,
+     8510
+    ]
+   ]
+  },
+  "fleurs-nb-2006": {
+   "file": "fleurs-nb-2006",
+   "audio_s": 11.1,
+   "speech_ms": 6520.0,
+   "frames_over_threshold_ms": 6272.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     2274,
+     6014
+    ],
+    [
+     6530,
+     9310
+    ]
+   ]
+  },
+  "vocab-01": {
+   "file": "vocab-01",
+   "audio_s": 4.4894,
+   "speech_ms": 4487.375,
+   "frames_over_threshold_ms": 4480.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     2,
+     4489
+    ]
+   ]
+  },
+  "vocab-02": {
+   "file": "vocab-02",
+   "audio_s": 3.0417,
+   "speech_ms": 3039.75,
+   "frames_over_threshold_ms": 3008.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     2,
+     3042
+    ]
+   ]
+  },
+  "vocab-03": {
+   "file": "vocab-03",
+   "audio_s": 4.5511,
+   "speech_ms": 4517.125,
+   "frames_over_threshold_ms": 4384.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     34,
+     4551
+    ]
+   ]
+  },
+  "vocab-04": {
+   "file": "vocab-04",
+   "audio_s": 4.1879,
+   "speech_ms": 4185.9375,
+   "frames_over_threshold_ms": 4128.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     2,
+     4188
+    ]
+   ]
+  },
+  "vocab-05": {
+   "file": "vocab-05",
+   "audio_s": 2.7348,
+   "speech_ms": 2572.8125,
+   "frames_over_threshold_ms": 2560.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     162,
+     2735
+    ]
+   ]
+  },
+  "vocab-06": {
+   "file": "vocab-06",
+   "audio_s": 2.7204,
+   "speech_ms": 2686.4375,
+   "frames_over_threshold_ms": 2656.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     34,
+     2720
+    ]
+   ]
+  },
+  "vocab-07": {
+   "file": "vocab-07",
+   "audio_s": 4.1372,
+   "speech_ms": 4103.1875,
+   "frames_over_threshold_ms": 4032.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     34,
+     4137
+    ]
+   ]
+  },
+  "vocab-08": {
+   "file": "vocab-08",
+   "audio_s": 3.2472,
+   "speech_ms": 3245.1875,
+   "frames_over_threshold_ms": 2944.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     2,
+     3247
+    ]
+   ]
+  },
+  "word-hei": {
+   "file": "word-hei",
+   "audio_s": 2.3729,
+   "speech_ms": 380.0,
+   "frames_over_threshold_ms": 320.0,
+   "max_prob": 0.9999,
+   "segments_ms": [
+    [
+     1058,
+     1438
+    ]
+   ]
+  },
+  "word-ja": {
+   "file": "word-ja",
+   "audio_s": 2.3914,
+   "speech_ms": 444.0,
+   "frames_over_threshold_ms": 384.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     994,
+     1438
+    ]
+   ]
+  },
+  "word-nei": {
+   "file": "word-nei",
+   "audio_s": 2.3565,
+   "speech_ms": 412.0,
+   "frames_over_threshold_ms": 352.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     994,
+     1406
+    ]
+   ]
+  },
+  "word-ok": {
+   "file": "word-ok",
+   "audio_s": 2.658,
+   "speech_ms": 732.0,
+   "frames_over_threshold_ms": 672.0,
+   "max_prob": 1.0,
+   "segments_ms": [
+    [
+     994,
+     1726
+    ]
+   ]
+  },
+  "word-takk": {
+   "file": "word-takk",
+   "audio_s": 2.4619,
+   "speech_ms": 476.0,
+   "frames_over_threshold_ms": 352.0,
+   "max_prob": 0.9997,
+   "segments_ms": [
+    [
+     1026,
+     1502
+    ]
+   ]
+  },
+  "silent-breath": {
+   "file": "silent-breath",
+   "audio_s": 3.0,
+   "speech_ms": -0.0,
+   "frames_over_threshold_ms": 0.0,
+   "max_prob": 0.0842,
+   "segments_ms": []
+  },
+  "silent-click": {
+   "file": "silent-click",
+   "audio_s": 3.0,
+   "speech_ms": -0.0,
+   "frames_over_threshold_ms": 0.0,
+   "max_prob": 0.0231,
+   "segments_ms": []
+  },
+  "silent-digital": {
+   "file": "silent-digital",
+   "audio_s": 3.0,
+   "speech_ms": -0.0,
+   "frames_over_threshold_ms": 0.0,
+   "max_prob": 0.0089,
+   "segments_ms": []
+  },
+  "silent-hum-50Hz": {
+   "file": "silent-hum-50Hz",
+   "audio_s": 3.0,
+   "speech_ms": -0.0,
+   "frames_over_threshold_ms": 0.0,
+   "max_prob": 0.0189,
+   "segments_ms": []
+  },
+  "silent-noise-40dB": {
+   "file": "silent-noise-40dB",
+   "audio_s": 3.0,
+   "speech_ms": -0.0,
+   "frames_over_threshold_ms": 0.0,
+   "max_prob": 0.0267,
+   "segments_ms": []
+  },
+  "silent-noise-60dB": {
+   "file": "silent-noise-60dB",
+   "audio_s": 3.0,
+   "speech_ms": -0.0,
+   "frames_over_threshold_ms": 0.0,
+   "max_prob": 0.0309,
+   "segments_ms": []
+  },
+  "silent-room-1802": {
+   "file": "silent-room-1802",
+   "audio_s": 1.5,
+   "speech_ms": -0.0,
+   "frames_over_threshold_ms": 0.0,
+   "max_prob": 0.103,
+   "segments_ms": []
+  },
+  "silent-room-1970": {
+   "file": "silent-room-1970",
+   "audio_s": 1.5,
+   "speech_ms": -0.0,
+   "frames_over_threshold_ms": 0.0,
+   "max_prob": 0.0873,
+   "segments_ms": []
+  },
+  "silent-room-2006": {
+   "file": "silent-room-2006",
+   "audio_s": 1.5,
+   "speech_ms": -0.0,
+   "frames_over_threshold_ms": 0.0,
+   "max_prob": 0.0317,
+   "segments_ms": []
+  },
+  "silent-typing": {
+   "file": "silent-typing",
+   "audio_s": 3.0,
+   "speech_ms": -0.0,
+   "frames_over_threshold_ms": 0.0,
+   "max_prob": 0.035,
+   "segments_ms": []
+  }
+ },
+ "asr_silent": {
+  "silent-breath": {
+   "file": "silent-breath",
+   "audio_s": 3.0,
+   "text": "...",
+   "status": "ok",
+   "load_ms": 229.5113,
+   "runs_ms": [
+    574.6
+   ],
+   "median_ms": 574.6344,
+   "mel_ms": 3.331,
+   "encode_ms": 453.292,
+   "decode_ms": 117.81,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.8913,
+     "compression_ratio": 0.3529,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  "silent-click": {
+   "file": "silent-click",
+   "audio_s": 3.0,
+   "text": "Hva er det som er galt med huset?",
+   "status": "ok",
+   "runs_ms": [
+    1269.3
+   ],
+   "median_ms": 1269.3494,
+   "mel_ms": 4.612,
+   "encode_ms": 446.942,
+   "decode_ms": 817.636,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -1.5138,
+     "compression_ratio": 0.7179,
+     "temperature": 1.0,
+     "fallbacks": 5.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  "silent-digital": {
+   "file": "silent-digital",
+   "audio_s": 3.0,
+   "text": "… og jeg vil at du skal føle det sånn.",
+   "status": "ok",
+   "runs_ms": [
+    1563.8
+   ],
+   "median_ms": 1563.7668,
+   "mel_ms": 4.347,
+   "encode_ms": 446.373,
+   "decode_ms": 1112.8781,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -1.575,
+     "compression_ratio": 0.7755,
+     "temperature": 1.0,
+     "fallbacks": 5.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  "silent-hum-50Hz": {
+   "file": "silent-hum-50Hz",
+   "audio_s": 3.0,
+   "text": "... og at det er vanskelig å forstå.",
+   "status": "ok",
+   "runs_ms": [
+    704.9
+   ],
+   "median_ms": 704.9379,
+   "mel_ms": 4.391,
+   "encode_ms": 445.811,
+   "decode_ms": 254.573,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.8473,
+     "compression_ratio": 0.766,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  "silent-noise-40dB": {
+   "file": "silent-noise-40dB",
+   "audio_s": 3.0,
+   "text": "Er det en svigermus?",
+   "status": "ok",
+   "runs_ms": [
+    1000.3
+   ],
+   "median_ms": 1000.3395,
+   "mel_ms": 4.397,
+   "encode_ms": 446.627,
+   "decode_ms": 549.135,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -2.5365,
+     "compression_ratio": 0.6452,
+     "temperature": 1.0,
+     "fallbacks": 5.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  "silent-noise-60dB": {
+   "file": "silent-noise-60dB",
+   "audio_s": 3.0,
+   "text": "...",
+   "status": "ok",
+   "runs_ms": [
+    1296.1
+   ],
+   "median_ms": 1296.0698,
+   "mel_ms": 4.417,
+   "encode_ms": 444.781,
+   "decode_ms": 846.71,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -1.4599,
+     "compression_ratio": 0.4211,
+     "temperature": 1.0,
+     "fallbacks": 5.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  "silent-room-1802": {
+   "file": "silent-room-1802",
+   "audio_s": 1.5,
+   "text": "Alisa Alóga lays науч report",
+   "status": "ok",
+   "runs_ms": [
+    949.4
+   ],
+   "median_ms": 949.3802,
+   "mel_ms": 4.567,
+   "encode_ms": 445.908,
+   "decode_ms": 498.726,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -6.2652,
+     "compression_ratio": 0.6452,
+     "temperature": 1.0,
+     "fallbacks": 5.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  "silent-room-1970": {
+   "file": "silent-room-1970",
+   "audio_s": 1.5,
+   "text": "Viktig at det føres regnskap til store områder.",
+   "status": "ok",
+   "runs_ms": [
+    1002.0
+   ],
+   "median_ms": 1002.0287,
+   "mel_ms": 4.298,
+   "encode_ms": 444.996,
+   "decode_ms": 552.561,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -2.4845,
+     "compression_ratio": 0.7843,
+     "temperature": 1.0,
+     "fallbacks": 5.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  "silent-room-2006": {
+   "file": "silent-room-2006",
+   "audio_s": 1.5,
+   "text": "Hva er det som skjer?",
+   "status": "ok",
+   "runs_ms": [
+    611.8
+   ],
+   "median_ms": 611.8438,
+   "mel_ms": 4.221,
+   "encode_ms": 444.553,
+   "decode_ms": 162.919,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.8962,
+     "compression_ratio": 0.6207,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  "silent-typing": {
+   "file": "silent-typing",
+   "audio_s": 3.0,
+   "text": "... ...",
+   "status": "ok",
+   "runs_ms": [
+    1291.0
+   ],
+   "median_ms": 1291.0115,
+   "mel_ms": 4.62,
+   "encode_ms": 446.107,
+   "decode_ms": 840.134,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -2.248,
+     "compression_ratio": 0.3529,
+     "temperature": 1.0,
+     "fallbacks": 5.0,
+     "no_speech_triggered": false
+    }
+   ]
+  }
+ },
+ "asr_silent_gate_off": {
+  "silent-breath": {
+   "file": "silent-breath",
+   "audio_s": 3.0,
+   "text": "...",
+   "status": "ok",
+   "load_ms": 115.22,
+   "runs_ms": [
+    568.1
+   ],
+   "median_ms": 568.068,
+   "mel_ms": 3.286,
+   "encode_ms": 445.828,
+   "decode_ms": 118.757,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.8913,
+     "compression_ratio": 0.3529,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  "silent-click": {
+   "file": "silent-click",
+   "audio_s": 3.0,
+   "text": "... og en hull i skjæren.",
+   "status": "ok",
+   "runs_ms": [
+    1486.5
+   ],
+   "median_ms": 1486.4819,
+   "mel_ms": 4.694,
+   "encode_ms": 445.671,
+   "decode_ms": 1035.958,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -1.9562,
+     "compression_ratio": 0.7925,
+     "temperature": 1.0,
+     "fallbacks": 5.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  "silent-digital": {
+   "file": "silent-digital",
+   "audio_s": 3.0,
+   "text": "Dessuten er det vanskelig å se hvordan de har det.",
+   "status": "ok",
+   "runs_ms": [
+    1448.0
+   ],
+   "median_ms": 1447.9903,
+   "mel_ms": 4.56,
+   "encode_ms": 444.25,
+   "decode_ms": 999.014,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -1.317,
+     "compression_ratio": 0.8,
+     "temperature": 1.0,
+     "fallbacks": 5.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  "silent-hum-50Hz": {
+   "file": "silent-hum-50Hz",
+   "audio_s": 3.0,
+   "text": "... og at det er vanskelig å forstå.",
+   "status": "ok",
+   "runs_ms": [
+    702.4
+   ],
+   "median_ms": 702.3633,
+   "mel_ms": 4.536,
+   "encode_ms": 443.387,
+   "decode_ms": 254.276,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.8473,
+     "compression_ratio": 0.766,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  "silent-noise-40dB": {
+   "file": "silent-noise-40dB",
+   "audio_s": 3.0,
+   "text": "protest Energi-spørsmål",
+   "status": "ok",
+   "runs_ms": [
+    1167.0
+   ],
+   "median_ms": 1166.9686,
+   "mel_ms": 4.773,
+   "encode_ms": 444.204,
+   "decode_ms": 717.839,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -3.2221,
+     "compression_ratio": 0.7027,
+     "temperature": 1.0,
+     "fallbacks": 5.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  "silent-noise-60dB": {
+   "file": "silent-noise-60dB",
+   "audio_s": 3.0,
+   "text": "... og hennes eksklusive ansiktspersonlighet.",
+   "status": "ok",
+   "runs_ms": [
+    1381.9
+   ],
+   "median_ms": 1381.9258,
+   "mel_ms": 4.722,
+   "encode_ms": 443.162,
+   "decode_ms": 933.876,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -1.7018,
+     "compression_ratio": 0.766,
+     "temperature": 1.0,
+     "fallbacks": 5.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  "silent-room-1802": {
+   "file": "silent-room-1802",
+   "audio_s": 1.5,
+   "text": "...",
+   "status": "ok",
+   "runs_ms": [
+    1095.2
+   ],
+   "median_ms": 1095.1771,
+   "mel_ms": 4.473,
+   "encode_ms": 443.1,
+   "decode_ms": 647.459,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -1.1924,
+     "compression_ratio": 0.3529,
+     "temperature": 1.0,
+     "fallbacks": 5.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  "silent-room-1970": {
+   "file": "silent-room-1970",
+   "audio_s": 1.5,
+   "text": "RISADAS",
+   "status": "ok",
+   "runs_ms": [
+    839.5
+   ],
+   "median_ms": 839.4897,
+   "mel_ms": 4.401,
+   "encode_ms": 442.841,
+   "decode_ms": 392.097,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -7.4884,
+     "compression_ratio": 0.3529,
+     "temperature": 1.0,
+     "fallbacks": 5.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  "silent-room-2006": {
+   "file": "silent-room-2006",
+   "audio_s": 1.5,
+   "text": "Hva er det som skjer?",
+   "status": "ok",
+   "runs_ms": [
+    610.3
+   ],
+   "median_ms": 610.3303,
+   "mel_ms": 4.401,
+   "encode_ms": 442.923,
+   "decode_ms": 162.857,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.8962,
+     "compression_ratio": 0.6207,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  "silent-typing": {
+   "file": "silent-typing",
+   "audio_s": 3.0,
+   "text": "Ja.",
+   "status": "ok",
+   "runs_ms": [
+    1000.8
+   ],
+   "median_ms": 1000.8393,
+   "mel_ms": 4.41,
+   "encode_ms": 443.649,
+   "decode_ms": 552.615,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -1.5158,
+     "compression_ratio": 0.3529,
+     "temperature": 1.0,
+     "fallbacks": 5.0,
+     "no_speech_triggered": false
+    }
+   ]
+  }
+ },
+ "whisper_cpp_unsuppressed_silent": {
+  "silent-breath": "<|nocaptions|>",
+  "silent-click": "<|nocaptions|>",
+  "silent-digital": "<|nocaptions|>",
+  "silent-hum-50Hz": "<|nocaptions|>",
+  "silent-noise-40dB": "<|nocaptions|>",
+  "silent-noise-60dB": "<|nocaptions|>",
+  "silent-room-1802": "<|nocaptions|>",
+  "silent-room-1970": "<|nocaptions|>",
+  "silent-room-2006": "<|nocaptions|>",
+  "silent-typing": "<|nocaptions|>"
+ }
+}

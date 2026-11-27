@@ -3,9 +3,9 @@
 //! [`TrayModel`] whenever its state changes and receives an [`Action`] for each entry chosen.
 //!
 //! What the menu holds is decided in [`menu`], as data with no platform in it, so it is tested on any
-//! machine. The item that draws it is AppKit's `NSStatusItem` on macOS, and a StatusNotifierItem on
-//! Linux, which Waybar shows. Windows's notification area comes with that platform (docs/plan.md); until
-//! then [`Tray::new`] says [`TrayError::Unsupported`] there.
+//! machine. The item that draws it is AppKit's `NSStatusItem` on macOS, an icon in the notification area on
+//! Windows, and a StatusNotifierItem on Linux, which Waybar shows. Elsewhere [`Tray::new`] says
+//! [`TrayError::Unsupported`].
 //!
 //! # Wiring it into the app
 //!
@@ -49,6 +49,8 @@
 pub mod menu;
 mod model;
 mod platform;
+#[cfg(any(windows, test))]
+mod rune;
 
 use std::fmt;
 use std::marker::PhantomData;
@@ -88,6 +90,8 @@ pub enum TrayError {
     NotMainThread,
     /// No menu bar item on this platform yet.
     Unsupported,
+    /// The system would not show the item.
+    Refused,
     /// The item's service on the session's message bus did not start, for the reason given.
     NoService(String),
 }
@@ -99,6 +103,7 @@ impl fmt::Display for TrayError {
                 f.write_str("the menu bar item can only be made on the main thread")
             }
             Self::Unsupported => f.write_str("there is no menu bar item on this platform yet"),
+            Self::Refused => f.write_str("the system would not show the menu bar item"),
             Self::NoService(reason) => write!(f, "the item's service did not start: {reason}"),
         }
     }

@@ -1,5 +1,4 @@
-//! Windows (the notification area) has no item yet; it will draw [`crate::TrayModel::menu`] here, behind
-//! its own `cfg`.
+//! The other systems have no item; [`crate::Tray::new`] says so.
 
 use std::convert::Infallible;
 

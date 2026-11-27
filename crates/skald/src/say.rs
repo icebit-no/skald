@@ -504,6 +504,7 @@ pub(crate) fn tray_reason(error: &skald_tray::TrayError) -> String {
     match error {
         skald_tray::TrayError::NotMainThread => "den kan bare lages på hovedtråden".into(),
         skald_tray::TrayError::Unsupported => "dette systemet har ingen plass til den ennå".into(),
+        skald_tray::TrayError::Refused => "systemet ville ikke vise den".into(),
         skald_tray::TrayError::NoService(reason) => {
             format!("tjenesten for den startet ikke ({reason})")
         }

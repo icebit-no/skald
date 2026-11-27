@@ -5,6 +5,46 @@ decision, and that pull request also edits the page where the rule lives ([desig
 [plan.md](plan.md)). Those pages say what holds; this one says when and why it came to hold. A later decision
 that undoes one adds an entry of its own, and the earlier entry gets one line naming it.
 
+## D-45 — Skald runs in the terminal on Windows until it has a screen; start at login and the permissions stand in
+
+2026-11-27, the lead (the order), Claude (the rest).
+
+Until the notification-area icon and the overlay exist on Windows, `skald` there runs the dictation loop in
+the terminal, as `--terminal` does and as Linux does (D-39), so dictation works on Windows before its screen
+is built. The hold key, the hands-free chord, the microphones, the model on its own thread, the insertion and
+the named pipe (D-40) work as on macOS, and the loop prints what the overlay will show.
+
+Start at login registers nothing yet: the entry has to name the installed program, and where Scoop and winget
+put it is M4's packaging item, so the setting is kept and does nothing on Windows until then. The first run's
+permissions read as granted, since Windows asks for none of them: the key and the paste need no grant, and
+the microphone is open to desktop programs unless the user has turned that off in the privacy settings, in
+which case it fails to open, as an unplugged one does.
+
+The console's Ctrl-C and Ctrl-Break end the loop as the signals do on Unix, so the model is dropped before the
+process exits, and a second one ends the process at once. Closing the console window gives the loop four
+seconds before Windows ends the process. The command the terminal prints for a missing model is `curl.exe`
+with the path in double quotes on Windows, which PowerShell and cmd.exe both read.
+
+## D-43 — transcribe.cpp's backends are modules on Windows, so a machine without Vulkan starts on the CPU
+
+2026-11-27, Claude; the words for the CPU fallback settled by the lead in review.
+
+On Windows skald-engine builds transcribe.cpp with its Vulkan backend, for NVIDIA, AMD and Intel GPUs alike,
+and with every backend as a module loaded at run time (transcribe.cpp's `dynamic-backends`): the Vulkan
+module beside one CPU module per instruction-set tier, chosen for the processor when Skald starts. Linked in,
+the Vulkan backend would keep Windows from starting Skald at all on a machine without the Vulkan loader,
+which a GPU driver installs; as a module it fails to load quietly there and the CPU carries on, the
+degradation transcribe.cpp designs for. The engine loads the modules once, before the first model, and says
+whether a GPU is among the devices; on macOS Metal is built in and the loading does nothing. When the model
+runs on the CPU for want of Vulkan, Skald says so. CUDA is not built: Vulkan reaches NVIDIA cards too, and
+CUDA's toolkit and runtime would add gigabytes to the build and to the download.
+
+The price is that Skald on Windows is `skald.exe` with transcribe.cpp's and ggml's DLLs beside it, which the
+zip for Scoop and winget must carry (M4's packaging). CI builds against LunarG's Vulkan SDK 1.4.350.0, the
+version transcribe.cpp's own Windows build uses, checked by its SHA-256. The runner has no GPU, so the tests
+there compute on the CPU module; the Vulkan path is tried on Thomas's RTX machine. Changed:
+[design.md](design.md#first-run), [research.md](research.md#stack).
+
 ## D-41 — Ctrl+Win+X on Windows; the overlay names an administrator window; no UI Access yet
 
 2026-11-27, the lead.

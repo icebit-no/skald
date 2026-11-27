@@ -1,24 +1,22 @@
-//! Insertion on Linux, which Skald does not do: every text is refused as a paste that could not be sent,
-//! so the app reports it as not inserted and keeps it in the history.
+//! Insertion on a Wayland desktop: the text on the clipboard, Ctrl+V once the keys are up, and the previous
+//! contents put back (docs/design.md, Insertion).
 
-use crate::insert::{InsertError, InsertOptions, Inserted, pasted_text};
+use super::desktop::WaylandDesktop;
+use crate::insert::{InsertError, InsertOptions, Inserted, insert_with};
 
+/// Inserts text where the cursor is. Each call blocks until the previous clipboard contents are back, so
+/// insertions never overlap.
 #[derive(Debug, Default)]
-pub struct Inserter;
+pub struct Inserter {
+    desktop: WaylandDesktop,
+}
 
 impl Inserter {
     pub fn new() -> Self {
-        Self
+        Self::default()
     }
 
-    pub fn insert(
-        &mut self,
-        text: &str,
-        _options: &InsertOptions,
-    ) -> Result<Inserted, InsertError> {
-        match pasted_text(text) {
-            None => Ok(Inserted::Nothing),
-            Some(_) => Err(InsertError::Paste),
-        }
+    pub fn insert(&mut self, text: &str, options: &InsertOptions) -> Result<Inserted, InsertError> {
+        insert_with(&mut self.desktop, text, options)
     }
 }

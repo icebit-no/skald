@@ -382,7 +382,9 @@ fn icon(rune: Rgb, dot: Option<Rgb>) -> Option<HICON> {
             bits.cast::<u8>(),
             pixels.len() * 4,
         );
-        let mask = CreateBitmap(size as i32, size as i32, 1, 1, null());
+        // The colour's alpha decides what shows; the mask is all zeros, its rows two-byte aligned.
+        let mask_bits = vec![0u8; size.div_ceil(16) as usize * 2 * size as usize];
+        let mask = CreateBitmap(size as i32, size as i32, 1, 1, mask_bits.as_ptr().cast());
         let icon_info = ICONINFO {
             fIcon: 1,
             xHotspot: 0,

@@ -107,6 +107,15 @@ would insert and `model_text` the model's text before corrections, both null whe
 `too_little_speech`, `no_words` or `known_phrase`. Without a running Skald, the command loads the model
 itself first.
 
+## The key, from a key binding
+
+**`skald start`** and **`skald stop`** press and release the key the user holds to talk, and **`skald toggle`**
+starts or stops a hands-free take. They are for key bindings of the desktop on Linux, where Skald cannot hear
+the keyboard itself, as in Hyprland's `bindn = , Control_R, exec, skald start`,
+`bindrn = CTRL, Control_R, exec, skald stop` and `bind = CTRL SUPER, X, exec, skald toggle`; they are no
+tools, and an agent has no reason to run them. `{"running"}`; `not_running` while Skald is not running, and
+`invalid` on a system where Skald listens to the keyboard itself.
+
 ## Errors
 
 `{"error": {"code", "message"}}`, with the message in bokmål for the user. The exit code is 1, or 2 for
@@ -122,6 +131,7 @@ itself first.
 | `version` | Skald was updated while it ran; it must be quit and started again |
 | `protocol` | Skald answered with something this command does not understand |
 | `failed` | The work itself failed, such as loading the model |
+| `not_running` | Skald is not running, and the command works only while it runs |
 
 ## Installing
 

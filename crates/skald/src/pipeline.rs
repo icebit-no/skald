@@ -72,7 +72,7 @@ pub(crate) trait Insert {
     fn insert(&mut self, text: &str, options: &InsertOptions) -> Result<Inserted, InsertError>;
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "linux"))]
 impl Insert for skald_input::Inserter {
     fn insert(&mut self, text: &str, options: &InsertOptions) -> Result<Inserted, InsertError> {
         skald_input::Inserter::insert(self, text, options)

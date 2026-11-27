@@ -101,6 +101,10 @@ pub struct FakeApp {
     pub history: History,
     pub counts: Counts,
     pub changes: AtomicUsize,
+    /// Each press (true) and release of the hold key, in order.
+    pub presses: Mutex<Vec<bool>>,
+    /// How often the hands-free chord was pressed.
+    pub toggles: AtomicUsize,
 }
 
 impl FakeApp {
@@ -110,6 +114,8 @@ impl FakeApp {
             history,
             counts,
             changes: AtomicUsize::new(0),
+            presses: Mutex::new(Vec::new()),
+            toggles: AtomicUsize::new(0),
         }
     }
 }
@@ -158,6 +164,16 @@ impl Skald for FakeApp {
 
     fn transcribe(&self, wav: &Path) -> Result<Transcribed, Error> {
         FakeMachine.transcribe(&self.config()?, wav)
+    }
+
+    fn press_hold_key(&self, down: bool) -> Result<(), Error> {
+        self.presses.lock().unwrap().push(down);
+        Ok(())
+    }
+
+    fn toggle_hands_free(&self) -> Result<(), Error> {
+        self.toggles.fetch_add(1, Ordering::SeqCst);
+        Ok(())
     }
 }
 

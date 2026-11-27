@@ -49,8 +49,8 @@ const CONTROL_COMMAND_X: Chord = Chord {
     key: Key::X,
 };
 
-/// The hands-free chord on this platform. Linux chooses its own with that platform, since Ctrl+Alt is AltGr
-/// on Norwegian layouts.
+/// The hands-free chord the listener catches on this platform. On Linux the desktop's own key binding starts
+/// and stops a hands-free take instead.
 pub(crate) const HANDS_FREE: Option<Chord> = if cfg!(any(target_os = "macos", windows)) {
     Some(CONTROL_COMMAND_X)
 } else {

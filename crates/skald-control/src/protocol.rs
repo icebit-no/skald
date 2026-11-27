@@ -71,6 +71,14 @@ pub enum Request {
     Transcribe {
         path: PathBuf,
     },
+    /// The hold key went down, as a key binding of the desktop reports it where Skald cannot hear the
+    /// keyboard itself. Skald applies the rules it applies to a key it hears.
+    Start,
+    /// The hold key came up, as [`Request::Start`] reports the press.
+    Stop,
+    /// The hands-free chord was pressed, as a key binding of the desktop reports it: a hands-free take
+    /// starts, or the one running stops.
+    Toggle,
 }
 
 impl Request {
@@ -111,6 +119,9 @@ pub enum Output {
     Models(ModelList),
     ModelUsed(ModelUsed),
     Transcription(Transcription),
+    Pressed,
+    Released,
+    Toggled,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -316,6 +327,8 @@ pub enum ErrorCode {
     Protocol,
     /// The work itself failed, such as loading the model or transcribing.
     Failed,
+    /// Skald is not running, and the command works only while it runs.
+    NotRunning,
 }
 
 impl Error {
@@ -481,6 +494,9 @@ mod tests {
             Request::Transcribe {
                 path: PathBuf::from("/Users/a/opptak æøå.wav"),
             },
+            Request::Start,
+            Request::Stop,
+            Request::Toggle,
         ]
     }
 
@@ -544,6 +560,9 @@ mod tests {
                 corrections: vec![],
                 heard_nothing: Some(HeardNothing::TooLittleSpeech),
             }),
+            Output::Pressed,
+            Output::Released,
+            Output::Toggled,
         ];
         for output in outputs {
             let line = encode_response(&Ok(output.clone()));

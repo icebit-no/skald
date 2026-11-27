@@ -7,12 +7,18 @@ own words.
 
 - Hold right ⌘ (macOS) or right Ctrl (Windows, Linux). The take arms after 200 ms; another key pressed while it
   is held cancels the take. A mouse click counts as another key, since ⌘-click is a shortcut.
+- On Linux a Wayland desktop gives the keyboard to no program, so the desktop's own key binding holds the key:
+  it runs `skald start` as right Ctrl goes down and `skald stop` as it comes up, or reports the key through the
+  GlobalShortcuts portal. Skald then knows that key alone, so another key does not cancel the take, and a
+  release the desktop never reports ends the take at the cap. The binding lines are in
+  [packaging/linux](../packaging/linux/README.md).
 - The microphone opens when the key goes down, so the words said before the take arms are kept. A press that
   does not arm, as in ⌘C, closes it again and throws its audio away.
 - So macOS shows its microphone indicator for a moment at each right-⌘ shortcut; that is accepted for the first words.
 - A take ends when the key is released, at the cap, or when its microphone disappears.
-- ⌃⌘X starts and stops a hands-free take on macOS, and Ctrl+Win+X on Windows, where the Windows key stands
-  for ⌘. The key on Linux is chosen in M5; Ctrl+Alt is AltGr on Norwegian layouts.
+- ⌃⌘X starts and stops a hands-free take on macOS, Ctrl+Win+X on Windows, where the Windows key stands for ⌘,
+  and Ctrl+Super+X on Linux, where a key binding of the desktop runs `skald toggle`. Ctrl+Alt is AltGr on
+  Norwegian layouts.
   While a hands-free take runs, the hold key starts nothing and other keys cancel nothing, so the user can type
   and use shortcuts; the chord itself never reaches the app in front.
 - A take is capped at 120 seconds. On macOS the system sound Tink plays when a take arms and Pop as its text is
@@ -186,6 +192,8 @@ writes the configuration file directly. Every command takes `--json`.
 | `skald mic list\|use\|order` | Microphones and their order |
 | `skald model list\|use` | Models, and which are downloaded |
 | `skald transcribe <file.wav>` | Transcribe a file, so an agent can try a correction |
+| `skald start`, `skald stop` | Press and release the hold key, for a key binding of the desktop on Linux |
+| `skald toggle` | Start or stop a hands-free take, for a key binding of the desktop on Linux |
 | `skald bench <folder>` | Run a test set through the configurations and count errors |
 | `skald skill install\|uninstall [--dir DIR]` | Install the Claude skill that teaches an agent these commands, or take it out |
 | `skald mcp` | The same commands as MCP tools over standard input and output |

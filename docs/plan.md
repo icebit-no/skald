@@ -118,8 +118,8 @@ Design: [Audio in](design.md#audio-in).
 - [ ] Hold-to-talk through the GlobalShortcuts portal, or Hyprland `bind`/`bindr` calling `skald start` and
       `skald stop`: built in #31; ticked once Thomas has held the key on Omarchy.
 - [ ] Overlay as a layer-shell surface, insertion with wtype, icon through StatusNotifierItem (Waybar):
-      insertion built in #33; ticked once the overlay and the icon are built too and Thomas has tried them
-      on Omarchy.
+      insertion built in #33, the overlay in #35; ticked once the icon is built too and Thomas has tried
+      them on Omarchy.
 - [ ] Vulkan build; AUR package `skald-bin`.
 
 ## M6 Release and site

@@ -15,6 +15,9 @@ hound = "=3.5.1"
 rubato = "=5.1.0"
 # RNNoise in Rust (BSD-3-Clause); without the default features, which add a command-line tool and dasp.
 nnnoiseless = { version = "=0.5.2", default-features = false }
+# The recorder's raw terminal and key events, with key releases where the terminal reports them; without
+# the default features, which add bracketed paste and derive_more.
+crossterm = { version = "=0.29.0", default-features = false, features = ["events", "windows"] }
 serde = { version = "=1.0.229", features = ["derive"] }
 serde_json = "=1.0.154"
 toml = "=1.2.3"

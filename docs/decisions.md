@@ -5,6 +5,35 @@ decision, and that pull request also edits the page where the rule lives ([desig
 [plan.md](plan.md)). Those pages say what holds; this one says when and why it came to hold. A later decision
 that undoes one adds an entry of its own, and the earlier entry gets one line naming it.
 
+## D-37 — `skald bench record` takes the test set while Enter is held; 60 sentences written for it
+
+2026-11-27, Claude; «from a distance» as the built-in Mac microphone at 2 m, and Thomas looking through the
+sentences before he reads them, settled by the lead in review.
+
+The test set's 60 sentences were written for Skald (`research/test-set/`, MIT) to provoke what M3 measures:
+compounds split or joined, hyphens, borrowed words with Norwegian endings, numbers, dates and names. Each
+sentence is its own reference, and none uses a form bokmål allows two ways, so a word counted wrong is wrong.
+
+`skald bench record <folder> --microphone <label>` shows them one at a time and records each take through
+skald-audio, as Skald records one, into a folder the bench reads: `<label>-<nn>.wav`, 16 kHz mono 16-bit, the
+sentence in `<label>-<nn>.txt`, and one manifest line per microphone (`"usb-*" = "usb"`). The labels are the
+manifest's three, `usb`, `built-in` and `distance`, and no others, so a typo cannot split the tables. The folder
+is the only state: a sentence is recorded once its take and reference are both there, and the take is moved
+into place last. A new sitting starts after the last take and offers the skipped sentences at the end, and a
+redo replaces the last take. A take under 0.5 s is a slip of the key and is not kept; one below the silence
+gate's speech level is kept with a warning, since the bench would count it as silence.
+
+A terminal reports a key going down, and again while it repeats, but not coming up. Holding Enter therefore
+needs the kitty keyboard protocol, which Ghostty, and so Herdr, speaks; in other terminals, macOS's Terminal
+among them, a take runs from one press of Enter to the next. crossterm 0.29.0 gives raw mode, the protocol and
+the key events on all three systems. Without its default features it adds five crates: crossterm,
+crossterm_winapi (Windows only), mio, signal-hook and signal-hook-mio.
+
+«From a distance» is the Mac's built-in microphone about 2 m away, in a normal voice, against about 50 cm for
+the built-in microphone and 15 to 25 cm for the USB microphone. Thomas looks through the sentences before he
+reads them. Evidence: the tests in
+`crates/skald-bench/src/record`. Changed: [plan.md](plan.md) M3 and Waiting on Thomas.
+
 ## D-36 — The app runs the dictation loop beside GPUI; ⌃⌘X is kept from other apps
 
 2026-11-27, Claude; Silero VAD inside the binary decided in #18's review, the bench and settings wiring asked

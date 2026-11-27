@@ -36,6 +36,21 @@ objc2-foundation = { version = "=0.3.2", default-features = false, features = [
     "NSValue",
 ] }
 
+# The keyboard, the clipboard and the integrity level of the window in front. This version is in the tree
+# through skald-models.
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "=0.61.2", features = [
+    "Win32_Foundation",
+    "Win32_Graphics_Gdi",
+    "Win32_Security",
+    "Win32_System_DataExchange",
+    "Win32_System_Memory",
+    "Win32_System_Ole",
+    "Win32_System_Threading",
+    "Win32_UI_Input_KeyboardAndMouse",
+    "Win32_UI_WindowsAndMessaging",
+] }
+
 # The GlobalShortcuts portal over D-Bus. GPUI takes the same version with the same executor, so only the
 # shortcuts' feature is new.
 [target.'cfg(target_os = "linux")'.dependencies]

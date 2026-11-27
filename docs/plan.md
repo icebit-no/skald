@@ -106,9 +106,10 @@ Design: [Audio in](design.md#audio-in).
 ## M4 Windows
 
 - [ ] Right Ctrl hold; a Vulkan build that runs on NVIDIA, AMD and Intel, and says so plainly on a machine
-      without Vulkan.
+      without Vulkan. The hold is built in skald-input (#30); the Vulkan build is not.
 - [ ] Icon and menu in the notification area; the overlay as a topmost window that takes no focus.
-- [ ] Paste with Ctrl+V; windows running as administrator cannot receive it, and Skald says so.
+- [ ] Paste with Ctrl+V; windows running as administrator cannot receive it, and Skald says so. Built in
+      skald-input (#30); ticked once the app runs on Windows and shows it.
 - [ ] Zip and manifest in `icebit-no/scoop-bucket`, a winget manifest, signing through SignPath Foundation.
 - [ ] Tested on a real Windows machine with an NVIDIA RTX GPU.
 

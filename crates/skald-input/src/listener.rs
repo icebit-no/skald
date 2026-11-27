@@ -12,8 +12,14 @@ use handy_keys::{KeyEvent, KeyboardListener};
 use crate::hold::HoldMachine;
 use crate::hotkey::{HANDS_FREE, HoldKey, KeyChange, classify};
 use crate::listening::{ListenerEvent, Unavailable};
+#[cfg(target_os = "macos")]
 use crate::macos::access::{AccessWatch, accessibility_granted};
+#[cfg(target_os = "macos")]
 use crate::macos::keyboard::sample;
+#[cfg(windows)]
+use crate::windows::access::{AccessWatch, accessibility_granted};
+#[cfg(windows)]
+use crate::windows::keyboard::sample;
 
 /// How often the thread wakes when no key arrives: the longest a revoked permission keeps the event tap in
 /// place, and the longest the thread outlives its listener.

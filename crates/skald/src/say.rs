@@ -483,8 +483,10 @@ fn insert_reason(error: &InsertError) -> &'static str {
     match error {
         InsertError::NoAccessibility => "Skald mangler Tilgjengelighet",
         InsertError::KeysHeld => "en tast ble holdt nede",
+        InsertError::ElevatedWindow => "vinduet foran kjører som administrator",
         InsertError::Clipboard => "utklippstavlen tok ikke imot teksten",
-        InsertError::Paste => "⌘V kunne ikke sendes",
+        InsertError::Paste if cfg!(target_os = "macos") => "⌘V kunne ikke sendes",
+        InsertError::Paste => "Ctrl+V kunne ikke sendes",
     }
 }
 

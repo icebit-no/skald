@@ -5,7 +5,7 @@ decision, and that pull request also edits the page where the rule lives ([desig
 [plan.md](plan.md)). Those pages say what holds; this one says when and why it came to hold. A later decision
 that undoes one adds an entry of its own, and the earlier entry gets one line naming it.
 
-## D-38 — On Linux the desktop's key binding holds the key, through `skald start` and `skald stop`
+## D-39 — On Linux the desktop's key binding holds the key, through `skald start` and `skald stop`
 
 2026-11-27, Claude; the binding and the portal as the two ways in set by the lead's brief for M5.
 
@@ -32,6 +32,42 @@ with `invalid`. They are no MCP tools, since an agent has no reason to hold the 
 (the tray and the overlay, later in M5), `skald` there runs the loop in the terminal, as `--terminal` does,
 and text is not inserted: each take is kept in the history and printed. Changed:
 [design.md](design.md#recording) (Recording, Command line), [plan.md](plan.md) M5.
+
+## D-38 — Right Ctrl, Ctrl+V and the clipboard on Windows; a window run as administrator is checked first
+
+2026-11-27, Claude.
+
+skald-input listens for right Ctrl on Windows through handy-keys' low-level keyboard hook and reads the keys'
+state with GetAsyncKeyState. AltGr arrives as left Ctrl with right Alt; handy-keys drops that left Ctrl, so
+AltGr never reads as right Ctrl, and during a hold it is another key, which cancels the take. The hook needs
+no permission, so the listener never reports one missing. Windows has no hands-free chord yet: design.md
+leaves its key to M4, and Ctrl+Alt is AltGr.
+
+Ctrl+V is four SendInput events in one call, left Ctrl down, V down and up, left Ctrl up, sent once every
+modifier is up. Apps read a shortcut by its virtual key, so it is Ctrl+V on every layout, which ⌘V on macOS
+is not. windows-sys, already in the tree through skald-models, is the only crate used; arboard and enigo are
+not.
+
+The clipboard is saved with every format it holds: a format that is a block of memory as its bytes, and the
+enhanced metafile as its bits. Handles only their owner understands (owner display, the private and GDI
+ranges) are left out, and so are the formats Windows makes again from one that is kept (a bitmap and its
+palette from the DIB, a metafile picture from the enhanced metafile). A clipboard holding only formats left
+out counts as unreadable, so the text stays on it. D-21's rule for secrets holds with Windows' markers:
+contents carrying ExcludeClipboardContentFromMonitorProcessing, or CanIncludeInClipboardHistory set to 0, as
+password managers place them, are neither read nor put back. The text there only for the paste carries both,
+and CanUploadToCloudClipboard set to 0, so clipboard history and the cloud clipboard skip it; restored
+contents carry no marker. The clipboard's sequence number tells a copy made after the paste, as macOS's
+change count does.
+
+Windows drops input sent to a window of a higher integrity level, such as an app run as administrator, and
+SendInput does not say so (User Interface Privilege Isolation). So once the keys are up, the inserter compares
+the integrity level of the window in front with its own; when the window's is higher it pastes nothing,
+leaves the clipboard alone and reports why, so the take ends as «Ikke satt inn» with its text in «Siste
+tekster», and the terminal says the window runs as administrator. A level that cannot be read counts as not
+higher, and the paste is tried. The same rule keeps the hook from seeing keys pressed in such a window, so a
+take cannot start there; the check catches the focus moving to one during a take. Running Skald with UI
+Access would lift both, but needs a signed binary under Program Files, which is for M4's packaging.
+Changed: [research.md](research.md#stack).
 
 ## D-37 — `skald bench record` takes the test set while Enter is held; 60 sentences written for it
 

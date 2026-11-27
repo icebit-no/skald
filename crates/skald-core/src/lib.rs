@@ -7,6 +7,7 @@ use std::fmt;
 pub mod config;
 pub mod corrections;
 pub mod history;
+pub mod paths;
 pub mod silence;
 pub mod silence_gate;
 mod text;

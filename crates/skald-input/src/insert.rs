@@ -58,6 +58,9 @@ pub enum InsertError {
     NoAccessibility,
     /// A modifier stayed down for the whole wait. The clipboard is untouched.
     KeysHeld,
+    /// The window in front runs with more rights than Skald, as an app run as administrator on Windows
+    /// does, and the system drops keystrokes sent to it. The clipboard is untouched.
+    ElevatedWindow,
     /// The clipboard refused the text.
     Clipboard,
     /// The paste keystroke could not be sent. Previous contents that were to be put back are back.
@@ -71,6 +74,9 @@ impl fmt::Display for InsertError {
                 "Accessibility is not granted, so the paste cannot be sent"
             }
             InsertError::KeysHeld => "a modifier stayed down, so the paste was not sent",
+            InsertError::ElevatedWindow => {
+                "the window in front runs as administrator, so it would drop the paste"
+            }
             InsertError::Clipboard => "the clipboard refused the text",
             InsertError::Paste => "the paste keystroke could not be sent",
         })
@@ -106,6 +112,11 @@ pub(crate) trait Desktop {
     type Snapshot;
 
     fn may_send_keys(&self) -> bool;
+    /// Whether the window in front would drop the keystrokes this process sends, which the system does
+    /// without an error.
+    fn front_window_refuses_keys(&self) -> bool {
+        false
+    }
     fn modifiers_down(&self) -> bool;
     fn read_clipboard(&mut self) -> Previous<Self::Snapshot>;
     /// `transient` marks the text as on the clipboard only for the paste, so clipboard history tools skip
@@ -137,6 +148,9 @@ pub(crate) fn insert_with<D: Desktop>(
         return Err(InsertError::NoAccessibility);
     }
     wait_for_keys_up(desktop, options.keys_up_within)?;
+    if desktop.front_window_refuses_keys() {
+        return Err(InsertError::ElevatedWindow);
+    }
 
     let after_paste = if options.keep_text_on_clipboard {
         AfterPaste::LeaveText(Inserted::TextKept)
@@ -184,19 +198,22 @@ fn wait_for_keys_up<D: Desktop>(desktop: &mut D, within: Duration) -> Result<(),
     Ok(())
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", windows))]
 pub use platform::Inserter;
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", windows))]
 mod platform {
     use super::{InsertError, InsertOptions, Inserted, insert_with};
-    use crate::macos::desktop::MacDesktop;
+    #[cfg(target_os = "macos")]
+    use crate::macos::desktop::MacDesktop as SystemDesktop;
+    #[cfg(windows)]
+    use crate::windows::desktop::WindowsDesktop as SystemDesktop;
 
     /// Inserts text where the cursor is. Each call blocks until the previous clipboard contents are
     /// back, so insertions never overlap.
     #[derive(Debug, Default)]
     pub struct Inserter {
-        desktop: MacDesktop,
+        desktop: SystemDesktop,
     }
 
     impl Inserter {
@@ -231,6 +248,7 @@ mod tests {
         start: Instant,
         elapsed: Duration,
         may_send_keys: bool,
+        front_window_refuses_keys: bool,
         /// Modifiers stay down until this much time has passed.
         modifiers_down_until: Duration,
         clipboard: Previous<&'static str>,
@@ -251,6 +269,7 @@ mod tests {
                 start: Instant::now(),
                 elapsed: Duration::ZERO,
                 may_send_keys: true,
+                front_window_refuses_keys: false,
                 modifiers_down_until: Duration::ZERO,
                 clipboard: Previous::Saved("previous"),
                 stamp: 7,
@@ -279,6 +298,10 @@ mod tests {
 
         fn may_send_keys(&self) -> bool {
             self.may_send_keys
+        }
+
+        fn front_window_refuses_keys(&self) -> bool {
+            self.front_window_refuses_keys
         }
 
         fn modifiers_down(&self) -> bool {
@@ -414,6 +437,19 @@ mod tests {
 
         assert_eq!(result, Err(InsertError::NoAccessibility));
         assert_eq!(desktop.steps, []);
+    }
+
+    #[test]
+    fn a_window_that_refuses_keys_once_they_are_up_leaves_the_clipboard_untouched() {
+        let mut desktop = FakeDesktop::new();
+        desktop.modifiers_down_until = Duration::from_millis(300);
+        desktop.front_window_refuses_keys = true;
+
+        let result = insert_with(&mut desktop, "Hei", &InsertOptions::default());
+
+        assert_eq!(result, Err(InsertError::ElevatedWindow));
+        assert_eq!(desktop.steps, []);
+        assert!(desktop.elapsed >= Duration::from_millis(300));
     }
 
     #[test]

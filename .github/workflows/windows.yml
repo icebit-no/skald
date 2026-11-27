@@ -15,7 +15,7 @@ env:
   RUSTFLAGS: -D warnings
 
 jobs:
-  check:
+  windows:
     # GitHub's own runner, as for macOS. Formatting is checked in the macOS job alone; it does not depend on
     # the system. transcribe.cpp builds for the CPU here, with MSVC and the runner's CMake.
     runs-on: windows-latest
@@ -32,3 +32,6 @@ jobs:
       - run: cargo clippy --workspace --all-targets --locked
       # Every crate's tests run even when one fails, so a run on this system shows all it breaks.
       - run: cargo test --workspace --locked --no-fail-fast
+      # The clipboard tests use the system clipboard, which Windows has one of, so they are left out of a
+      # developer's runs and run here alone.
+      - run: cargo test -p skald-input --locked -- --ignored --test-threads 1

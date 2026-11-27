@@ -1,0 +1,36 @@
+name: linux
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['**.md', 'docs/**']
+  pull_request:
+    paths-ignore: ['**.md', 'docs/**']
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: -D warnings
+
+jobs:
+  check:
+    # GitHub's own runner, as for macOS in rust.yml: the repository is public, so a pull request from a
+    # fork never reaches a machine of ours. Formatting is the same on every system and is checked there.
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    concurrency:
+      group: linux-${{ github.head_ref || github.ref }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # The system libraries the crates link: ALSA for cpal; Wayland, xkbcommon, X11's xcb and fontconfig
+      # for GPUI. The runner already has the C++ compiler and cmake that transcribe.cpp's CPU build takes.
+      - run: >-
+          sudo apt-get update &&
+          sudo apt-get install -y --no-install-recommends
+          libasound2-dev libfontconfig-dev libwayland-dev libxkbcommon-x11-dev libx11-xcb-dev
+      # rustup installs the toolchain rust-toolchain.toml pins on the first cargo call.
+      - run: cargo clippy --workspace --all-targets --locked
+      - run: cargo test --workspace --locked

@@ -5,6 +5,21 @@ decision, and that pull request also edits the page where the rule lives ([desig
 [plan.md](plan.md)). Those pages say what holds; this one says when and why it came to hold. A later decision
 that undoes one adds an entry of its own, and the earlier entry gets one line naming it.
 
+## D-20 — Microphone fallback, matching by name, a lost microphone and the menu pin
+
+2026-11-27, Claude.
+
+D-10 left four cases open. When no microphone in the order is connected, Skald uses the system's default
+input, then the first connected microphone, so a take still records; while any microphone in the order is
+connected, the order wins over the default. A device can get a new id when it is plugged into another port, so
+an entry whose id is gone matches a connected microphone of the same name that no other entry holds by id. A
+microphone that disappears during a take ends the take with what was recorded, and the next take uses the next
+microphone; switching in the middle would put two microphones in one take.
+
+Choosing a microphone in the menu pins it: the app puts it first in the order it uses until «Bruk den første
+som er koblet til», and while it is unplugged the rest of the order applies. The pin is a setting, so
+`skald mic use` sets the same pin. Changed: [design.md](design.md#microphones).
+
 ## D-19 — The configuration keeps the keys it does not know
 
 2026-11-27, Claude.

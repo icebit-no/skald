@@ -12,14 +12,15 @@
 //! error that tells the user to start Skald again.
 
 use std::fmt;
+use std::io::{self, BufRead, Read};
 use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
 pub const VERSION: u32 = 1;
 
-/// A request line or a response line longer than this is refused, so a broken peer cannot fill memory.
-pub(crate) const MAX_LINE: usize = 1 << 20;
+/// A line longer than this is refused, so a broken peer cannot fill memory.
+const MAX_LINE: usize = 1 << 20;
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "command", rename_all = "snake_case")]
@@ -394,6 +395,26 @@ pub(crate) fn decode_response(line: &str) -> Result<Output, Error> {
         Reply::Ok(output) => Ok(output),
         Reply::Error(error) => Err(error),
     }
+}
+
+/// One line without its line break; `None` at the end of the stream. A line over [`MAX_LINE`] is an
+/// error.
+pub(crate) fn read_line(reader: &mut impl BufRead) -> io::Result<Option<String>> {
+    let mut line = String::new();
+    let read = reader
+        .by_ref()
+        .take(MAX_LINE as u64 + 1)
+        .read_line(&mut line)?;
+    if read == 0 {
+        return Ok(None);
+    }
+    if line.len() > MAX_LINE {
+        return Err(io::Error::new(io::ErrorKind::InvalidData, "line too long"));
+    }
+    if line.ends_with('\n') {
+        line.pop();
+    }
+    Ok(Some(line))
 }
 
 fn check_version(version: Option<u64>) -> Result<(), Error> {

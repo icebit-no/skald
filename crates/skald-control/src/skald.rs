@@ -46,7 +46,8 @@ pub trait Skald {
 }
 
 /// What the command line asks of this machine itself while Skald is not running. The binary implements
-/// it with the same crates the app is built from.
+/// it with the same crates the app is built from. It writes nothing to standard output, which `skald mcp`
+/// speaks its protocol on; anything worth saying goes to standard error.
 pub trait Machine {
     /// The microphones connected now, and the one a take would use with the configuration's order and pin.
     fn microphones(&self, config: &Config) -> Result<Microphones, Error>;

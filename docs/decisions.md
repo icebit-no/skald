@@ -15,8 +15,12 @@ read, has no effect, and is written back as it was, at the top, in a section and
 older Skald that saves its settings does not delete those of a newer one; a hold key or model it does not
 know is kept as written for the same reason. A key never changes type: a setting that needs another type gets
 a new key, so a value of the wrong type is a mistake in the file, and loading fails with the line rather than
-putting a default in place of what the user chose. Comments in the file are not kept when it is written. How
-often each correction applied is kept on the rule in the same file, next to the words it counts.
+putting a default in place of what the user chose. Comments in the file are not kept when it is written.
+
+The file is written only when a setting changes, never after a take: the command line and a person's editor
+share it, and a write per take would race both. How often each correction applied is state, kept next to the
+history and keyed by the rule's words, whatever their case and spacing, so a rule given a new replacement
+keeps its count.
 
 ## D-18 — Corrections match whole words, ignore case, and the longest match wins
 

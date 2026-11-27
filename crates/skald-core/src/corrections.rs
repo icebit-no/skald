@@ -23,9 +23,17 @@
 //! The text is read once from the start. Where several rules match at the same place, the one that matches
 //! the longer stretch of text wins, and between equally long matches the earlier rule. The text a rule
 //! writes is never read again, so one rule never fires on another's replacement.
+//!
+//! # Counts
+//!
+//! How often each rule applied is kept in [`Counts`], with the history, not on the rule: it changes with
+//! every take, and the configuration is written only when a setting changes.
+
+use std::collections::{BTreeMap, BTreeSet};
 
 use serde::{Deserialize, Serialize};
 
+use crate::TomlError;
 use crate::text::{fold, is_word_char};
 
 /// The rules in the order the user keeps them; the order decides only between two rules that match the
@@ -41,9 +49,6 @@ pub struct Correction {
     /// The words as the model writes them.
     pub from: String,
     pub to: String,
-    /// How many replacements this rule has made, so the rules that work are visible.
-    #[serde(default)]
-    pub applied: u32,
     /// Keys a newer Skald wrote, written back unchanged (see the `config` module).
     #[serde(flatten)]
     unknown: toml::Table,
@@ -54,7 +59,6 @@ impl Correction {
         Self {
             from: from.into(),
             to: to.into(),
-            applied: 0,
             unknown: toml::Table::new(),
         }
     }
@@ -124,12 +128,14 @@ impl Corrections {
         }
     }
 
-    /// Corrects the text of a take and counts each replacement on the rule that made it.
-    pub fn apply_and_count(&mut self, text: &str) -> String {
+    /// Corrects the text of a take and counts each replacement for the rule that made it.
+    pub fn apply_and_count(&self, text: &str, counts: &mut Counts) -> String {
         let corrected = self.apply(text);
         for &rule in &corrected.replacements {
-            let applied = &mut self.rules[rule].applied;
-            *applied = applied.saturating_add(1);
+            if let Some(pattern) = Pattern::new(&self.rules[rule].from) {
+                let applied = counts.applied.entry(pattern.key()).or_default();
+                *applied = applied.saturating_add(1);
+            }
         }
         corrected.text
     }
@@ -167,6 +173,44 @@ impl Corrections {
     }
 }
 
+/// How often each rule applied, so the rules that work are visible. A count belongs to the rule's words,
+/// whatever their case and spacing, so it stays with a rule that is given a new replacement.
+#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Counts {
+    #[serde(default)]
+    applied: BTreeMap<String, u32>,
+}
+
+impl Counts {
+    /// How often the rule for these words applied.
+    pub fn get(&self, from: &str) -> u32 {
+        Pattern::new(from)
+            .and_then(|pattern| self.applied.get(&pattern.key()).copied())
+            .unwrap_or(0)
+    }
+
+    /// Drops the counts of words no rule has any more, so a rule removed and added again starts from zero.
+    pub fn retain(&mut self, corrections: &Corrections) {
+        let kept: BTreeSet<String> = corrections
+            .rules
+            .iter()
+            .filter_map(|rule| Pattern::new(&rule.from))
+            .map(|pattern| pattern.key())
+            .collect();
+        self.applied.retain(|key, _| kept.contains(key));
+    }
+
+    /// An empty text is no counts. Keys this version does not know are ignored, since the counts are
+    /// rewritten after every take that applies a rule.
+    pub fn from_toml(text: &str) -> Result<Self, TomlError> {
+        toml::from_str(text).map_err(TomlError::new)
+    }
+
+    pub fn to_toml(&self) -> Result<String, TomlError> {
+        toml::to_string(self).map_err(TomlError::new)
+    }
+}
+
 /// A rule's words, folded, with each run of spaces as one unit.
 #[derive(Debug, PartialEq, Eq)]
 struct Pattern {
@@ -191,6 +235,17 @@ impl Pattern {
             }
         }
         (!units.is_empty()).then_some(Self { units })
+    }
+
+    /// The words written out folded, with one space between them: the same for every spelling of them.
+    fn key(&self) -> String {
+        self.units
+            .iter()
+            .map(|unit| match unit {
+                Unit::Char(c) => *c,
+                Unit::Space => ' ',
+            })
+            .collect()
     }
 
     /// The end of the match that starts at `start`, as an index into `text`.
@@ -391,14 +446,58 @@ mod tests {
 
     #[test]
     fn counting_happens_only_for_a_take() {
-        let mut corrections = rules(&[("mercha", "merget"), ("Post gres SQL", "PostgreSQL")]);
+        let corrections = rules(&[("mercha", "merget"), ("Post gres SQL", "PostgreSQL")]);
+        let mut counts = Counts::default();
         corrections.apply("mercha");
-        assert_eq!(corrections.rules[0].applied, 0);
+        assert_eq!(counts, Counts::default());
 
-        let text = corrections.apply_and_count("Jeg mercha og mercha Post gres SQL.");
+        let text = corrections.apply_and_count("Jeg mercha og mercha Post gres SQL.", &mut counts);
         assert_eq!(text, "Jeg merget og merget PostgreSQL.");
-        assert_eq!(corrections.rules[0].applied, 2);
-        assert_eq!(corrections.rules[1].applied, 1);
+        assert_eq!(counts.get("mercha"), 2);
+        assert_eq!(counts.get("Post gres SQL"), 1);
+        assert_eq!(counts.get("merget"), 0);
+    }
+
+    #[test]
+    fn a_count_belongs_to_the_words_whatever_their_spelling() {
+        let mut corrections = rules(&[("Post gres SQL", "PostgreSQL"), ("blå bær", "blåbær")]);
+        let mut counts = Counts::default();
+        corrections.apply_and_count("Post gres SQL og BLÅ BÆR", &mut counts);
+        assert_eq!(counts.get("post  GRES sql"), 1);
+        assert_eq!(counts.get("Blå Bær"), 1);
+
+        corrections.add("POST GRES SQL", "Postgres").unwrap();
+        corrections.apply_and_count("post gres sql", &mut counts);
+        assert_eq!(counts.get("Post gres SQL"), 2);
+    }
+
+    #[test]
+    fn retain_drops_the_counts_of_removed_rules() {
+        let mut corrections = rules(&[("mercha", "merget"), ("Post gres SQL", "PostgreSQL")]);
+        let mut counts = Counts::default();
+        corrections.apply_and_count("mercha Post gres SQL", &mut counts);
+        corrections.remove("mercha");
+        counts.retain(&corrections);
+        assert_eq!(counts.get("mercha"), 0);
+        assert_eq!(counts.get("Post gres SQL"), 1);
+    }
+
+    #[test]
+    fn counts_round_trip_through_toml_with_æøå() {
+        let corrections = rules(&[("mercha", "merget"), ("blå bær", "blåbær")]);
+        let mut counts = Counts::default();
+        corrections.apply_and_count("mercha, blå bær og Blå bær", &mut counts);
+        let toml = counts.to_toml().unwrap();
+        let read = Counts::from_toml(&toml).unwrap();
+        assert_eq!(read, counts, "{toml}");
+        assert_eq!(read.get("blå bær"), 2);
+    }
+
+    #[test]
+    fn counts_read_an_empty_file_and_ignore_unknown_keys() {
+        assert_eq!(Counts::from_toml("").unwrap(), Counts::default());
+        let counts = Counts::from_toml("since = 2027\n[applied]\nmercha = 3\n").unwrap();
+        assert_eq!(counts.get("Mercha"), 3);
     }
 
     #[test]
@@ -414,11 +513,9 @@ mod tests {
     fn add_replaces_the_rule_for_the_same_words() {
         let mut corrections = Corrections::default();
         corrections.add(" mercha ", " merget ").unwrap();
-        corrections.rules[0].applied = 4;
         corrections.add("MERCHA", "merga").unwrap();
         assert_eq!(corrections.rules.len(), 1);
         assert_eq!(corrections.rules[0].to, "merga");
-        assert_eq!(corrections.rules[0].applied, 4);
 
         corrections.add("Post  gres SQL", "PostgreSQL").unwrap();
         assert_eq!(corrections.rules.len(), 2);

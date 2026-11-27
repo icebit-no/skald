@@ -2,6 +2,10 @@
 //! read it with [`Config::from_toml`] and write it with [`Config::to_toml`], so they change the same file
 //! under the same rules.
 //!
+//! The file changes only when a setting does, never after a take: the command line and a person's editor
+//! share it, and a write per take would race both. What a take changes, the history and how often each
+//! correction applied, is kept apart from it.
+//!
 //! # Older and newer files
 //!
 //! - **A missing key takes its default**, at every level, so a file written by an older Skald loads.
@@ -184,7 +188,6 @@ mod tests {
             .add("Post gres SQL", "PostgreSQL")
             .unwrap();
         config.corrections.add("mercha", "merget").unwrap();
-        config.corrections.apply_and_count("mercha");
         config.silence.known_phrases.push("Å ja".into());
 
         let toml = config.to_toml().unwrap();
@@ -210,7 +213,6 @@ mod tests {
             r#"sentence = "Vi merget pull-requesten.""#,
             "[[corrections]]",
             r#"from = "mercha""#,
-            "applied = 0",
             "[silence]",
             "known_phrase_max_speech_ms = 1000",
         ] {
@@ -242,7 +244,7 @@ mod tests {
         assert!(config.sounds);
         assert_eq!(config.vocabulary.sentence, "");
         assert_eq!(config.vocabulary.words, ["PostgreSQL"]);
-        assert_eq!(config.corrections.rules[0].applied, 0);
+        assert_eq!(config.corrections.rules[0].to, "merget");
         assert_eq!(config.silence, Silence::default());
     }
 
@@ -260,7 +262,6 @@ mod tests {
             [[corrections]]
             from = "mercha"
             to = "merget"
-            applied = 3
             enabled = false
 
             [silence]
@@ -271,11 +272,10 @@ mod tests {
             since = 2027-01-01T08:00:00Z
             nested = { a = 1, b = ["x", "ø"] }
         "#;
-        let mut config = Config::from_toml(text).unwrap();
+        let config = Config::from_toml(text).unwrap();
         assert_eq!(config.language, Language::Nynorsk);
-        assert_eq!(config.corrections.rules[0].applied, 3);
         assert_eq!(
-            config.corrections.apply_and_count("mercha"),
+            config.corrections.apply("mercha").text,
             "merget",
             "an unknown key changes nothing here"
         );
@@ -289,7 +289,6 @@ mod tests {
         assert_eq!(table["future_choice"].as_str(), Some("kanskje"));
         assert_eq!(table["vocabulary"]["weights"].as_array().unwrap().len(), 2);
         assert_eq!(table["corrections"][0]["enabled"].as_bool(), Some(false));
-        assert_eq!(table["corrections"][0]["applied"].as_integer(), Some(4));
         assert_eq!(
             table["silence"]["no_speech_threshold"].as_float(),
             Some(0.6)
@@ -337,7 +336,7 @@ mod tests {
 
     #[test]
     fn the_sections_work_once_loaded() {
-        let mut config = Config::from_toml(
+        let config = Config::from_toml(
             r#"
             [vocabulary]
             sentence = "Vi merget pull-requesten."
@@ -354,7 +353,7 @@ mod tests {
             "Vi merget pull-requesten. Skald, PostgreSQL."
         );
         assert_eq!(
-            config.corrections.apply_and_count("Post gres SQL kjører."),
+            config.corrections.apply("Post gres SQL kjører.").text,
             "PostgreSQL kjører."
         );
         assert!(

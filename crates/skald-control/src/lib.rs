@@ -9,12 +9,17 @@
 //!
 //! Either way the command is carried out by the same code on top of [`Skald`], so it answers the same,
 //! and `--json` prints the same object, whether Skald runs or not.
+//!
+//! `skald mcp` serves the same commands as MCP tools over standard input and output ([`mcp`]), and
+//! `skald skill install` writes the Claude skill that teaches an agent to use them.
 
 mod cli;
 mod commands;
+pub mod mcp;
 mod offline;
 pub mod protocol;
 mod skald;
+mod skill;
 #[cfg(unix)]
 mod socket;
 

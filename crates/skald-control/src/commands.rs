@@ -469,12 +469,17 @@ impl SettingKey {
         }
     }
 
+    /// The values it takes, as the file writes them.
+    pub(crate) fn accepted(self) -> &'static [&'static str] {
+        match self.choices() {
+            Choices::Bool => &["true", "false"],
+            Choices::Words(words) => words,
+        }
+    }
+
     /// The values it takes, «a, b eller c».
     pub(crate) fn values(self) -> String {
-        match self.choices() {
-            Choices::Bool => "true eller false".to_owned(),
-            Choices::Words(words) => either(words),
-        }
+        either(self.accepted())
     }
 
     /// A key as the file writes it, or with hyphens for underscores.

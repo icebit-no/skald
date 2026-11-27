@@ -1,8 +1,9 @@
 //! What happens to a recording once the take has ended: the silence gate and the model, the corrections,
 //! the insertion and the history. It runs on a thread of its own, which holds the model for as long as Skald
 //! runs, so the keys stay live while the model works and takes are inserted in the order they were made.
-//! The command line's questions that need the model, the ordskatt meter and a file to transcribe, are
-//! answered on the same thread, between takes.
+//! The command line's and the settings window's questions that need the model, the ordskatt meter and a
+//! file to transcribe, are answered on the same thread, between takes, as is a word corrected in the
+//! history, which the thread keeps.
 
 use std::io;
 use std::path::PathBuf;
@@ -17,7 +18,7 @@ use skald_core::history::Entry;
 use skald_core::silence::Silence;
 use skald_core::silence_gate::{Decision, Reason};
 use skald_core::state::State;
-use skald_core::vocabulary::{CountTokens, Prompt};
+use skald_core::vocabulary::CountTokens;
 use skald_engine::{Decoding, Engine, Take, TakeOptions};
 use skald_input::{InsertError, InsertOptions, Inserted};
 
@@ -80,6 +81,8 @@ impl Insert for skald_input::Inserter {
 
 /// A finished take, handed over to be transcribed.
 pub(crate) struct Job {
+    /// The take's number, as the screen was told when it started.
+    pub(crate) take: u64,
     pub(crate) recording: Recording,
     /// The settings as they stood when the take ended.
     pub(crate) config: Arc<Config>,
@@ -120,11 +123,14 @@ pub(crate) struct Timings {
 /// How one take went.
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct Report {
+    pub(crate) take: u64,
     pub(crate) microphone: String,
     pub(crate) outcome: Outcome,
     pub(crate) timings: Timings,
     /// Why the history could not be saved, naming the file.
     pub(crate) state_error: Option<String>,
+    /// The history and the correction counts after the take.
+    pub(crate) state: State,
 }
 
 pub(crate) struct Pipeline<T, I> {
@@ -156,12 +162,14 @@ impl<T: Transcribe, I: Insert> Pipeline<T, I> {
     /// and writes them to the state file, even when the insertion failed, so the text is not lost.
     pub(crate) fn process(&mut self, job: Job) -> Report {
         let Job {
+            take: number,
             recording,
             config,
             ended_at,
             unix_ms,
         } = job;
         let mut report = Report {
+            take: number,
             microphone: recording.microphone.name.clone(),
             outcome: Outcome::HeardNothing(Reason::NoWords),
             timings: Timings {
@@ -169,6 +177,7 @@ impl<T: Transcribe, I: Insert> Pipeline<T, I> {
                 ..Timings::default()
             },
             state_error: None,
+            state: self.state.clone(),
         };
 
         let prompt = config.vocabulary.prompt();
@@ -238,13 +247,39 @@ impl<T: Transcribe, I: Insert> Pipeline<T, I> {
         }
         self.state.counts.retain(&config.corrections);
         report.state_error = files::write_state(&self.state_file, &self.state).err();
+        report.state = self.state.clone();
         report
+    }
+
+    /// Gives the history entry that ended at `unix_ms` with the text `before` the text `after`, and
+    /// writes the state. `None` when no entry is both, as when a take pushed it out meanwhile.
+    pub(crate) fn correct_history(
+        &mut self,
+        unix_ms: i64,
+        before: &str,
+        after: &str,
+    ) -> Option<Corrected> {
+        if !self.state.history.replace(unix_ms, before, after) {
+            return None;
+        }
+        Some(Corrected {
+            state: self.state.clone(),
+            error: files::write_state(&self.state_file, &self.state).err(),
+        })
     }
 }
 
+/// The state after a word in the history was corrected.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct Corrected {
+    pub(crate) state: State,
+    /// Why it could not be saved, naming the file.
+    pub(crate) error: Option<String>,
+}
+
 impl<T: Transcribe, I> Pipeline<T, I> {
-    pub(crate) fn count_tokens(&self, prompt: &Prompt) -> usize {
-        prompt.tokens(&|text: &str| self.transcriber.count_tokens(text))
+    pub(crate) fn count_tokens(&self, text: &str) -> usize {
+        self.transcriber.count_tokens(text)
     }
 
     /// Transcribes a file's samples as a take, through the silence gate, with the configuration's language,
@@ -271,15 +306,21 @@ impl<T: Transcribe, I> Pipeline<T, I> {
 pub(crate) enum WorkerEvent {
     Loaded { device: String, took: Duration },
     LoadFailed(String),
-    Done(Report),
+    Done(Box<Report>),
+    HistoryCorrected(Corrected),
 }
 
 /// What the worker is asked to do, in the order it was asked.
 enum Work {
     Take(Job),
     CountTokens {
-        prompt: Prompt,
+        text: String,
         answer: Sender<usize>,
+    },
+    CorrectHistory {
+        unix_ms: i64,
+        before: String,
+        after: String,
     },
     Transcribe {
         samples: Vec<f32>,
@@ -333,10 +374,22 @@ impl Worker {
                 for work in inbox {
                     match work {
                         Work::Take(job) => {
-                            let _ = events.send(WorkerEvent::Done(pipeline.process(job)));
+                            let report = Box::new(pipeline.process(job));
+                            let _ = events.send(WorkerEvent::Done(report));
                         }
-                        Work::CountTokens { prompt, answer } => {
-                            let _ = answer.send(pipeline.count_tokens(&prompt));
+                        Work::CountTokens { text, answer } => {
+                            let _ = answer.send(pipeline.count_tokens(&text));
+                        }
+                        Work::CorrectHistory {
+                            unix_ms,
+                            before,
+                            after,
+                        } => {
+                            if let Some(corrected) =
+                                pipeline.correct_history(unix_ms, &before, &after)
+                            {
+                                let _ = events.send(WorkerEvent::HistoryCorrected(corrected));
+                            }
                         }
                         Work::Transcribe {
                             samples,
@@ -395,11 +448,23 @@ pub(crate) struct WorkerHandle {
 }
 
 impl WorkerHandle {
-    /// `None` once the worker has stopped.
-    pub(crate) fn count_tokens(&self, prompt: Prompt) -> Option<usize> {
+    /// The tokens `text` takes for the model; `None` once the worker has stopped.
+    pub(crate) fn count_tokens(&self, text: &str) -> Option<usize> {
         let (answer, answered) = mpsc::channel();
-        self.work.send(Work::CountTokens { prompt, answer }).ok()?;
+        let text = text.to_owned();
+        self.work.send(Work::CountTokens { text, answer }).ok()?;
         answered.recv().ok()
+    }
+
+    /// Corrects a word in a history entry, after the work handed over before it; the worker reports the
+    /// state that results.
+    pub(crate) fn correct_history(&self, unix_ms: i64, before: String, after: String) {
+        // Fails only once the worker has stopped, when there is no history left to correct.
+        let _ = self.work.send(Work::CorrectHistory {
+            unix_ms,
+            before,
+            after,
+        });
     }
 
     pub(crate) fn transcribe(
@@ -561,6 +626,7 @@ pub(crate) mod tests {
 
     fn job(config: Config) -> Job {
         Job {
+            take: 7,
             recording: Recording {
                 samples: vec![0.0; 32_000],
                 levels: vec![-60.0, -18.5, -40.0],
@@ -602,8 +668,13 @@ pub(crate) mod tests {
                 complete: true,
             }
         );
+        assert_eq!(report.take, 7);
         assert_eq!(report.microphone, "Shure MV7");
         assert_eq!(report.state_error, None);
+        assert_eq!(
+            report.state.history.latest().unwrap().text,
+            "Vi merget PostgreSQL i går."
+        );
         assert_eq!(report.timings.audio, Duration::from_secs(2));
         assert_eq!(report.timings.speech, Duration::from_secs(1));
         assert_eq!(report.timings.prompt_tokens, Some(12));
@@ -725,6 +796,11 @@ pub(crate) mod tests {
                 error: InsertError::KeysHeld,
                 complete: true,
             }
+        );
+        assert_eq!(
+            report.state.history.latest().unwrap().text,
+            "Vi merget den.",
+            "for «Siste tekster»"
         );
         let state = files::read_state(&state_file).unwrap();
         assert_eq!(state.history.latest().unwrap().text, "Vi merget den.");
@@ -880,17 +956,12 @@ pub(crate) mod tests {
         assert!(matches!(&events[0], WorkerEvent::Loaded { device, .. } if device == "FAKE0"));
         assert!(matches!(
             &events[1],
-            WorkerEvent::Done(Report {
-                outcome: Outcome::Inserted { .. },
-                ..
-            })
+            WorkerEvent::Done(report) if matches!(report.outcome, Outcome::Inserted { .. })
         ));
         assert!(matches!(
             &events[2],
-            WorkerEvent::Done(Report {
-                outcome: Outcome::HeardNothing(Reason::TooLittleSpeech),
-                ..
-            })
+            WorkerEvent::Done(report)
+                if report.outcome == Outcome::HeardNothing(Reason::TooLittleSpeech)
         ));
         assert_eq!(events.len(), 3);
     }
@@ -912,7 +983,10 @@ pub(crate) mod tests {
         .unwrap();
         let handle = worker.handle();
         let config = config();
-        assert_eq!(handle.count_tokens(config.vocabulary.prompt()), Some(4));
+        assert_eq!(
+            handle.count_tokens(&config.vocabulary.prompt().text()),
+            Some(4)
+        );
 
         let mut nynorsk = config.clone();
         nynorsk.language = Language::Nynorsk;
@@ -925,7 +999,7 @@ pub(crate) mod tests {
 
         worker.submit(job(config.clone()));
         worker.finish();
-        assert_eq!(handle.count_tokens(config.vocabulary.prompt()), None);
+        assert_eq!(handle.count_tokens("Vi merget den."), None);
         assert!(handle.transcribe(Vec::new(), Arc::new(config)).is_err());
     }
 
@@ -948,5 +1022,51 @@ pub(crate) mod tests {
             &events[..],
             [WorkerEvent::LoadFailed(reason)] if reason.contains("file not found")
         ));
+    }
+
+    #[test]
+    fn a_word_corrected_in_the_history_is_kept_and_reported_after_the_takes_before_it() {
+        let scratch = Scratch::new("worker-correct");
+        let state_file = scratch.0.join("state.toml");
+        let model = FakeModel::new([Ok(heard("Vi mercha den."))]);
+        let (events, received) = mpsc::channel();
+        let mut without_rule = config();
+        without_rule.corrections.remove("mercha");
+        let worker = Worker::spawn(
+            move || Ok(model),
+            FakeInserter::answering(Ok(Inserted::PreviousRestored)),
+            quiet(),
+            State::default(),
+            state_file.clone(),
+            events,
+        )
+        .unwrap();
+        let handle = worker.handle();
+        worker.submit(job(without_rule));
+        handle.correct_history(
+            1_795_800_000_000,
+            "Vi mercha den.".into(),
+            "Vi merget den.".into(),
+        );
+        // An entry that is not there, by its time or its text, changes nothing.
+        handle.correct_history(1, "Vi mercha den.".into(), "x".into());
+        handle.correct_history(1_795_800_000_000, "Vi mercha den.".into(), "x".into());
+        worker.finish();
+
+        let events: Vec<WorkerEvent> = received.try_iter().collect();
+        assert_eq!(events.len(), 3, "{events:?}");
+        let WorkerEvent::HistoryCorrected(corrected) = &events[2] else {
+            panic!("{events:?}");
+        };
+        assert_eq!(corrected.error, None);
+        assert_eq!(
+            corrected.state.history.latest().unwrap().text,
+            "Vi merget den."
+        );
+        assert_eq!(
+            files::read_state(&state_file).unwrap(),
+            corrected.state,
+            "written"
+        );
     }
 }

@@ -8,14 +8,23 @@
 use std::ffi::{CStr, c_char, c_int, c_void};
 use std::ptr::NonNull;
 
+use objc2::rc::Retained;
 use objc2_core_foundation::CFMachPort;
 use objc2_core_graphics::{
     CGEvent, CGEventTapLocation, CGEventTapOptions, CGEventTapPlacement, CGEventTapProxy,
     CGEventType,
 };
+use objc2_foundation::{NSDictionary, NSNumber, NSString};
 
 /// tccd posts this Darwin notification after any privacy permission changes.
 const TCC_ACCESS_CHANGED: &CStr = c"com.apple.tcc.access.changed";
+
+#[link(name = "ApplicationServices", kind = "framework")]
+unsafe extern "C" {
+    /// The options key that asks AXIsProcessTrustedWithOptions to show the system's prompt.
+    static kAXTrustedCheckOptionPrompt: &'static NSString;
+    fn AXIsProcessTrustedWithOptions(options: *const c_void) -> bool;
+}
 
 unsafe extern "C" {
     fn notify_register_check(name: *const c_char, out_token: *mut c_int) -> u32;
@@ -64,10 +73,12 @@ impl Drop for AccessWatch {
     }
 }
 
-/// Whether the permission is granted, asked fresh. AXIsProcessTrusted() answers from a cache that can
-/// keep saying yes after a revoke, so a yes is confirmed by creating an active event tap, which makes the
-/// window server check. A no is trusted as it is, so asking never creates a tap without the permission.
-pub(crate) fn accessibility_granted() -> bool {
+/// Whether Accessibility is granted to this process, asked fresh, without prompting. AXIsProcessTrusted()
+/// answers from a cache that can keep saying yes after a revoke, so a yes is confirmed by creating an
+/// active event tap, which makes the window server check. A no is trusted as it is, so asking never
+/// creates a tap without the permission. Each yes costs a tap made and taken down, so ask when the answer
+/// is needed rather than on every frame.
+pub fn accessibility_granted() -> bool {
     handy_keys::check_accessibility() && active_tap_allowed()
 }
 
@@ -95,6 +106,20 @@ fn active_tap_allowed() -> bool {
     tap.inspect(|tap| CFMachPort::invalidate(tap)).is_some()
 }
 
+/// Asks the system for Accessibility: macOS shows its prompt, which lists Skald under Privacy & Security ›
+/// Accessibility and offers to open it there. It shows the prompt once per app; after that, and when the
+/// permission is granted, it shows nothing. Returns whether the permission is granted now, as the system's
+/// cache has it.
+pub fn request_accessibility() -> bool {
+    // SAFETY: a constant ApplicationServices exports, which the link above has loaded.
+    let key: &NSString = unsafe { kAXTrustedCheckOptionPrompt };
+    let yes = NSNumber::new_bool(true);
+    let options: Retained<NSDictionary<NSString, NSNumber>> =
+        NSDictionary::from_slices(&[key], &[&*yes]);
+    // SAFETY: an NSDictionary is a CFDictionary toll-free, and the call only reads it.
+    unsafe { AXIsProcessTrustedWithOptions(Retained::as_ptr(&options).cast()) }
+}
+
 /// Opens System Settings at Privacy & Security › Accessibility.
 pub fn open_accessibility_settings() -> std::io::Result<()> {
     handy_keys::open_accessibility_settings()
@@ -103,6 +128,16 @@ pub fn open_accessibility_settings() -> std::io::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_no_from_the_system_is_the_answer_and_asking_again_agrees() {
+        // CI's runner grants the test nothing; a terminal granted Accessibility passes it on.
+        let granted = accessibility_granted();
+        if !handy_keys::check_accessibility() {
+            assert!(!granted);
+        }
+        assert_eq!(accessibility_granted(), granted);
+    }
 
     #[test]
     fn the_watch_registers_and_reports_no_change_at_start() {

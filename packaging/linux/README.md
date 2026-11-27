@@ -1,9 +1,9 @@
 # Skald on Linux
 
 How to build and run Skald on Linux, on Omarchy and other Hyprland desktops first (D-7), and how the desktop
-holds the key you talk with (D-39). Linux is M5 in [plan.md](../../docs/plan.md). Skald runs there in the
-terminal: the tray, the overlay and the windows have not come to Linux. The text is inserted where the cursor
-is, through the clipboard and Ctrl+V (D-42).
+holds the key you talk with (D-39). Linux is M5 in [plan.md](../../docs/plan.md). Skald shows the overlay as a
+layer-shell surface (D-44) and inserts the text where the cursor is, through the clipboard and Ctrl+V (D-42);
+the tray item has not come to Linux yet, so settings are changed with `skald config`.
 
 ## Build
 
@@ -25,9 +25,11 @@ program of its own, only a compositor with the wlroots data-control protocol, as
 skald
 ```
 
-The first start says where the speech model belongs and how to fetch it, with its size and the `curl` line;
-the file is checked against its SHA-256 before it is used. Then Skald says `Klar. Hold høyre Ctrl for å
-snakke.` and listens for the key binding below. Ctrl+C in the terminal ends it.
+The first start opens «Kom i gang med Skald», which downloads the speech model with its SHA-256 checked and
+lets you try a dictation. Then Skald says `Klar. Hold høyre Ctrl for å snakke.` and listens for the key
+bindings below. Ctrl+C in the terminal ends it, or `pkill -INT skald` when Hyprland started it.
+`skald --terminal` takes dictation without the overlay and the windows; it says where the model belongs and
+gives the `curl` line when it is missing.
 
 To start it with Hyprland, add `exec-once = skald` to its configuration (on Omarchy,
 `~/.config/hypr/autostart.conf`).
@@ -74,3 +76,14 @@ bind = CTRL SUPER, X, global, app.icebit.skald:hands-free
 Hyprland then sends the press and the release through the portal, and no `skald` process starts at each
 press. KDE Plasma and GNOME have the portal too and ask for the key in their own settings; whether they report
 the release has not been tried.
+
+## The overlay
+
+The pill is a layer-shell surface named `skald`, at the bottom of the monitor with the focus. It takes no
+keyboard and lets every click through. The Kjedelig theme asks for a blurred background, which Hyprland gives a
+layer surface only through a rule:
+
+```ini
+layerrule = blur, skald
+layerrule = ignorezero, skald
+```

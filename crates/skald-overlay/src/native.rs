@@ -1,7 +1,7 @@
 //! What GPUI leaves to the platform: letting clicks through the window, finding the active screen,
 //! reading the accent colour and whether the user asked for reduced motion, and giving the system's
-//! material the pill's shape. macOS only so far; Windows and Linux follow in M4 and M5, and until then
-//! these do nothing there.
+//! material the pill's shape, and on Wayland making the window a layer-shell surface. macOS and Linux have
+//! theirs; Windows follows in M4, and until then these do nothing there.
 
 /// The pill's rectangle inside its window, in points from the window's top left, and its corner radius.
 #[derive(Clone, Copy, Debug)]
@@ -17,8 +17,20 @@ pub(crate) struct PillFrame {
 #[cfg(target_os = "macos")]
 pub(crate) use macos::*;
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(target_os = "linux")]
+pub(crate) use linux::*;
+
+#[cfg(not(any(target_os = "macos", target_os = "linux")))]
 pub(crate) use elsewhere::*;
+
+/// The overlay's kind of window: a pop-up here. Only a Wayland compositor takes it as a layer surface.
+#[cfg(not(target_os = "linux"))]
+pub(crate) fn window_kind(_bottom: f32) -> gpui_kit::WindowKind {
+    gpui_kit::WindowKind::PopUp
+}
+
+#[cfg(target_os = "linux")]
+mod linux;
 
 #[cfg(target_os = "macos")]
 mod macos {
@@ -125,7 +137,7 @@ mod macos {
     }
 }
 
-#[cfg(not(target_os = "macos"))]
+#[cfg(not(any(target_os = "macos", target_os = "linux")))]
 mod elsewhere {
     use gpui_kit::{Rgba, Window};
 

@@ -99,7 +99,8 @@ pub(crate) fn states(painter: &mut Painter, scene: &Scene, style: &Style, runes:
                 bars,
             } => {
                 head(painter, style, &layout, *elapsed, *hands_free, *pulse, 1.0);
-                live_bars(painter, style, &layout, bars);
+                let end = bars_end(painter, style, &layout, *hands_free);
+                live_bars(painter, style, &layout, bars, end);
                 hint(painter, style, &layout, *hands_free, 1.0);
             }
             Look::Carving {
@@ -355,9 +356,21 @@ fn bar(painter: &mut Painter, ink: &Ink, x: f32, height: f32) {
     }
 }
 
-fn live_bars(painter: &mut Painter, style: &Style, layout: &Layout, bars: &[LiveBar]) {
+/// The room kept between the recording bars and a hint named in words.
+const HINT_GAP: f32 = 8.0;
+
+/// Where the recording bars end so the hint beside them stays clear. macOS's drawn keys fit beside every
+/// bar; a hint named in words can reach further, and the oldest bars give way to it.
+fn bars_end(painter: &mut Painter, style: &Style, layout: &Layout, hands_free: bool) -> f32 {
+    if cfg!(target_os = "macos") {
+        return f32::INFINITY;
+    }
+    worded_hint_left(painter, style, layout, hands_free) - HINT_GAP
+}
+
+fn live_bars(painter: &mut Painter, style: &Style, layout: &Layout, bars: &[LiveBar], end: f32) {
     let left = layout.bars - 1.0;
-    let right = layout.live_bar(0.0) + BAR_WIDTH + 1.0;
+    let right = (layout.live_bar(0.0) + BAR_WIDTH + 1.0).min(end);
     painter.clip_across(left, right, |painter| {
         for live in bars {
             bar(
@@ -489,26 +502,47 @@ fn chisel(painter: &mut Painter, style: &Style, x: f32) {
     }
 }
 
-/// «slipp ⌘», or «⌃⌘X stopper» in a hands-free take, at the right end.
+/// The hands-free chord where its keys are named in words.
+const HANDS_FREE_KEYS: &str = if cfg!(windows) {
+    "Ctrl+Win+X"
+} else {
+    "Ctrl+Super+X"
+};
+
+/// «slipp ⌘», or «⌃⌘X stopper» in a hands-free take, at the right end. Windows and Linux name their keys
+/// in words: «slipp Ctrl», and «Ctrl+Win+X stopper» or «Ctrl+Super+X stopper».
 fn hint(painter: &mut Painter, style: &Style, layout: &Layout, hands_free: bool, alpha: f32) {
     faded(painter, alpha, |painter| {
-        let right = layout.right;
-        if !hands_free {
-            command_key(painter, style, right - 5.6);
-            let width = painter.measure("slipp", look(style, FontWeight::NORMAL));
-            words(
-                painter,
-                style,
-                "slipp",
-                right - 16.5 - width,
-                style.quiet_text,
-                FontWeight::NORMAL,
-            );
-            return;
+        if cfg!(target_os = "macos") {
+            drawn_hint(painter, style, layout, hands_free);
+        } else {
+            worded_hint(painter, style, layout, hands_free);
         }
+    });
+}
+
+fn worded_hint_left(
+    painter: &mut Painter,
+    style: &Style,
+    layout: &Layout,
+    hands_free: bool,
+) -> f32 {
+    let (quiet, keys) = if hands_free {
+        ("stopper", HANDS_FREE_KEYS)
+    } else {
+        ("slipp", "Ctrl")
+    };
+    let quiet = painter.measure(quiet, look(style, FontWeight::NORMAL));
+    let keys = painter.measure(keys, look(style, style.strong));
+    layout.right - quiet - 5.0 - keys
+}
+
+fn worded_hint(painter: &mut Painter, style: &Style, layout: &Layout, hands_free: bool) {
+    let right = layout.right;
+    if hands_free {
         let stopper = painter.measure("stopper", look(style, FontWeight::NORMAL));
-        let key = painter.measure("X", look(style, style.strong));
-        let mut x = right - stopper;
+        let keys = painter.measure(HANDS_FREE_KEYS, look(style, style.strong));
+        let x = right - stopper;
         words(
             painter,
             style,
@@ -517,13 +551,69 @@ fn hint(painter: &mut Painter, style: &Style, layout: &Layout, hands_free: bool,
             style.quiet_text,
             FontWeight::NORMAL,
         );
-        x -= 5.0 + key;
-        words(painter, style, "X", x, style.text, style.strong);
-        x -= 2.5 + 11.2;
-        command_key(painter, style, x + 5.6);
-        x -= 2.0 + 7.0;
-        control_key(painter, style, x + 3.5);
-    });
+        words(
+            painter,
+            style,
+            HANDS_FREE_KEYS,
+            x - 5.0 - keys,
+            style.text,
+            style.strong,
+        );
+    } else {
+        let key = painter.measure("Ctrl", look(style, style.strong));
+        let slipp = painter.measure("slipp", look(style, FontWeight::NORMAL));
+        words(
+            painter,
+            style,
+            "Ctrl",
+            right - key,
+            style.text,
+            style.strong,
+        );
+        words(
+            painter,
+            style,
+            "slipp",
+            right - key - 5.0 - slipp,
+            style.quiet_text,
+            FontWeight::NORMAL,
+        );
+    }
+}
+
+/// The keys drawn as macOS draws them.
+fn drawn_hint(painter: &mut Painter, style: &Style, layout: &Layout, hands_free: bool) {
+    let right = layout.right;
+    if !hands_free {
+        command_key(painter, style, right - 5.6);
+        let width = painter.measure("slipp", look(style, FontWeight::NORMAL));
+        words(
+            painter,
+            style,
+            "slipp",
+            right - 16.5 - width,
+            style.quiet_text,
+            FontWeight::NORMAL,
+        );
+        return;
+    }
+    let stopper = painter.measure("stopper", look(style, FontWeight::NORMAL));
+    let key = painter.measure("X", look(style, style.strong));
+    let mut x = right - stopper;
+    words(
+        painter,
+        style,
+        "stopper",
+        x,
+        style.quiet_text,
+        FontWeight::NORMAL,
+    );
+    x -= 5.0 + key;
+    words(painter, style, "X", x, style.text, style.strong);
+    x -= 2.5 + 11.2;
+    command_key(painter, style, x + 5.6);
+    x -= 2.0 + 7.0;
+    control_key(painter, style, x + 3.5);
 }
 
 fn rister(painter: &mut Painter, style: &Style, layout: &Layout, alpha: f32) {

@@ -68,6 +68,7 @@ to the hint rather than run under it.
 
 Evidence: the overlay on a headless sway with software Vulkan, photographed recording, hands-free, after a
 take that heard nothing, and in Kjedelig. Changed: [design.md](design.md#overlay), [plan.md](plan.md) M5.
+The accent colour and reduced motion on Linux: D-47.
 
 ## D-43 — transcribe.cpp's backends are modules on Windows, so a machine without Vulkan starts on the CPU
 

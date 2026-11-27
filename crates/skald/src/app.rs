@@ -35,7 +35,7 @@ use crate::events::{Ending, Event, MicrophoneList};
 use crate::files::{self, ConfigFile};
 use crate::login;
 use crate::models::ModelFiles;
-use crate::pipeline::{Worker, WorkerEvent, WorkerHandle};
+use crate::pipeline::{Report, Worker, WorkerEvent, WorkerHandle};
 use crate::say::{Exit, Line, Printer, report_lines};
 use crate::shell;
 use crate::signals;
@@ -346,6 +346,7 @@ fn dictate(options: Options, link: Option<Link>) -> Result<(), Exit> {
         start_at_login: config.start_at_login,
         listed: None,
         next_listing: Instant::now(),
+        ended_at_paste: None,
         out,
     };
     running.list_microphones();
@@ -393,6 +394,9 @@ struct Running<'w> {
     /// The microphones last shown on the screen.
     listed: Option<MicrophoneList>,
     next_listing: Instant,
+    /// The take the screen was shown the end of as its text was pasted, so its report does not end it
+    /// again.
+    ended_at_paste: Option<u64>,
     out: Out,
 }
 
@@ -428,7 +432,8 @@ impl Running<'_> {
             for job in self.dictation.take_jobs() {
                 self.worker.submit(job);
             }
-            for event in self.worker_events.try_iter() {
+            let worker_events: Vec<WorkerEvent> = self.worker_events.try_iter().collect();
+            for event in worker_events {
                 self.on_worker_event(event)?;
             }
             if self.settings.take_written() || Instant::now() >= next_config_look {
@@ -466,7 +471,7 @@ impl Running<'_> {
         Ok(())
     }
 
-    fn on_worker_event(&self, event: WorkerEvent) -> Result<(), Exit> {
+    fn on_worker_event(&mut self, event: WorkerEvent) -> Result<(), Exit> {
         match event {
             WorkerEvent::Loaded { device, took } => {
                 let compute = skald_engine::Compute::of_device(&device);
@@ -478,14 +483,20 @@ impl Running<'_> {
                 self.out.show(Event::ModelLoaded(compute));
             }
             WorkerEvent::LoadFailed(reason) => return Err(Exit::ModelLoad(reason)),
+            WorkerEvent::Pasted { take, text } => {
+                self.ended_at_paste = Some(take);
+                self.out.show(Event::Ended {
+                    take,
+                    ending: Ending::Inserted(text),
+                });
+            }
             WorkerEvent::Done(report) => {
                 for line in report_lines(&report) {
                     self.out.say(line);
                 }
-                self.out.show(Event::Ended {
-                    take: report.take,
-                    ending: Ending::of(&report),
-                });
+                if let Some(ended) = ended(&report, self.ended_at_paste) {
+                    self.out.show(ended);
+                }
                 self.out.show(Event::State(report.state));
             }
             WorkerEvent::HistoryCorrected(corrected) => {
@@ -543,6 +554,15 @@ impl Running<'_> {
             self.out.show(Event::Microphones(list));
         }
     }
+}
+
+/// The end of a take for the screen once its report is in, unless the screen was shown it as the text was
+/// pasted.
+fn ended(report: &Report, ended_at_paste: Option<u64>) -> Option<Event> {
+    (ended_at_paste != Some(report.take)).then(|| Event::Ended {
+        take: report.take,
+        ending: Ending::of(report),
+    })
 }
 
 /// The hold-key listener, and whether it last said it could not listen.
@@ -722,5 +742,48 @@ mod tests {
         assert!(!out.has_screen());
         out.show(Event::ModelLoaded(skald_engine::Compute::Cpu));
         assert!(!out.stop_asked());
+    }
+
+    #[test]
+    fn a_take_shown_ended_as_its_text_was_pasted_is_not_ended_again_by_its_report() {
+        use crate::pipeline::{Outcome, Timings};
+        use skald_core::silence_gate::Reason;
+        use skald_input::Inserted;
+
+        let report = |take, outcome| Report {
+            take,
+            microphone: "Yeti".into(),
+            outcome,
+            timings: Timings::default(),
+            state_error: None,
+            state: State::default(),
+        };
+        let inserted = report(
+            4,
+            Outcome::Inserted {
+                text: "Hei.".into(),
+                inserted: Inserted::PreviousRestored,
+                complete: true,
+            },
+        );
+        assert_eq!(ended(&inserted, Some(4)), None);
+        assert_eq!(
+            ended(&inserted, Some(3)),
+            Some(Event::Ended {
+                take: 4,
+                ending: Ending::Inserted("Hei.".into())
+            }),
+            "a report of a take whose paste the screen never heard of"
+        );
+        let silent = report(5, Outcome::HeardNothing(Reason::TooLittleSpeech));
+        assert_eq!(
+            ended(&silent, Some(4)),
+            Some(Event::Ended {
+                take: 5,
+                ending: Ending::HeardNothing {
+                    microphone: "Yeti".into()
+                }
+            })
+        );
     }
 }

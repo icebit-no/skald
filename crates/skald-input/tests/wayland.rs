@@ -140,7 +140,7 @@ fn text_is_pasted_with_ctrl_v_and_the_previous_clipboard_put_back() {
     let watching = watch_clipboard(stopped);
     thread::sleep(Duration::from_millis(200));
     assert_eq!(
-        inserter.insert("Hei, dette er en prøve.", &options),
+        inserter.insert("Hei, dette er en prøve.", &options, || {}),
         Ok(Inserted::PreviousRestored)
     );
     stop.send(()).unwrap();
@@ -160,7 +160,7 @@ fn text_is_pasted_with_ctrl_v_and_the_previous_clipboard_put_back() {
 
     // Contents Skald put back are read from Skald itself, and put back again.
     assert_eq!(
-        inserter.insert("Igjen", &options),
+        inserter.insert("Igjen", &options, || {}),
         Ok(Inserted::PreviousRestored)
     );
     assert_eq!(paste("text/html").as_deref(), Some("<b>før</b>"));
@@ -170,14 +170,14 @@ fn text_is_pasted_with_ctrl_v_and_the_previous_clipboard_put_back() {
         keep_text_on_clipboard: true,
         ..InsertOptions::default()
     };
-    assert_eq!(inserter.insert("Hei", &keep), Ok(Inserted::TextKept));
+    assert_eq!(inserter.insert("Hei", &keep, || {}), Ok(Inserted::TextKept));
     assert_eq!(paste("text/plain").as_deref(), Some("Hei "));
     assert!(!types().iter().any(|mime| mime == SENSITIVE));
 
     // A secret is neither read nor put back.
     copy(SENSITIVE, "secret");
     assert_eq!(
-        inserter.insert("Hei", &options),
+        inserter.insert("Hei", &options, || {}),
         Ok(Inserted::PreviousMarkedPrivate)
     );
     assert_eq!(paste("text/plain").as_deref(), Some("Hei "));
@@ -189,7 +189,7 @@ fn text_is_pasted_with_ctrl_v_and_the_previous_clipboard_put_back() {
         copy("text/plain", "annet");
     });
     assert_eq!(
-        inserter.insert("Hei", &options),
+        inserter.insert("Hei", &options, || {}),
         Ok(Inserted::CopiedMeanwhile)
     );
     copier.join().unwrap();
@@ -198,7 +198,7 @@ fn text_is_pasted_with_ctrl_v_and_the_previous_clipboard_put_back() {
     // An empty clipboard is empty again afterwards.
     clear();
     assert_eq!(
-        inserter.insert("Hei", &options),
+        inserter.insert("Hei", &options, || {}),
         Ok(Inserted::PreviousRestored)
     );
     assert_eq!(paste("text/plain"), None);

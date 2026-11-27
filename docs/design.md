@@ -106,6 +106,11 @@ dot while recording and a gold dot while transcribing.
 - Mikrofon ▸ · Siste tekster ▸ · Skriftspråk ▸
 - Ordskatt … · Innstillinger … ⌘, · Avslutt Skald ⌘Q
 
+In «Mikrofon» the microphone in use is ticked and the pinned one carries a pin; a pinned microphone that is
+unplugged stays listed, greyed, and «Bruk den første som er koblet til» is ticked while nothing is pinned.
+«Siste tekster» is greyed while it holds no text, and a long text is cut with «…» and shown whole as its
+tooltip.
+
 ## Settings
 
 | Tab | Holds |

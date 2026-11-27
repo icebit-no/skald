@@ -1,0 +1,50 @@
+[package]
+name = "skald-tray"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+repository.workspace = true
+publish.workspace = true
+
+[dependencies]
+# The written standard and the hold key, which the menu shows as the configuration names them.
+skald-core.workspace = true
+
+# The status item, its menu, the template image and the dot are AppKit's; GPUI has no status item.
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "=0.6.5"
+objc2-app-kit = { version = "=0.3.2", default-features = false, features = [
+    "std",
+    "NSAppearance",
+    "NSBezierPath",
+    "NSBitmapImageRep",
+    "NSButton",
+    "NSCell",
+    "NSColor",
+    "NSControl",
+    "NSGraphics",
+    "NSImage",
+    "NSImageRep",
+    "NSMenu",
+    "NSMenuItem",
+    "NSResponder",
+    "NSStatusBar",
+    "NSStatusBarButton",
+    "NSStatusItem",
+    "NSView",
+    "objc2-core-foundation",
+] }
+objc2-foundation = { version = "=0.3.2", default-features = false, features = [
+    "std",
+    "NSArray",
+    "NSData",
+    "NSGeometry",
+    "NSObject",
+    "NSString",
+] }
+
+# The example runs AppKit's application loop itself, with a timer that plays a take on the icon.
+[target.'cfg(target_os = "macos")'.dev-dependencies]
+block2 = "=0.6.2"
+objc2-app-kit = { version = "=0.3.2", default-features = false, features = ["NSApplication", "NSRunningApplication"] }
+objc2-foundation = { version = "=0.3.2", default-features = false, features = ["block2", "NSDate", "NSTimer"] }

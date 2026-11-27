@@ -486,6 +486,7 @@ mod tests {
                 "",
                 "Ordskatt …",
                 "Innstillinger …",
+                "",
                 "Avslutt Skald",
             ]
         );
@@ -495,7 +496,7 @@ mod tests {
         assert!(!hint.isEnabled() && !hint.isSectionHeader());
         let settings = menu.itemAtIndex(8).unwrap();
         assert_eq!(settings.keyEquivalent().to_string(), ",");
-        let quit = menu.itemAtIndex(9).unwrap();
+        let quit = menu.itemAtIndex(10).unwrap();
         assert_eq!(quit.keyEquivalent().to_string(), "q");
 
         let microphones = submenu(&menu, "Mikrofon");

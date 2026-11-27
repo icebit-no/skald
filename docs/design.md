@@ -104,7 +104,12 @@ dot while recording and a gold dot while transcribing.
 - Skald · <bokmål|nynorsk>
 - «Hold høyre ⌘ for å snakke» (greyed)
 - Mikrofon ▸ · Siste tekster ▸ · Skriftspråk ▸
-- Ordskatt … · Innstillinger … ⌘, · Avslutt Skald ⌘Q
+- Ordskatt … · Innstillinger … ⌘,
+- Avslutt Skald ⌘Q
+
+A separator stands after the hint, after «Skriftspråk» and before «Avslutt Skald». On Windows and Linux the hint
+reads «Hold høyre Ctrl for å snakke». «Skriftspråk» holds «Bokmål» and «Nynorsk». VoiceOver reads the item as
+«Skald», during a take «Skald · Opptak» or «Skald · Rister», and the pin as «Festet».
 
 In «Mikrofon» the microphone in use is ticked and the pinned one carries a pin; a pinned microphone that is
 unplugged stays listed, greyed, and «Bruk den første som er koblet til» is ticked while nothing is pinned.

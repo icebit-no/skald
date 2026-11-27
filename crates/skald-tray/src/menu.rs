@@ -96,6 +96,7 @@ impl TrayModel {
                 shortcut: Some(','),
                 ..Choice::new(SETTINGS, Action::OpenSettings)
             }),
+            Entry::Separator,
             Entry::Choice(Choice {
                 shortcut: Some('q'),
                 ..Choice::new(QUIT, Action::Quit)
@@ -271,6 +272,7 @@ mod tests {
                 shortcut: Some(','),
                 ..choice("Innstillinger …", Action::OpenSettings)
             }),
+            Entry::Separator,
             Entry::Choice(Choice {
                 shortcut: Some('q'),
                 ..choice("Avslutt Skald", Action::Quit)

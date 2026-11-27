@@ -5,7 +5,7 @@ decision, and that pull request also edits the page where the rule lives ([desig
 [plan.md](plan.md)). Those pages say what holds; this one says when and why it came to hold. A later decision
 that undoes one adds an entry of its own, and the earlier entry gets one line naming it.
 
-## D-26 — The menu ticks the microphone in use and pins the pinned one
+## D-27 — The menu ticks the microphone in use and pins the pinned one
 
 2026-11-27, Claude.
 
@@ -18,8 +18,9 @@ can remove the pin.
 On macOS the heading «Skald · bokmål» is AppKit's section header from macOS 14 on: a disabled line is greyed
 whatever colour its title is given, and only the hint is meant to be greyed. The dot is drawn by a view over
 the template icon rather than inside it, so the menu bar still tints the rune for a light or dark bar; it is
-the darker of the identity's ochre or gold on a light bar and the lighter on a dark one. Changed:
-[design.md](design.md#menu).
+the darker of the identity's ochre or gold on a light bar and the lighter on a dark one. A separator stands
+before «Avslutt Skald», as in macOS menus; design.md's single line for the last group was a compact list.
+Changed: [design.md](design.md#menu).
 
 ## D-25 — One binary is both the app and its command line
 

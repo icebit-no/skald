@@ -37,6 +37,9 @@ pub struct Config {
     pub language: Language,
     /// Microphone names in the user's order; the first one connected is used.
     pub microphones: Vec<String>,
+    /// The microphone chosen in the menu or with `skald mic use`: it goes ahead of the order while it is
+    /// connected, until «Bruk den første som er koblet til» clears it (D-20). Absent from the file when unset.
+    pub pinned_microphone: Option<String>,
     /// The speech model's id. Any id is accepted, so a model only a newer Skald offers survives a save.
     pub model: String,
     /// «Kopier også teksten til utklippstavlen»: leave the inserted text on the clipboard instead of
@@ -45,6 +48,8 @@ pub struct Config {
     pub start_at_login: bool,
     /// The start and end sounds of a take.
     pub sounds: bool,
+    /// «Overleggets utseende» (D-24).
+    pub overlay_theme: OverlayTheme,
     pub vocabulary: Vocabulary,
     pub corrections: Corrections,
     pub silence: Silence,
@@ -58,10 +63,12 @@ impl Default for Config {
             hold_key: HoldKey::default(),
             language: Language::default(),
             microphones: Vec::new(),
+            pinned_microphone: None,
             model: DEFAULT_MODEL.to_owned(),
             copy_to_clipboard: false,
             start_at_login: false,
             sounds: true,
+            overlay_theme: OverlayTheme::default(),
             vocabulary: Vocabulary::default(),
             corrections: Corrections::default(),
             silence: Silence::default(),
@@ -124,6 +131,43 @@ impl From<HoldKey> for String {
     }
 }
 
+/// How the overlay looks; the states and their texts are the same in every theme (D-24).
+#[derive(Debug, Clone, PartialEq, Eq, Default, Serialize, Deserialize)]
+#[serde(from = "String", into = "String")]
+pub enum OverlayTheme {
+    /// `runepinne`
+    #[default]
+    Runepinne,
+    /// `smidd-jern`
+    SmiddJern,
+    /// `kjedelig`: looks like the rest of the system.
+    Kjedelig,
+    /// A theme this version does not know, written by a newer Skald, kept as written; drawn as the default.
+    Unknown(String),
+}
+
+impl From<String> for OverlayTheme {
+    fn from(name: String) -> Self {
+        match name.as_str() {
+            "runepinne" => Self::Runepinne,
+            "smidd-jern" => Self::SmiddJern,
+            "kjedelig" => Self::Kjedelig,
+            _ => Self::Unknown(name),
+        }
+    }
+}
+
+impl From<OverlayTheme> for String {
+    fn from(theme: OverlayTheme) -> Self {
+        match theme {
+            OverlayTheme::Runepinne => "runepinne".to_owned(),
+            OverlayTheme::SmiddJern => "smidd-jern".to_owned(),
+            OverlayTheme::Kjedelig => "kjedelig".to_owned(),
+            OverlayTheme::Unknown(name) => name,
+        }
+    }
+}
+
 /// The written standard of the text: Norwegian only (D-6).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -140,6 +184,40 @@ mod tests {
     use std::time::Duration;
 
     use super::*;
+
+    #[test]
+    fn the_pin_and_the_theme_round_trip_and_an_unset_pin_is_left_out() {
+        let config = Config {
+            pinned_microphone: Some("HyperX QuadCast".to_owned()),
+            overlay_theme: OverlayTheme::SmiddJern,
+            ..Config::default()
+        };
+        let text = config.to_toml().unwrap();
+        assert!(text.contains("pinned_microphone = \"HyperX QuadCast\""));
+        assert!(text.contains("overlay_theme = \"smidd-jern\""));
+        assert_eq!(Config::from_toml(&text).unwrap(), config);
+        assert!(
+            !Config::default()
+                .to_toml()
+                .unwrap()
+                .contains("pinned_microphone")
+        );
+    }
+
+    #[test]
+    fn a_theme_from_a_newer_skald_is_kept_as_written() {
+        let config = Config::from_toml("overlay_theme = \"nordlys\"").unwrap();
+        assert_eq!(
+            config.overlay_theme,
+            OverlayTheme::Unknown("nordlys".to_owned())
+        );
+        assert!(
+            config
+                .to_toml()
+                .unwrap()
+                .contains("overlay_theme = \"nordlys\"")
+        );
+    }
 
     #[test]
     fn an_empty_file_is_the_default() {

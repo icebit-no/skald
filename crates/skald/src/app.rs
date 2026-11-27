@@ -106,7 +106,7 @@ fn run_until_stopped(options: Options) -> Result<(), Exit> {
     let ModelFiles { model, vad, .. } = models;
     let worker = Worker::spawn(
         move || {
-            skald_engine::route_logs_to_log_crate();
+            crate::pipeline::route_engine_logs();
             Engine::load(&model, &vad).map_err(|error| error.to_string())
         },
         Inserter::new(),

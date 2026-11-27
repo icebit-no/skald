@@ -22,11 +22,13 @@ use skald_models::{MODELS, Status};
 use crate::dictation::microphone_order;
 use crate::files;
 use crate::models::ModelFiles;
-use crate::pipeline::WorkerHandle;
+use crate::pipeline::{WorkerHandle, route_engine_logs};
 use crate::say::{Exit, Line, capture_reason};
 use crate::wav;
 
-/// This machine, for the command line while Skald is not running.
+/// This machine, for the command line while Skald is not running. It writes nothing to standard output,
+/// which carries the command's answer, and for `skald mcp` its protocol; what it has to say goes to
+/// standard error.
 pub(crate) struct LocalMachine {
     paths: Paths,
 }
@@ -50,12 +52,11 @@ impl Machine for LocalMachine {
     /// requires before the process exits.
     fn transcribe(&self, config: &Config, wav: &Path) -> Result<Transcribed, Error> {
         let files = ModelFiles::locate(&self.paths, &config.model, None, None).map_err(stopped)?;
-        // Standard output carries the answer, which may be JSON.
         files
             .check(|| eprintln!("{}", Line::CheckingModel))
             .map_err(stopped)?;
         let samples = wav::read(wav).map_err(|message| Error::new(ErrorCode::Invalid, message))?;
-        skald_engine::route_logs_to_log_crate();
+        route_engine_logs();
         let mut engine = Engine::load(&files.model, &files.vad)
             .map_err(|error| stopped(Exit::ModelLoad(error.to_string())))?;
         let prompt = config.vocabulary.prompt();

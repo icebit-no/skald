@@ -40,6 +40,13 @@ pub(crate) trait Transcribe {
     ) -> Result<Take, skald_engine::Error>;
 }
 
+/// Sends the engine's log lines to the `log` crate, which drops them with no logger installed, rather than
+/// to standard error. The engine takes this once per process, before the first model loads.
+pub(crate) fn route_engine_logs() {
+    static ROUTED: std::sync::Once = std::sync::Once::new();
+    ROUTED.call_once(skald_engine::route_logs_to_log_crate);
+}
+
 impl Transcribe for Engine {
     fn device(&self) -> String {
         self.transcriber().device()

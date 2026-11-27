@@ -307,6 +307,7 @@ fn help_lists_every_command_and_setting() {
         "Bruk: skald <kommando> [--json]",
         "  fix add <fra> <til>              Skriv <til> der modellen skriver <fra>",
         "  transcribe <fil.wav>             Skriv ut teksten i en lydfil, med rettingene brukt",
+        "  bench <mappe> [valg]             Kjør et testsett gjennom konfigurasjonene og tell feilene",
         "  overlay_theme      runepinne, smidd-jern eller kjedelig",
         "  sounds             true eller false",
     ] {

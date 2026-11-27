@@ -1,4 +1,5 @@
-//! Hold right ⌘ and see what each hold means: pressed, armed or not armed, released, cancelled.
+//! Hold right ⌘ and see what each hold means: pressed, armed or not armed, released, cancelled. ⌃⌘X
+//! starts and stops a hands-free take.
 //!
 //! ```sh
 //! cargo run -p skald-input --example hold                      # print only
@@ -62,11 +63,20 @@ mod macos {
                     println!("{at}  armed (key down {held} ms)");
                 }
                 ListenerEvent::Hold(HoldEvent::Cancelled) => println!("{at}  cancelled"),
-                ListenerEvent::Hold(end @ (HoldEvent::Released | HoldEvent::ReleaseMissed)) => {
-                    if end == HoldEvent::Released {
-                        println!("{at}  released");
-                    } else {
-                        println!("{at}  release missed; the watchdog ended the take");
+                ListenerEvent::Hold(HoldEvent::HandsFreeStarted { .. }) => {
+                    println!("{at}  hands-free started; ⌃⌘X stops it");
+                }
+                ListenerEvent::Hold(
+                    end @ (HoldEvent::Released
+                    | HoldEvent::ReleaseMissed
+                    | HoldEvent::HandsFreeStopped),
+                ) => {
+                    match end {
+                        HoldEvent::Released => println!("{at}  released"),
+                        HoldEvent::ReleaseMissed => {
+                            println!("{at}  release missed; the watchdog ended the take");
+                        }
+                        _ => println!("{at}  hands-free stopped"),
                     }
                     if insert {
                         match inserter.insert(TEST_TEXT, &options) {

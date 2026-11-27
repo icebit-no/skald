@@ -174,7 +174,7 @@ impl Skald for Control {
     }
 
     fn prompt_tokens(&self, prompt: &Prompt) -> Option<Tokens> {
-        let used = self.worker.count_tokens(prompt.clone())?;
+        let used = self.worker.count_tokens(&prompt.text())?;
         Some(Tokens {
             used,
             limit: PROMPT_TOKENS,

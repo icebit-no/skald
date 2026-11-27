@@ -134,24 +134,47 @@ pub(crate) fn states(painter: &mut Painter, scene: &Scene, style: &Style, runes:
                 rister(painter, style, &layout, *label);
             }
             Look::Inserted { text } => inserted(painter, style, &layout, text),
+            look => {
+                if let Some(words) = Message::of(look) {
+                    message(painter, style, &layout, &words);
+                }
+            }
+        }
+    }
+}
+
+/// A state that is words alone (docs/design.md, Overlay): the first part strong, the rest quiet.
+#[derive(Debug, PartialEq)]
+struct Message<'a> {
+    first: &'a str,
+    /// The first part stays whole and the rest is cut to fit; otherwise the first part, a microphone's
+    /// name, is cut.
+    first_fixed: bool,
+    rest: String,
+}
+
+impl<'a> Message<'a> {
+    fn of(look: &Look<'a>) -> Option<Self> {
+        let fixed = |first, rest: &str| {
+            Some(Self {
+                first,
+                first_fixed: true,
+                rest: rest.to_owned(),
+            })
+        };
+        match look {
             Look::HeardNothing { microphone } => {
-                message(
-                    painter,
-                    style,
-                    &layout,
-                    ("Hørte ingenting", true),
-                    &format!(" · lyttet på {microphone}"),
-                );
+                fixed("Hørte ingenting", &format!(" · lyttet på {microphone}"))
             }
-            Look::MicrophoneChanged { microphone } => {
-                message(
-                    painter,
-                    style,
-                    &layout,
-                    (microphone, false),
-                    " · koblet til, brukes nå",
-                );
-            }
+            Look::MicrophoneChanged { microphone } => Some(Self {
+                first: microphone,
+                first_fixed: false,
+                rest: " · koblet til, brukes nå".to_owned(),
+            }),
+            Look::NotInserted => fixed("Ikke satt inn", " · ligger i Siste tekster"),
+            Look::TranscriptionFailed => fixed("Transkriberingen feilet", ""),
+            Look::NoMicrophone => fixed("Ingen mikrofon er koblet til", ""),
+            Look::Recording { .. } | Look::Carving { .. } | Look::Inserted { .. } => None,
         }
     }
 }
@@ -602,20 +625,14 @@ fn square_ends(points: &mut [(f32, f32)], width: f32) {
 
 /// A message centred on the pill: its first part in the strong weight, the rest quieter. A first part
 /// that is a name is cut to fit.
-fn message(
-    painter: &mut Painter,
-    style: &Style,
-    layout: &Layout,
-    (first, fixed): (&str, bool),
-    rest: &str,
-) {
+fn message(painter: &mut Painter, style: &Style, layout: &Layout, message: &Message) {
     let strong = look(style, style.strong);
     let quiet = look(style, FontWeight::NORMAL);
     let room = W - 2.0 * layout.pad;
-    let mut rest = rest.to_owned();
-    let mut first = first.to_owned();
+    let mut rest = message.rest.clone();
+    let mut first = message.first.to_owned();
     let rest_width = painter.measure(&rest, quiet);
-    if fixed {
+    if message.first_fixed {
         let first_width = painter.measure(&first, strong);
         if first_width + rest_width > room {
             // The fixed words stay; the microphone's name in the rest is cut.
@@ -877,6 +894,65 @@ mod tests {
         let (first, second) = (serpent(false), serpent(true));
         for (a, b) in first.head.iter().zip(&second.head) {
             assert!((a.0 + b.0 - W).abs() < 1e-3 && (a.1 + b.1 - H).abs() < 1e-3);
+        }
+    }
+
+    #[test]
+    fn each_message_reads_as_design_md_gives_it() {
+        let read = |look: Look| {
+            let message = Message::of(&look).expect("words alone");
+            (
+                format!("{}{}", message.first, message.rest),
+                message.first_fixed,
+            )
+        };
+        assert_eq!(
+            read(Look::HeardNothing {
+                microphone: "Shure MV7"
+            }),
+            ("Hørte ingenting · lyttet på Shure MV7".to_owned(), true)
+        );
+        assert_eq!(
+            read(Look::MicrophoneChanged {
+                microphone: "Shure MV7"
+            }),
+            ("Shure MV7 · koblet til, brukes nå".to_owned(), false)
+        );
+        assert_eq!(
+            read(Look::NotInserted),
+            ("Ikke satt inn · ligger i Siste tekster".to_owned(), true)
+        );
+        assert_eq!(
+            read(Look::TranscriptionFailed),
+            ("Transkriberingen feilet".to_owned(), true)
+        );
+        assert_eq!(
+            read(Look::NoMicrophone),
+            ("Ingen mikrofon er koblet til".to_owned(), true)
+        );
+        assert_eq!(Message::of(&Look::Inserted { text: "Hei." }), None);
+    }
+
+    #[test]
+    fn every_message_fits_the_pill_in_every_theme() {
+        // Measured with Core Text, these words take at most 0.46 em a letter in Alegreya Sans Medium and
+        // SF Pro (204 pt of the 376 pt there is); 0.62 leaves room for a wider system font.
+        for theme in [
+            crate::theme::Theme::Runepinne,
+            crate::theme::Theme::SmiddJern,
+            crate::theme::Theme::Kjedelig,
+        ] {
+            let style = crate::theme::Style::of(theme, Default::default());
+            let room = W - 2.0 * style.pad;
+            for look in [
+                Look::NotInserted,
+                Look::TranscriptionFailed,
+                Look::NoMicrophone,
+            ] {
+                let message = Message::of(&look).unwrap();
+                let letters = (message.first.chars().count() + message.rest.chars().count()) as f32;
+                assert!(letters * style.size * 0.62 < room, "{look:?} in {theme:?}");
+            }
         }
     }
 

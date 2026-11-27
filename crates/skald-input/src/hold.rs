@@ -7,6 +7,11 @@
 //! while the hold key is down spoils the hold: before arming it is not armed, after arming the take is
 //! cancelled, and either way nothing more happens until the hold key comes up. While a take runs, the key's
 //! real state is checked every [`WATCHDOG_EVERY`], which ends a take whose release was never reported.
+//!
+//! A hands-free take starts at one press of the hands-free chord and stops at the next, with no key held
+//! between. While it runs the hold key starts nothing and other keys cancel nothing, so the user can type
+//! and use shortcuts. It can also end without the chord, at the cap or when its microphone goes away;
+//! the caller then says so with [`HoldMachine::hands_free_ended`], so the next press starts a new one.
 
 use std::time::{Duration, Instant};
 
@@ -41,8 +46,13 @@ pub enum HoldEvent {
     /// The hold key was found up although its release was never reported: the take ends and is
     /// transcribed, as for [`HoldEvent::Released`].
     ReleaseMissed,
-    /// Another key joined the hold key: the take is thrown away.
+    /// Another key joined the hold key: the take is thrown away. Also a hands-free take whose key
+    /// events can no longer be trusted, as after [`HoldMachine::reset`].
     Cancelled,
+    /// The hands-free chord was pressed: a hands-free take starts, and speech may begin at once.
+    HandsFreeStarted { at: Instant },
+    /// The hands-free chord was pressed again: the hands-free take ends and is transcribed.
+    HandsFreeStopped,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -58,11 +68,14 @@ enum State {
     WaitingForRelease {
         checked: Instant,
     },
+    HandsFree,
 }
 
 #[derive(Debug, Clone)]
 pub struct HoldMachine {
     state: State,
+    /// The hands-free chord's key is down, so its autorepeat is not another press.
+    chord_down: bool,
 }
 
 impl Default for HoldMachine {
@@ -73,21 +86,31 @@ impl Default for HoldMachine {
 
 impl HoldMachine {
     pub fn new() -> Self {
-        Self { state: State::Idle }
+        Self {
+            state: State::Idle,
+            chord_down: false,
+        }
     }
 
-    /// Whether a take is running.
+    /// Whether a take held with the hold key is running.
     pub fn is_armed(&self) -> bool {
         matches!(self.state, State::Armed { .. })
     }
 
+    pub fn is_hands_free(&self) -> bool {
+        self.state == State::HandsFree
+    }
+
     /// The hold key went down or up; `sample` says which.
     pub fn hold_key_changed(&mut self, now: Instant, sample: KeySample) -> Option<HoldEvent> {
+        if self.state == State::HandsFree {
+            return None;
+        }
         if !sample.hold_key_down {
             let event = match self.state {
                 State::Armed { .. } => Some(HoldEvent::Released),
                 State::Pressed { .. } => Some(HoldEvent::NotArmed),
-                State::Idle | State::WaitingForRelease { .. } => None,
+                State::Idle | State::WaitingForRelease { .. } | State::HandsFree => None,
             };
             self.state = State::Idle;
             return event;
@@ -107,7 +130,7 @@ impl HoldMachine {
     /// Any key other than the hold key went down: a key, a modifier or a mouse button.
     pub fn other_key_pressed(&mut self, now: Instant) -> Option<HoldEvent> {
         match self.state {
-            State::Idle | State::WaitingForRelease { .. } => None,
+            State::Idle | State::WaitingForRelease { .. } | State::HandsFree => None,
             State::Pressed { .. } => {
                 self.state = State::WaitingForRelease { checked: now };
                 Some(HoldEvent::NotArmed)
@@ -122,7 +145,7 @@ impl HoldMachine {
     /// When [`HoldMachine::tick`] is next due, if at all.
     pub fn next_tick(&self) -> Option<Instant> {
         match self.state {
-            State::Idle => None,
+            State::Idle | State::HandsFree => None,
             State::Pressed { since } => Some(since + ARM_AFTER),
             State::Armed { checked } | State::WaitingForRelease { checked } => {
                 Some(checked + WATCHDOG_EVERY)
@@ -134,7 +157,7 @@ impl HoldMachine {
     /// state. A tick before it is due only applies what `sample` contradicts.
     pub fn tick(&mut self, now: Instant, sample: KeySample) -> Option<HoldEvent> {
         match self.state {
-            State::Idle => None,
+            State::Idle | State::HandsFree => None,
             State::Pressed { since } => {
                 if !sample.hold_key_down {
                     self.state = State::Idle;
@@ -172,15 +195,49 @@ impl HoldMachine {
         }
     }
 
-    /// Forgets the hold, for when key events can no longer be trusted to arrive. A running take is
-    /// cancelled, and a press not yet armed is not armed.
+    /// The hands-free chord went down: starts a hands-free take, or stops the one running. Its key
+    /// repeating while held is not another press. A hold that has not yet ended is spoiled by it, as by
+    /// any other key, and starts nothing.
+    pub fn hands_free_pressed(&mut self, now: Instant) -> Option<HoldEvent> {
+        if std::mem::replace(&mut self.chord_down, true) {
+            return None;
+        }
+        match self.state {
+            State::HandsFree => {
+                self.state = State::Idle;
+                Some(HoldEvent::HandsFreeStopped)
+            }
+            State::Idle | State::WaitingForRelease { .. } => {
+                self.state = State::HandsFree;
+                Some(HoldEvent::HandsFreeStarted { at: now })
+            }
+            State::Pressed { .. } | State::Armed { .. } => self.other_key_pressed(now),
+        }
+    }
+
+    /// The hands-free chord's key came up, so its next press counts.
+    pub fn hands_free_released(&mut self) {
+        self.chord_down = false;
+    }
+
+    /// The hands-free take ended without the chord: at the cap, when its microphone went away, or
+    /// because it could not start. The next press of the chord starts a new one.
+    pub fn hands_free_ended(&mut self) {
+        if self.state == State::HandsFree {
+            self.state = State::Idle;
+        }
+    }
+
+    /// Forgets the hold, for when key events can no longer be trusted to arrive. A running take, held or
+    /// hands-free, is cancelled, and a press not yet armed is not armed.
     pub fn reset(&mut self) -> Option<HoldEvent> {
         let event = match self.state {
-            State::Armed { .. } => Some(HoldEvent::Cancelled),
+            State::Armed { .. } | State::HandsFree => Some(HoldEvent::Cancelled),
             State::Pressed { .. } => Some(HoldEvent::NotArmed),
             State::Idle | State::WaitingForRelease { .. } => None,
         };
         self.state = State::Idle;
+        self.chord_down = false;
         event
     }
 }
@@ -511,6 +568,143 @@ mod tests {
         assert_eq!(machine.reset(), None);
     }
 
+    fn hands_free_machine(clock: &Clock) -> HoldMachine {
+        let mut machine = HoldMachine::new();
+        assert_eq!(
+            machine.hands_free_pressed(clock.at(0)),
+            Some(HoldEvent::HandsFreeStarted { at: clock.at(0) })
+        );
+        machine.hands_free_released();
+        assert!(machine.is_hands_free());
+        machine
+    }
+
+    #[test]
+    fn the_chord_starts_a_hands_free_take_and_the_next_press_stops_it() {
+        let clock = Clock::new();
+        let mut machine = hands_free_machine(&clock);
+        assert!(!machine.is_armed());
+        assert_eq!(machine.next_tick(), None, "no key is held to watch");
+
+        assert_eq!(
+            machine.hands_free_pressed(clock.at(30_000)),
+            Some(HoldEvent::HandsFreeStopped)
+        );
+        assert!(!machine.is_hands_free());
+        machine.hands_free_released();
+        assert_eq!(
+            machine.hands_free_pressed(clock.at(31_000)),
+            Some(HoldEvent::HandsFreeStarted {
+                at: clock.at(31_000)
+            })
+        );
+    }
+
+    #[test]
+    fn the_chord_s_key_repeating_while_held_is_not_another_press() {
+        let clock = Clock::new();
+        let mut machine = HoldMachine::new();
+        machine.hands_free_pressed(clock.at(0));
+        for ms in [500, 530, 560] {
+            assert_eq!(machine.hands_free_pressed(clock.at(ms)), None);
+        }
+        assert!(machine.is_hands_free());
+        machine.hands_free_released();
+        assert_eq!(
+            machine.hands_free_pressed(clock.at(2000)),
+            Some(HoldEvent::HandsFreeStopped)
+        );
+    }
+
+    #[test]
+    fn a_hands_free_take_ignores_the_hold_key_and_other_keys() {
+        let clock = Clock::new();
+        let mut machine = hands_free_machine(&clock);
+        // Right ⌘C, typing, and right ⌘ held long enough to arm.
+        assert_eq!(machine.hold_key_changed(clock.at(1000), ALONE), None);
+        assert_eq!(machine.other_key_pressed(clock.at(1050)), None);
+        assert_eq!(run_until(&mut machine, clock.at(5000), ALONE), []);
+        assert_eq!(machine.tick(clock.at(5000), ALONE), None);
+        assert_eq!(machine.hold_key_changed(clock.at(5100), UP), None);
+        assert!(machine.is_hands_free());
+        assert!(!machine.is_armed());
+    }
+
+    #[test]
+    fn the_chord_pressed_with_the_hold_key_starts_hands_free_after_the_hold_is_spoiled() {
+        // Right ⌘, then ⌃, then X: the press is not armed, then hands-free starts.
+        let clock = Clock::new();
+        let mut machine = HoldMachine::new();
+        machine.hold_key_changed(clock.at(0), ALONE);
+        assert_eq!(
+            machine.other_key_pressed(clock.at(40)),
+            Some(HoldEvent::NotArmed)
+        );
+        assert_eq!(
+            machine.hands_free_pressed(clock.at(80)),
+            Some(HoldEvent::HandsFreeStarted { at: clock.at(80) })
+        );
+        // The hold key coming up afterwards does not end it.
+        assert_eq!(machine.hold_key_changed(clock.at(300), UP), None);
+        assert!(machine.is_hands_free());
+
+        // Stopped the same way, the hold key still down: it starts nothing on its way up.
+        machine.hands_free_released();
+        machine.hold_key_changed(clock.at(5000), ALONE);
+        assert_eq!(
+            machine.hands_free_pressed(clock.at(5080)),
+            Some(HoldEvent::HandsFreeStopped)
+        );
+        assert_eq!(machine.hold_key_changed(clock.at(5200), UP), None);
+        assert_eq!(machine.next_tick(), None);
+    }
+
+    #[test]
+    fn the_chord_spoils_a_hold_whose_other_keys_were_missed() {
+        let clock = Clock::new();
+        let mut machine = HoldMachine::new();
+        machine.hold_key_changed(clock.at(0), ALONE);
+        assert_eq!(
+            machine.hands_free_pressed(clock.at(50)),
+            Some(HoldEvent::NotArmed)
+        );
+        assert!(!machine.is_hands_free());
+
+        let mut machine = armed_machine(&clock);
+        assert_eq!(
+            machine.hands_free_pressed(clock.at(900)),
+            Some(HoldEvent::Cancelled)
+        );
+        assert!(!machine.is_hands_free());
+    }
+
+    #[test]
+    fn a_hands_free_take_ended_by_the_app_lets_the_next_press_start_one() {
+        let clock = Clock::new();
+        let mut machine = hands_free_machine(&clock);
+        // The cap, at 120 s.
+        machine.hands_free_ended();
+        assert!(!machine.is_hands_free());
+        assert_eq!(
+            machine.hands_free_pressed(clock.at(121_000)),
+            Some(HoldEvent::HandsFreeStarted {
+                at: clock.at(121_000)
+            })
+        );
+        // Told while no hands-free take runs, it changes nothing.
+        let mut machine = armed_machine(&clock);
+        machine.hands_free_ended();
+        assert!(machine.is_armed());
+    }
+
+    #[test]
+    fn reset_cancels_a_hands_free_take() {
+        let clock = Clock::new();
+        let mut machine = hands_free_machine(&clock);
+        assert_eq!(machine.reset(), Some(HoldEvent::Cancelled));
+        assert!(!machine.is_hands_free());
+    }
+
     /// Where a caller stands after the events so far: whether a microphone opened at the press is still
     /// open, and whether a take is running.
     #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -518,6 +712,7 @@ mod tests {
         Nothing,
         ArmedOrNotArmed,
         TakeEnd,
+        HandsFreeEnd,
     }
 
     fn follow(expect: Expect, event: HoldEvent) -> Expect {
@@ -525,6 +720,10 @@ mod tests {
             (Expect::Nothing, HoldEvent::Pressed { .. }) => Expect::ArmedOrNotArmed,
             (Expect::ArmedOrNotArmed, HoldEvent::Armed { .. }) => Expect::TakeEnd,
             (Expect::ArmedOrNotArmed, HoldEvent::NotArmed) => Expect::Nothing,
+            (Expect::Nothing, HoldEvent::HandsFreeStarted { .. }) => Expect::HandsFreeEnd,
+            (Expect::HandsFreeEnd, HoldEvent::HandsFreeStopped | HoldEvent::Cancelled) => {
+                Expect::Nothing
+            }
             (
                 Expect::TakeEnd,
                 HoldEvent::Released | HoldEvent::ReleaseMissed | HoldEvent::Cancelled,
@@ -535,6 +734,8 @@ mod tests {
 
     #[test]
     fn every_press_ends_in_armed_or_not_armed_and_every_take_ends_once() {
+        // Hands-free takes and the chord's key join the hold key's events; a take the app ends itself
+        // ends without an event.
         // A small linear congruential generator, so the sequences are the same on every run.
         let mut seed: u64 = 0x5eed;
         let mut next = |below: u64| {
@@ -553,10 +754,24 @@ mod tests {
                 ms += next(400);
                 let now = clock.at(ms);
                 let sample = samples[next(3) as usize];
-                let event = match next(4) {
+                let event = match next(7) {
                     0 => machine.hold_key_changed(now, sample),
                     1 => machine.other_key_pressed(now),
                     2 => machine.tick(now, sample),
+                    3 => machine.hands_free_pressed(now),
+                    4 => {
+                        machine.hands_free_released();
+                        None
+                    }
+                    5 => {
+                        if next(4) == 0 {
+                            if expect == Expect::HandsFreeEnd {
+                                expect = Expect::Nothing;
+                            }
+                            machine.hands_free_ended();
+                        }
+                        None
+                    }
                     _ => (next(10) == 0).then(|| machine.reset()).flatten(),
                 };
                 if let Some(event) = event {
@@ -565,6 +780,11 @@ mod tests {
                 assert_eq!(
                     machine.is_armed(),
                     expect == Expect::TakeEnd,
+                    "{machine:?} at {ms} ms"
+                );
+                assert_eq!(
+                    machine.is_hands_free(),
+                    expect == Expect::HandsFreeEnd,
                     "{machine:?} at {ms} ms"
                 );
             }

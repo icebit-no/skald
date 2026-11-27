@@ -1,5 +1,6 @@
-//! `skald`: with no command it takes dictation in the terminal; with a command it is the command line an
-//! agent uses (D-25), which talks to the running Skald or works on the files.
+//! `skald`: with no command it is the app, in the menu bar with its overlay and settings window, or with
+//! `--terminal` dictation in the terminal alone; with a command it is the command line an agent uses
+//! (D-25), which talks to the running Skald or works on the files; `skald bench` runs a test set.
 
 // Off macOS only the parts without a key listener or a clipboard build, so most of the binary is unused.
 #![cfg_attr(not(target_os = "macos"), allow(dead_code))]
@@ -9,12 +10,22 @@ mod app;
 mod cli;
 mod control;
 mod dictation;
+mod events;
 mod files;
+#[cfg(target_os = "macos")]
+mod login;
 mod models;
+#[cfg(target_os = "macos")]
+mod permissions;
 mod pipeline;
 mod say;
+#[cfg(target_os = "macos")]
+mod screen;
+#[cfg(target_os = "macos")]
+mod shell;
 mod signals;
 mod sounds;
+mod vad;
 mod wav;
 
 use std::process::ExitCode;
@@ -43,6 +54,7 @@ fn main() -> ExitCode {
                 }
             };
         }
+        Ok(Invocation::Bench(args)) => return bench(args),
         Ok(Invocation::Dictate(options)) => dictate(options),
         Err(message) => Err(Exit::Usage(message)),
     };
@@ -53,6 +65,24 @@ fn main() -> ExitCode {
             ExitCode::from(exit.code())
         }
     }
+}
+
+/// Runs skald-bench, with the built-in Silero VAD put in the models folder first, where it reads it unless
+/// given `--vad`.
+fn bench(args: Vec<std::ffi::OsString>) -> ExitCode {
+    if !args.iter().any(|arg| arg == "--vad")
+        && let Ok(paths) = files::paths(None)
+        && let Err(error) = vad::put_in_place(&skald_models::vad_path(&paths.models_dir()))
+    {
+        eprintln!(
+            "{}",
+            Exit::VadUnwritable {
+                path: skald_models::vad_path(&paths.models_dir()),
+                reason: error.to_string(),
+            }
+        );
+    }
+    skald_bench::run(args)
 }
 
 #[cfg(target_os = "macos")]

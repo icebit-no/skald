@@ -1,9 +1,10 @@
-//! The hold-to-talk key and insertion: arming, cancelling and the watchdog, and pasting the text where the
-//! cursor is.
+//! The hold-to-talk key, the hands-free chord and insertion: arming, cancelling and the watchdog, and
+//! pasting the text where the cursor is.
 //!
-//! [`HoldListener`] reports [`HoldEvent`]s for the hold key; [`Inserter`] pastes a take's text and puts
-//! the previous clipboard back. The rules of a hold live in [`HoldMachine`], free of any platform. macOS
-//! is supported; Windows and Linux bring their own key state, permission watch and clipboard.
+//! [`HoldListener`] reports [`HoldEvent`]s for the hold key and for ⌃⌘X, which starts and stops a
+//! hands-free take on macOS; [`Inserter`] pastes a take's text and puts the previous clipboard back. The
+//! rules of a hold live in [`HoldMachine`], free of any platform. macOS is supported; Windows and Linux
+//! bring their own key state, permission watch, hands-free chord and clipboard.
 //!
 //! Known limit: ⌘V is sent as the key in V's place on a QWERTY keyboard, which the Norwegian layout shares.
 //! On a layout that moves V, such as Dvorak, it is another shortcut.
@@ -27,4 +28,6 @@ pub use insert::{InsertError, InsertOptions, Inserted};
 #[cfg(target_os = "macos")]
 pub use listener::{HoldListener, ListenerEvent, Unavailable};
 #[cfg(target_os = "macos")]
-pub use macos::access::open_accessibility_settings;
+pub use macos::access::{
+    accessibility_granted, open_accessibility_settings, request_accessibility,
+};

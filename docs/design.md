@@ -12,6 +12,8 @@ own words.
 - So macOS shows its microphone indicator for a moment at each right-⌘ shortcut; that is accepted for the first words.
 - A take ends when the key is released, at the cap, or when its microphone disappears.
 - ⌃⌘X starts and stops a hands-free take on macOS. The key on Windows and Linux is chosen in M4 and M5; Ctrl+Alt is AltGr on Norwegian layouts.
+  While a hands-free take runs, the hold key starts nothing and other keys cancel nothing, so the user can type
+  and use shortcuts; ⌃⌘X itself never reaches the app in front.
 - A take is capped at 120 seconds. On macOS the system sound Tink plays when a take arms and Pop as its text is
   inserted; the sounds can be turned off.
 
@@ -35,6 +37,9 @@ The colours named below are the two Viking themes'; Kjedelig uses the system's a
 | Rister | On release the bars fold into the whole take; a gold chisel line moves across it, and behind it the bars, now 8 pt apart so each holds one rune, become runes: the dictated text transliterated to the Younger Futhark. «rister …» |
 | Satt inn | A gold tick and the start of the text, in plain type, for about 1.5 s |
 | Hørte ingenting | «Hørte ingenting · lyttet på <mikrofon>» |
+| Ikke satt inn | «Ikke satt inn · ligger i Siste tekster», when the text could not be inserted |
+| Transkriberingen feilet | «Transkriberingen feilet», when the model failed on the take |
+| Ingen mikrofon | «Ingen mikrofon er koblet til», when a take arms without one |
 | Mikrofon byttet | «<mikrofon> · koblet til, brukes nå», once, when the active microphone changes |
 | Håndfritt | A padlock instead of the dot, and «⌃⌘X stopper» |
 
@@ -44,7 +49,8 @@ carves the runes of a text that does not exist yet: until the text arrives, the 
 cuts. When the text arrives, the carved stretch shows its runes, the chisel runs to the end in 150 ms, the row
 stands 0.4 s, and Satt inn follows.
 
-Hørte ingenting stands 2 s and Mikrofon byttet 2.5 s.
+Hørte ingenting, Ikke satt inn, Transkriberingen feilet and Ingen mikrofon stand 2 s, and Mikrofon byttet
+2.5 s.
 
 With reduced motion asked for, the pill shows each state without movement; the recording bars are a still picture
 of the last 2.4 s, replaced once a second.

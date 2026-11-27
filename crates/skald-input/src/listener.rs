@@ -1,14 +1,17 @@
-//! Listens for the hold key on a thread of its own and reports what each hold means for the take.
+//! Listens for the hold key and the hands-free chord on a thread of its own and reports what each means
+//! for the take. The chord is kept from the app in front, so it reaches Skald alone.
 
+use std::collections::HashSet;
 use std::fmt;
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError, Sender, TryRecvError};
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
 use handy_keys::{KeyEvent, KeyboardListener};
 
 use crate::hold::{HoldEvent, HoldMachine};
-use crate::hotkey::{HoldKey, KeyChange, classify};
+use crate::hotkey::{HANDS_FREE, HoldKey, KeyChange, classify};
 use crate::macos::access::{AccessWatch, accessibility_granted};
 use crate::macos::keyboard::sample;
 
@@ -50,36 +53,46 @@ impl fmt::Display for Unavailable {
     }
 }
 
-/// Listens for the hold key until dropped.
+/// What the app tells the listener's thread.
+#[derive(Debug)]
+enum Command {
+    HandsFreeEnded,
+}
+
+/// Listens for the hold key and the hands-free chord until dropped.
 #[derive(Debug)]
 pub struct HoldListener {
     events: Receiver<ListenerEvent>,
     /// Dropping it tells the thread to stop.
-    _stop: Sender<()>,
+    commands: Sender<Command>,
 }
 
 impl HoldListener {
     pub fn start(hold_key: HoldKey) -> std::io::Result<Self> {
         let (events_tx, events) = mpsc::channel();
-        let (stop, stop_rx) = mpsc::channel();
+        let (commands, commands_rx) = mpsc::channel();
         thread::Builder::new()
             .name("skald-hold-key".into())
-            .spawn(move || Driver::new(hold_key, events_tx, stop_rx).run())?;
-        Ok(Self {
-            events,
-            _stop: stop,
-        })
+            .spawn(move || Driver::new(hold_key, events_tx, commands_rx).run())?;
+        Ok(Self { events, commands })
     }
 
     pub fn events(&self) -> &Receiver<ListenerEvent> {
         &self.events
+    }
+
+    /// The hands-free take ended without the chord: at the cap, when its microphone went away, or because
+    /// it could not start. The next press of the chord then starts a new one.
+    pub fn hands_free_ended(&self) {
+        // Fails only once the thread has stopped, and then there is no take to end.
+        let _ = self.commands.send(Command::HandsFreeEnded);
     }
 }
 
 struct Driver {
     hold_key: HoldKey,
     events: Sender<ListenerEvent>,
-    stop: Receiver<()>,
+    commands: Receiver<Command>,
     machine: HoldMachine,
     keyboard: Option<KeyboardListener>,
     access: AccessWatch,
@@ -91,11 +104,11 @@ struct Driver {
 }
 
 impl Driver {
-    fn new(hold_key: HoldKey, events: Sender<ListenerEvent>, stop: Receiver<()>) -> Self {
+    fn new(hold_key: HoldKey, events: Sender<ListenerEvent>, commands: Receiver<Command>) -> Self {
         Self {
             hold_key,
             events,
-            stop,
+            commands,
             machine: HoldMachine::new(),
             keyboard: None,
             access: AccessWatch::new(),
@@ -107,7 +120,7 @@ impl Driver {
 
     fn run(mut self) {
         loop {
-            if matches!(self.stop.try_recv(), Err(TryRecvError::Disconnected)) {
+            if !self.take_commands() {
                 return;
             }
             let now = Instant::now();
@@ -129,7 +142,13 @@ impl Driver {
                 .as_ref()
                 .map(|keyboard| keyboard.recv_timeout(timeout))
             {
-                Some(Ok(event)) => self.on_key_event(&event),
+                Some(Ok(event)) => {
+                    // A take the app ended is known before a press that may start the next one.
+                    if !self.take_commands() {
+                        return;
+                    }
+                    self.on_key_event(&event);
+                }
                 Some(Err(handy_keys::Error::Timeout)) => {}
                 Some(Err(error)) => {
                     let reason = if accessibility_granted() {
@@ -139,13 +158,30 @@ impl Driver {
                     };
                     self.lose(reason);
                 }
-                None => {
-                    if let Err(RecvTimeoutError::Disconnected) = self.stop.recv_timeout(timeout) {
-                        return;
-                    }
-                }
+                None => match self.commands.recv_timeout(timeout) {
+                    Ok(command) => self.on_command(command),
+                    Err(RecvTimeoutError::Disconnected) => return,
+                    Err(RecvTimeoutError::Timeout) => {}
+                },
             }
             self.tick_if_due();
+        }
+    }
+
+    /// Carries out what the app has said; false once the listener is dropped.
+    fn take_commands(&mut self) -> bool {
+        loop {
+            match self.commands.try_recv() {
+                Ok(command) => self.on_command(command),
+                Err(TryRecvError::Empty) => return true,
+                Err(TryRecvError::Disconnected) => return false,
+            }
+        }
+    }
+
+    fn on_command(&mut self, command: Command) {
+        match command {
+            Command::HandsFreeEnded => self.machine.hands_free_ended(),
         }
     }
 
@@ -175,7 +211,8 @@ impl Driver {
             self.report(Unavailable::NoAccessibility);
             return;
         }
-        match KeyboardListener::new() {
+        let chord: HashSet<_> = HANDS_FREE.iter().map(|chord| chord.hotkey()).collect();
+        match KeyboardListener::new_with_blocking(Arc::new(Mutex::new(chord))) {
             Ok(keyboard) => {
                 self.keyboard = Some(keyboard);
                 self.reported = None;
@@ -207,8 +244,13 @@ impl Driver {
 
     fn on_key_event(&mut self, event: &KeyEvent) {
         let now = Instant::now();
-        let hold_event = match classify(event, self.hold_key) {
+        let hold_event = match classify(event, self.hold_key, HANDS_FREE) {
             KeyChange::HoldKey => self.machine.hold_key_changed(now, sample(self.hold_key)),
+            KeyChange::HandsFreePressed => self.machine.hands_free_pressed(now),
+            KeyChange::HandsFreeReleased => {
+                self.machine.hands_free_released();
+                None
+            }
             KeyChange::OtherKeyPressed => self.machine.other_key_pressed(now),
             KeyChange::Ignored => None,
         };
@@ -226,7 +268,7 @@ impl Driver {
         }
     }
 
-    /// A send fails only once the listener is dropped, which the stop channel reports too.
+    /// A send fails only once the listener is dropped, which the command channel reports too.
     fn send(&self, event: ListenerEvent) {
         let _ = self.events.send(event);
     }

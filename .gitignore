@@ -3,5 +3,7 @@
 .DS_Store
 /models/
 *.gguf
+# Silero VAD, which the binary holds (assets/models/README.md).
+!/assets/models/silero-vad-v6.2-F32.gguf
 *.wav
 __pycache__/

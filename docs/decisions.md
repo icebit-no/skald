@@ -34,6 +34,59 @@ the built-in microphone and 15 to 25 cm for the USB microphone. Thomas looks thr
 reads them. Evidence: the tests in
 `crates/skald-bench/src/record`. Changed: [plan.md](plan.md) M3 and Waiting on Thomas.
 
+## D-36 — The app runs the dictation loop beside GPUI; ⌃⌘X is kept from other apps
+
+2026-11-27, Claude; Silero VAD inside the binary decided in #18's review, the bench and settings wiring asked
+by the lead, the three messages and keeping ⌃⌘X from other apps settled by the lead in review.
+
+`skald` with no command runs GPUI on the main thread and #18's dictation loop on a thread of its own, unchanged
+in its rules. The loop sends what happens (a take starting, its levels, its end, the microphones, the settings,
+the history) as events over a channel to tasks on the main thread, which drive the overlay, the menu bar item
+and the settings window. A change from the menu or the window goes through the same running Skald the socket
+answers for, so the file is written only when it changes (D-19) and the loop takes it in within a tenth of a
+second; a word corrected in Historikk goes to the pipeline's thread, which keeps the history and writes it.
+Moving the loop into GPUI's tasks would have meant making its blocking wait for keys asynchronous for no gain.
+`--terminal` runs the loop on the main thread without the screen, as #18 did, for debugging.
+
+When the configured model is not in place and checked, or the microphone or Accessibility is not granted,
+the app opens the first-run window (D-35) before the loop. It runs the window's download, asks for each
+permission with the system's own prompt (AVFoundation's request for the microphone, and for Accessibility
+the prompt that also lists Skald in System Settings), starts the loop when the test asks for it, and shows
+the menu bar item once the window is done. A loop the test started that stops, as when the model will not
+load, says why in the window, which can start it again; closing the window before Skald can take dictation
+quits the app. The insertion runs on the pipeline's thread, as every take's does, so the window reads the
+test's paste on the main thread while the insertion waits to put the clipboard back. A model given with
+`--model` is the developer's, with no first run, and `--terminal` stops at what is missing as #18 did.
+
+The engine must be dropped before the process exits (D-23), so «Avslutt Skald» asks the loop to stop and the
+app quits once the loop has dropped the model; when the system ends the app, as at log out, the main thread
+waits for the loop. The overlay shows a take's end only while that take is the one on screen, so a take
+started while the last one is carved is not replaced by the last one's text. A take that ends without its
+text says why, as Hørte ingenting does and for as long: «Ikke satt inn · ligger i Siste tekster» when the
+paste was refused, «Transkriberingen feilet» when the model failed, and «Ingen mikrofon er koblet til» when
+a take arms without one. The text not inserted is kept in the history, so «Siste tekster» has it.
+
+The microphones connected are listed every three seconds for the menu and the settings window: the system
+tells Skald only when the microphone in use changes, and the menu bar item builds its menu from the model it
+was last given, with no word to the app as it opens. The ordskatt meter asks the loaded model for each text
+once and keeps the count; a count asked while a take is being transcribed waits for that take.
+
+⌃⌘X is caught by skald-input's state machine. While a hands-free take runs the hold key starts nothing and
+other keys cancel nothing; a chord pressed during a hold spoils the hold first, as any other key does. The
+chord is handed to handy-keys as a blocking hotkey, so it reaches no other app, where it would at best beep.
+A hands-free take that ends at the 120 s cap or with its microphone is reported back to the listener, so the
+next chord starts a new take rather than stopping one that has ended.
+
+Start at login registers Skald.app as its own login item through SMAppService (macOS 13 and later), called
+through the Objective-C runtime: four calls did not warrant a crate. It works only from an app bundle, so a
+`skald` run elsewhere says so and leaves login items alone. The setting is applied at start and whenever it
+changes; when System Settings must allow the item, Skald says where.
+
+Silero VAD is held in the binary and written into the models folder when the file there is missing or holds
+other bytes, compared byte for byte; a test checks the held file against the pinned SHA-256
+(`assets/models/README.md`). Changed: [design.md](design.md#recording) (Recording, Overlay),
+[plan.md](plan.md) M2.
+
 ## D-35 — The first-run window is a view over the app's download and test, and reads the permissions itself
 
 2026-11-27, Claude; the test's text field, «Hopp over», skald-ui and the permission checks as functions settled

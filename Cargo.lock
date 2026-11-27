@@ -5469,14 +5469,24 @@ checksum = "33f4fe9184a62d842c9ef383018f3306d8ba224fd9d836f56d7288308847c256"
 name = "skald"
 version = "0.1.0"
 dependencies = [
+ "async-channel",
+ "block2 0.6.2",
+ "gpui-kit",
  "hound",
  "libc",
+ "objc2 0.6.5",
+ "objc2-foundation 0.3.2",
  "skald-audio",
+ "skald-bench",
  "skald-control",
  "skald-core",
  "skald-engine",
+ "skald-firstrun",
  "skald-input",
  "skald-models",
+ "skald-overlay",
+ "skald-settings",
+ "skald-tray",
 ]
 
 [[package]]

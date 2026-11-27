@@ -1,7 +1,7 @@
-//! Skald on macOS and Linux: the hold key, the microphones and the model joined into one loop. The app runs
-//! the loop on a thread of its own and the screen (`shell`: the overlay, the menu bar item, the settings
-//! window) on the main thread, which GPUI owns; with `--terminal` the loop runs on the main thread alone.
-//! Either way each line a user reads is printed as it happens.
+//! Skald on macOS, Windows and Linux: the hold key, the microphones and the model joined into one loop. The
+//! app runs the loop on a thread of its own and the screen (`shell`: the overlay, the menu bar item, the
+//! settings window) on the main thread, which GPUI owns; with `--terminal` the loop runs on the main thread
+//! alone. Either way each line a user reads is printed as it happens.
 //!
 //! Start-up checks what can stop Skald before the model takes seconds to load: the files, Accessibility,
 //! then the microphone permission. When the app finds the model or a permission missing, it opens the
@@ -57,16 +57,19 @@ const MICROPHONES_EVERY: Duration = Duration::from_secs(3);
 const FIRST_KEY_EVENT_WITHIN: Duration = Duration::from_secs(2);
 
 pub(crate) fn run(options: Options) -> Result<(), Exit> {
-    // Windows has no screen for Skald yet, so there it runs in the terminal, as with --terminal.
-    let result = if options.terminal || cfg!(windows) {
-        dictate(options, None)
-    } else {
+    let result = if shows_screen(&options) {
         run_app(options)
+    } else {
+        dictate(options, None)
     };
     if let Err(exit) = &result {
         open_settings_for(exit);
     }
     result
+}
+
+fn shows_screen(options: &Options) -> bool {
+    !options.terminal
 }
 
 /// Opens the pane of System Settings a missing permission is granted in, which saves the user looking for
@@ -608,6 +611,16 @@ fn listened_key(key: &ConfigHoldKey) -> Result<HoldKey, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn skald_runs_with_its_screen_on_every_system_unless_asked_for_the_terminal() {
+        assert!(shows_screen(&Options::default()));
+        let terminal = Options {
+            terminal: true,
+            ..Options::default()
+        };
+        assert!(!shows_screen(&terminal));
+    }
 
     #[test]
     fn every_hold_key_the_configuration_knows_is_listened_for() {

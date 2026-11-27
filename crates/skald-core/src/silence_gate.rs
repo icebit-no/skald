@@ -100,7 +100,7 @@ mod tests {
 
     const LOUD: f32 = -20.0;
     const PLENTY: Duration = Duration::from_millis(2500);
-    const LITTLE: Duration = Duration::from_millis(400);
+    const LITTLE: Duration = Duration::from_millis(300);
 
     fn decide(loudest_dbfs: f32, speech: Duration, text: &str) -> Decision {
         super::decide(loudest_dbfs, speech, text, &Silence::default())
@@ -156,6 +156,11 @@ mod tests {
         // Bokfink's text for silence in nynorsk.
         assert_eq!(decide(LOUD, LITTLE, "Det er."), known);
         assert_eq!(decide(LOUD, PLENTY, "Ja takk."), Decision::Insert);
+        // A spoken «Ja.», as VAD measured it in the engine check.
+        assert_eq!(
+            decide(LOUD, Duration::from_millis(444), "Ja."),
+            Decision::Insert
+        );
     }
 
     #[test]

@@ -7,7 +7,7 @@ that undoes one adds an entry of its own, and the earlier entry gets one line na
 
 ## D-23 — transcribe.cpp as a vendored crate with Skald's patches; 500 ms kept around the speech
 
-2026-11-27, Claude.
+2026-11-27, Claude; the known-phrase limit, the cut and the VAD model settled by the lead in review.
 
 Skald builds transcribe.cpp with its two patches (D-22) from a copy of the `transcribe-cpp-sys` crate in
 `third_party/`, which the root `Cargo.toml` puts in place of the crates.io crate; the safe `transcribe-cpp`
@@ -30,9 +30,18 @@ padding, the 20 FLEURS clips lost words (5.2 → 5.9 % word errors clean, 20.2 �
 500 ms they came out about as with the whole take (5.6 % and 19.2 %). A text with no word in it ends a take as
 the silence checks do: there is nothing to insert.
 
+Decided by the lead in review. A known phrase counts as silence only under 350 ms of speech, not 1000 ms: just
+above the 250 ms VAD must find before the model runs, and below the shortest real word measured («Hei.»,
+380 ms). With 1000 ms a spoken «Ja.» (444 ms) was never inserted, while VAD alone stopped every take without
+speech (0 ms). The silence around the speech stays cut at 500 ms, as design.md says, and M3 compares cutting
+it or not. Silero VAD ships inside the app (MIT, 1.2 MB) instead of being downloaded on first run. The engine
+has to be dropped before the process exits, since the Metal backend aborts at exit while a model is loaded;
+that is for the integration item.
+
 Evidence: [research/engine-check.md](research/engine-check.md), the model tests in `crates/skald-engine/tests`,
-the margins in `crates/skald-engine/src/vad.rs`. Changed: [plan.md](plan.md) M1b,
-[design.md](design.md#silence).
+the margins in `crates/skald-engine/src/vad.rs`. Changed: [plan.md](plan.md) M1b and M3,
+[design.md](design.md#silence) and [First run](design.md#first-run), the default of
+`known_phrase_max_speech_ms`.
 
 ## D-22 — transcribe.cpp's Rust crates, a patched build, NbAiLab's model file, no no-speech check
 

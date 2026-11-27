@@ -14,6 +14,11 @@ pub struct Silence {
     /// What the model writes for silence. The list grows from real cases, never from guesses.
     pub known_phrases: Vec<String>,
     /// A known phrase counts as silence only when VAD found less speech than this.
+    ///
+    /// The default, 350 ms, sits just above the 250 ms of speech the silence gate needs before the model
+    /// runs at all, and below the shortest real word in docs/research/engine-check.md («Hei.», 380 ms). So
+    /// a spoken «Ja.» (444 ms) is inserted, and VAD still stops the takes without speech, in which it
+    /// found 0 ms.
     pub known_phrase_max_speech_ms: u32,
     /// Keys a newer Skald wrote, written back unchanged (see the `config` module).
     #[serde(flatten)]
@@ -26,7 +31,7 @@ impl Default for Silence {
             known_phrases: ["ja", "ja takk", "den satt", "det er"]
                 .map(String::from)
                 .to_vec(),
-            known_phrase_max_speech_ms: 1000,
+            known_phrase_max_speech_ms: 350,
             unknown: toml::Table::new(),
         }
     }
@@ -53,7 +58,7 @@ impl Silence {
 mod tests {
     use super::*;
 
-    const LITTLE: Duration = Duration::from_millis(400);
+    const LITTLE: Duration = Duration::from_millis(300);
     const PLENTY: Duration = Duration::from_millis(2500);
 
     #[test]
@@ -75,6 +80,14 @@ mod tests {
         let silence = Silence::default();
         assert!(silence.is_known_phrase("JA, TAKK!", LITTLE));
         assert!(silence.is_known_phrase("ja  …  takk", LITTLE));
+    }
+
+    #[test]
+    fn a_spoken_word_is_more_than_almost_no_speech() {
+        // «Ja.» and «Hei.» as VAD measured them in docs/research/engine-check.md.
+        let silence = Silence::default();
+        assert!(!silence.is_known_phrase("Ja.", Duration::from_millis(444)));
+        assert!(!silence.is_known_phrase("Ja.", Duration::from_millis(380)));
     }
 
     #[test]

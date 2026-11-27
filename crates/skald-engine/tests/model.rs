@@ -233,13 +233,8 @@ fn takes_with_speech_are_inserted() {
                 &Silence::default(),
             )
             .unwrap();
-        // «ja» is a known silence phrase, and a lone «Ja.» holds less speech than such a phrase may.
-        let expected = if wav.ends_with("word-ja.wav") {
-            Decision::HeardNothing(Reason::KnownPhrase)
-        } else {
-            Decision::Insert
-        };
-        assert_eq!(take.decision, expected, "{wav:?}: {take:?}");
+        // A lone «Ja.» too: its 444 ms of speech is more than a known phrase may hold.
+        assert_eq!(take.decision, Decision::Insert, "{wav:?}: {take:?}");
         assert!(take.transcript.is_some(), "{wav:?}");
         assert!(take.speech.duration().as_millis() >= 380, "{wav:?}");
     }

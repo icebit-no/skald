@@ -214,7 +214,7 @@ mod tests {
             "[[corrections]]",
             r#"from = "mercha""#,
             "[silence]",
-            "known_phrase_max_speech_ms = 1000",
+            "known_phrase_max_speech_ms = 350",
         ] {
             assert!(
                 toml.lines().any(|l| l == line),

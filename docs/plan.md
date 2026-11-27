@@ -83,9 +83,9 @@ Design: [Audio in](design.md#audio-in).
 - [ ] Test set: the same sentences read with a good USB microphone, with the built-in Mac microphone and from
       a distance, with references in bokmål.
 - [ ] `skald bench`: word error rate and spacing errors (split or joined compounds), per configuration.
-- [ ] Compare greedy and beam 5, level normalisation, an 80 Hz high-pass, RNNoise, and NB-Whisper against
-      Bokfink as BF16 and as Q8_0 (Q5_K_M changed 9 of 48 texts in M1a and is left out). Keep what helps; write
-      the numbers into `docs/research/`.
+- [ ] Compare greedy and beam 5, level normalisation, an 80 Hz high-pass, RNNoise, cutting the silence around
+      the speech or not, and NB-Whisper against Bokfink as BF16 and as Q8_0 (Q5_K_M changed 9 of 48 texts in
+      M1a and is left out). Keep what helps; write the numbers into `docs/research/`.
 - [ ] Bokfink in the model choice, marked beta.
 
 ## M4 Windows

@@ -1,0 +1,7 @@
+# clip	keywords (SYSTEM context, space-separated, as NbAiLab's model card describes)
+# Words the plain run missed on these clips; 2000 also carries two unrelated
+# terms as distractors.
+fleurs-nb-1970	mosasaurer
+fleurs-nb-1811	802.11n
+fleurs-nb-1981	skipsekskursjoner
+fleurs-nb-2000	Nord-Østersjøen Tromsø Nordlandssykehuset

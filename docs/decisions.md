@@ -126,7 +126,6 @@ with the path in double quotes on Windows, which PowerShell and cmd.exe both rea
 
 Windows runs its screen from D-49.
 
-
 ## D-44 — On Linux the overlay is a layer-shell surface, and the app's screen runs there
 
 2026-11-27, Claude; the layer-shell surface before the tray agreed with the lead.

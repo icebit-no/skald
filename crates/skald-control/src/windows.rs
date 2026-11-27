@@ -60,6 +60,9 @@ const BUSY_WAIT_MS: u32 = 2_000;
 /// What the system keeps for each direction of an instance; a longer line simply takes more turns.
 const BUFFER: u32 = 4_096;
 
+/// How often the thread waiting for a connection looks whether Skald is stopping, in milliseconds.
+const STOP_CHECK: u32 = 250;
+
 /// A pipe created under its name, not yet answering.
 #[derive(Debug)]
 pub struct Server {
@@ -174,7 +177,7 @@ fn accept(server: Server, skald: &Arc<dyn Skald + Send + Sync>, stopping: &Atomi
         ..
     } = server;
     loop {
-        let connected = listening.wait_for_client();
+        let connected = listening.wait_for_client(stopping);
         if stopping.load(Ordering::SeqCst) {
             return;
         }
@@ -400,16 +403,34 @@ impl Pipe {
         }
     }
 
-    /// Waits for a client to connect to this instance.
-    fn wait_for_client(&self) -> io::Result<()> {
+    /// Waits for a client to connect to this instance, or for `stopping`, which is looked at every
+    /// [`STOP_CHECK`] in case the connection meant to wake the wait never came.
+    fn wait_for_client(&self, stopping: &AtomicBool) -> io::Result<()> {
         let mut overlapped = self.overlapped();
-        // Safety: the overlapped structure lives until the operation is finished below.
-        let started = unsafe { ConnectNamedPipe(self.handle.0, &mut overlapped) };
-        // Safety: reads this thread's last error, set by the call above.
-        if started == 0 && unsafe { GetLastError() } == ERROR_PIPE_CONNECTED {
-            return Ok(());
+        // Safety: the overlapped structure lives until the operation is finished or cancelled below.
+        unsafe {
+            let started = ConnectNamedPipe(self.handle.0, &mut overlapped);
+            if started == 0 {
+                match GetLastError() {
+                    ERROR_PIPE_CONNECTED => return Ok(()),
+                    ERROR_IO_PENDING => {}
+                    error => return Err(io::Error::from_raw_os_error(error as i32)),
+                }
+                while WaitForSingleObject(self.done.0, STOP_CHECK) == WAIT_TIMEOUT {
+                    if stopping.load(Ordering::SeqCst) {
+                        CancelIoEx(self.handle.0, &overlapped);
+                        let mut moved = 0;
+                        GetOverlappedResult(self.handle.0, &overlapped, &mut moved, 1);
+                        return Err(io::ErrorKind::Interrupted.into());
+                    }
+                }
+            }
+            let mut moved = 0;
+            if GetOverlappedResult(self.handle.0, &overlapped, &mut moved, 0) == 0 {
+                return Err(io::Error::last_os_error());
+            }
         }
-        self.finish(started, &overlapped, None).map(|_| ())
+        Ok(())
     }
 
     /// Waits for an operation started with `overlapped` and returns the bytes it moved. Past the time

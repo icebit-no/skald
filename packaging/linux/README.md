@@ -3,7 +3,7 @@
 How to build and run Skald on Linux, on Omarchy and other Hyprland desktops first (D-7), and how the desktop
 holds the key you talk with (D-39). Linux is M5 in [plan.md](../../docs/plan.md). Skald shows the overlay as a
 layer-shell surface (D-44) and inserts the text where the cursor is, through the clipboard and Ctrl+V (D-42);
-the tray item has not come to Linux yet, so settings are changed with `skald config`.
+the menu is in Waybar's tray (D-46).
 
 ## Build
 
@@ -76,6 +76,12 @@ bind = CTRL SUPER, X, global, app.icebit.skald:hands-free
 Hyprland then sends the press and the release through the portal, and no `skald` process starts at each
 press. KDE Plasma and GNOME have the portal too and ask for the key in their own settings; whether they report
 the release has not been tried.
+
+## The menu
+
+Skald's item, the rune ᚨ, shows in Waybar's tray (D-46), with a red dot while it records and a gold dot while
+it carves. A click opens the menu: the microphones, the latest texts, bokmål or nynorsk, the settings and «Avslutt
+Skald». Waybar needs its `tray` module, which Omarchy's bar has.
 
 ## The overlay
 

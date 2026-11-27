@@ -43,6 +43,12 @@ objc2-foundation = { version = "=0.3.2", default-features = false, features = [
     "NSString",
 ] }
 
+# The StatusNotifierItem and its menu over D-Bus, on zbus, which is in the tree through GPUI, with the same
+# executor; and the rune's PNG, read into the item's pixmaps.
+[target.'cfg(target_os = "linux")'.dependencies]
+ksni = { version = "=0.3.8", default-features = false, features = ["async-io", "blocking"] }
+png = "=0.18.1"
+
 # The example runs AppKit's application loop itself, with a timer that plays a take on the icon.
 [target.'cfg(target_os = "macos")'.dev-dependencies]
 block2 = "=0.6.2"

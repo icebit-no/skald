@@ -1850,7 +1850,17 @@ transcribe_status whisper_run(transcribe_session *          session,
                 }
                 hist.insert(hist.end(), seg.begin(), seg.begin() + n);
             }
-            const int cap = std::min<int>(static_cast<int>(hist.size()), max_prev_cap);
+            // ALL_SEGMENTS: the prompt and the earlier text share one budget of
+            // max_prev_cap tokens, the prompt first and the earlier text filling
+            // what is left, as whisper.cpp's carry_initial_prompt does. HF gives
+            // each its own max_prev_cap, so a long prompt plus a full history
+            // takes nearly the whole decoder window and the window's own text
+            // falls apart.
+            int history_budget = max_prev_cap;
+            if (wp->prompt_condition == TRANSCRIBE_WHISPER_PROMPT_ALL_SEGMENTS) {
+                history_budget = std::max(0, max_prev_cap - static_cast<int>(window_prompt.size()));
+            }
+            const int cap = std::min<int>(static_cast<int>(hist.size()), history_budget);
             prev_tokens.insert(prev_tokens.end(), hist.end() - cap, hist.end());
         } else if (!window_prompt.empty() && prev_sot_id >= 0 &&
                    (is_first_chunk || wp->prompt_condition == TRANSCRIBE_WHISPER_PROMPT_ALL_SEGMENTS)) {

@@ -113,6 +113,31 @@ int64_t qwen3_max_audio_ms(const QwenAsrHParams & hp) {
 // Forward declarations for helpers defined further down in this file.
 transcribe_status resolve_chat_tokens(const transcribe::Tokenizer & tok, ChatTokens & out);
 
+// Optional stt.qwen3_asr.language_names: one prompt name per general.languages
+// entry, in the same order ("Norwegian" for "nb"). Absent keeps the static map.
+transcribe_status read_language_names_kv(const gguf_context * gguf, QwenAsrModel & m) {
+    std::vector<std::string> names;
+    switch (read_string_array_kv(gguf, "stt.qwen3_asr.language_names", names)) {
+        case KvResult::Absent:
+            return TRANSCRIBE_OK;
+        case KvResult::BadType:
+            return TRANSCRIBE_ERR_GGUF;
+        case KvResult::Ok:
+            break;
+    }
+    std::vector<std::string> codes;
+    if (read_string_array_kv(gguf, "general.languages", codes) != KvResult::Ok || codes.size() != names.size()) {
+        log_msg(TRANSCRIBE_LOG_LEVEL_ERROR,
+                "qwen3_asr: stt.qwen3_asr.language_names needs one name per general.languages entry");
+        return TRANSCRIBE_ERR_GGUF;
+    }
+    m.language_names.clear();
+    for (size_t i = 0; i < codes.size(); ++i) {
+        m.language_names.emplace_back(codes[i], names[i]);
+    }
+    return TRANSCRIBE_OK;
+}
+
 transcribe_status load(Loader & loader, const transcribe_model_load_params * params, transcribe_model ** out_model) {
     const int64_t t_load_start = ggml_time_us();
 
@@ -130,6 +155,9 @@ transcribe_status load(Loader & loader, const transcribe_model_load_params * par
         return st;
     }
     if (const transcribe_status st = read_languages_kv(loader.gguf(), *m); st != TRANSCRIBE_OK) {
+        return st;
+    }
+    if (const transcribe_status st = read_language_names_kv(loader.gguf(), *m); st != TRANSCRIBE_OK) {
         return st;
     }
 
@@ -497,14 +525,23 @@ constexpr LangNameEntry k_qwen3_asr_language_names[] = {
 // code here means converter/map drift — surface as UNSUPPORTED_LANGUAGE.
 transcribe_status encode_language_prefix(const transcribe::Tokenizer & tok,
                                          const char *                  bcp47,
-                                         std::vector<int32_t> &        out_ids) {
+                                         std::vector<int32_t> &        out_ids,
+                                         const LanguageNames *         declared) {
     out_ids.clear();
     if (bcp47 == nullptr || bcp47[0] == '\0') {
         return TRANSCRIBE_ERR_INVALID_ARG;
     }
     const char * pub_name = nullptr;
+    if (declared != nullptr) {
+        for (const auto & [code, name] : *declared) {
+            if (code == bcp47) {
+                pub_name = name.c_str();
+                break;
+            }
+        }
+    }
     for (const auto & e : k_qwen3_asr_language_names) {
-        if (std::strcmp(e.bcp47, bcp47) == 0) {
+        if (pub_name == nullptr && std::strcmp(e.bcp47, bcp47) == 0) {
             pub_name = e.pub_name;
             break;
         }
@@ -539,6 +576,22 @@ transcribe_status encode_language_prefix(const transcribe::Tokenizer & tok,
 }
 
 namespace {  // reopen anon for the rest of the file's helpers.
+
+// Reverse of the prompt-name lookup: the GGUF's declared names first, then the
+// static map. Null when the model named a language neither knows.
+const char * bcp47_for_prompt_name(const QwenAsrModel & m, const std::string & name) {
+    for (const auto & [code, declared_name] : m.language_names) {
+        if (name == declared_name) {
+            return code.c_str();
+        }
+    }
+    for (const auto & e : k_qwen3_asr_language_names) {
+        if (name == e.pub_name) {
+            return e.bcp47;
+        }
+    }
+    return nullptr;
+}
 
 // Host-side pack [n_mels, T_mel] mel into batched chunks
 // [mel_per_chunk, n_mels, 1, n_chunks]. Chunks shorter than
@@ -644,7 +697,8 @@ transcribe_status run(transcribe_session *          session,
     std::vector<int32_t>         lang_prefix_ids;
     const std::vector<int32_t> * lang_prefix_ptr = nullptr;
     if (params != nullptr && params->language != nullptr && params->language[0] != '\0') {
-        if (const transcribe_status st = encode_language_prefix(cm->tok, params->language, lang_prefix_ids);
+        if (const transcribe_status st =
+                encode_language_prefix(cm->tok, params->language, lang_prefix_ids, &cm->language_names);
             st != TRANSCRIBE_OK) {
             return st;
         }
@@ -1141,11 +1195,8 @@ transcribe_status run(transcribe_session *          session,
                 while (!name.empty() && (name.back() == ' ' || name.back() == '\t' || name.back() == '\n')) {
                     name.pop_back();
                 }
-                for (const auto & e : k_qwen3_asr_language_names) {
-                    if (name == e.pub_name) {
-                        cc->detected_language = e.bcp47;
-                        break;
-                    }
+                if (const char * code = bcp47_for_prompt_name(*cm, name); code != nullptr) {
+                    cc->detected_language = code;
                 }
             }
         }
@@ -1587,11 +1638,8 @@ transcribe_session::ResultSet finalize_utterance(QwenAsrModel *               cm
                 while (!name.empty() && (name.back() == ' ' || name.back() == '\t' || name.back() == '\n')) {
                     name.pop_back();
                 }
-                for (const auto & e : k_qwen3_asr_language_names) {
-                    if (name == e.pub_name) {
-                        rs.detected_language = e.bcp47;
-                        break;
-                    }
+                if (const char * code = bcp47_for_prompt_name(*cm, name); code != nullptr) {
+                    rs.detected_language = code;
                 }
             }
         }
@@ -1654,7 +1702,7 @@ transcribe_status run_batch(transcribe_session *          session,
     std::vector<int32_t>         lang_prefix_ids;
     const std::vector<int32_t> * lang_prefix_ptr = nullptr;
     if (params != nullptr && params->language != nullptr && params->language[0] != '\0') {
-        if (encode_language_prefix(cm->tok, params->language, lang_prefix_ids) != TRANSCRIBE_OK) {
+        if (encode_language_prefix(cm->tok, params->language, lang_prefix_ids, &cm->language_names) != TRANSCRIBE_OK) {
             return TRANSCRIBE_ERR_UNSUPPORTED_LANGUAGE;
         }
         lang_prefix_ptr = &lang_prefix_ids;

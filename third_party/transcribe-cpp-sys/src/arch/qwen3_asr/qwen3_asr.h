@@ -20,6 +20,7 @@
 #include <cstdint>
 #include <optional>
 #include <string>
+#include <utility>
 #include <vector>
 
 struct ggml_context;
@@ -43,17 +44,24 @@ void apply_family_invariants(transcribe_model & model);
 // Returns:
 //   TRANSCRIBE_OK                     on success, out_ids populated.
 //   TRANSCRIBE_ERR_INVALID_ARG        bcp47 null or empty.
-//   TRANSCRIBE_ERR_UNSUPPORTED_LANGUAGE  bcp47 not in the publisher's
-//                                     support list (the static map
-//                                     in model.cpp is the source of
-//                                     truth; drift vs. caps.languages
+//   TRANSCRIBE_ERR_UNSUPPORTED_LANGUAGE  bcp47 in neither `declared`
+//                                     nor the publisher's support list
+//                                     (the static map in model.cpp;
+//                                     drift vs. caps.languages
 //                                     surfaces here).
 //   TRANSCRIBE_ERR_GGUF               tokenizer has no encoder
 //                                     (missing merges) or vocab
 //                                     missing <asr_text> special.
+//
+// `declared` is the GGUF's own code -> name list (stt.qwen3_asr.language_names),
+// looked up before the static map so a fine-tune can name languages the
+// publisher's list lacks.
+using LanguageNames = std::vector<std::pair<std::string, std::string>>;
+
 transcribe_status encode_language_prefix(const transcribe::Tokenizer & tok,
                                          const char *                  bcp47,
-                                         std::vector<int32_t> &        out_ids);
+                                         std::vector<int32_t> &        out_ids,
+                                         const LanguageNames *         declared = nullptr);
 
 // ---------------------------------------------------------------------------
 // Model / Context
@@ -88,6 +96,10 @@ struct QwenAsrModel final : public transcribe_model {
 
     // Resolved chat-template token ids (see resolve_chat_tokens in model.cpp).
     ChatTokens chat_tokens;
+
+    // Prompt names for the codes in general.languages, from the optional
+    // stt.qwen3_asr.language_names KV (empty == the static map only).
+    LanguageNames language_names;
 
     QwenAsrModel() = default;
     ~QwenAsrModel() override;

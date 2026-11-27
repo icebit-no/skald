@@ -1,0 +1,108 @@
+# Build plan
+
+How Skald behaves is in [design.md](design.md). This file says in which order it is built and what each
+milestone contains. How a run works is in [working-method.md](working-method.md).
+
+## M0 Repository and plan
+
+- [x] Public repository `icebit-no/skald`, MIT.
+- [x] Design, plan, decisions, research and working method as text in `docs/`.
+
+## M1 Engine check and the core on macOS
+
+Design: [Recording](design.md#recording), [Silence](design.md#silence), [Insertion](design.md#insertion),
+[Vocabulary and corrections](design.md#vocabulary-and-corrections). Research: [Models](research.md#models),
+[Stack](research.md#stack).
+
+### M1a Engine check
+
+One pull request with a report in `docs/research/engine-check.md`. Nothing else in M1 starts before it is
+merged, because it decides the binding and which models Skald can offer.
+
+- [ ] Build transcribe.cpp with Metal. Convert NB-Whisper Large to GGUF with transcribe.cpp's converter and
+      check on 10 Norwegian clips that its text matches whisper.cpp with NbAiLab's `ggml-model.bin`.
+- [ ] Check that the vocabulary prompt works with NB-Whisper in transcribe.cpp: as initial prompt, and carried
+      into each 30-second window for a long take.
+- [ ] Convert NB-ASR Bokfink02 (Qwen3-ASR 0.6B with NbAiLab's own tokenizer) to GGUF. Check that its text
+      matches NbAiLab's `inference.py` on 20 clips, run where CUDA is available. Find out whether
+      transcribe.cpp takes the custom tokenizer, the language prefixes (`language Norwegian<asr_text>` and
+      `language Norwegian Nynorsk<asr_text>`) and keyword context, and what is missing if not.
+- [ ] Run Silero VAD from transcribe.cpp on the same clips, including silent takes.
+- [ ] Choose the Rust binding: transcribe-rs, or our own over transcribe.cpp's C API. Say why.
+- [ ] Measure the time to transcribe 9 s of speech with each model on Apple Silicon.
+
+### M1b The core
+
+- [ ] Cargo workspace: `skald-core` (configuration, vocabulary, corrections, history; no I/O), `skald-engine`
+      (transcribe.cpp), `skald-audio` (capture, resampling, levels), `skald-input` (hotkey and paste), and the
+      `skald` binary.
+- [ ] Right ⌘ hold with handy-keys: arm after 200 ms, cancel when another key joins, a watchdog for a missed
+      release.
+- [ ] Capture with cpal, resampled to 16 kHz mono with rubato, level readings for the meter; the microphone
+      chosen by the priority list.
+- [ ] The silence gate: level, VAD (at least 250 ms of speech), the no-speech threshold, known phrases.
+- [ ] Transcribe with NB-Whisper Large on Metal, loaded once, with beam search 5.
+- [ ] Insert by clipboard and ⌘V after the key is released; put the previous clipboard back unless the user
+      chose to copy the text.
+- [ ] Vocabulary prompt and corrections from a TOML configuration; history of the five latest texts.
+- [ ] Runs from a terminal and can replace diktafon for daily use.
+
+## M2 The app on macOS
+
+Design: [Overlay](design.md#overlay), [Menu](design.md#menu), [Settings](design.md#settings),
+[Command line](design.md#command-line).
+
+- [ ] Overlay on GPUI: a PopUp window that takes no focus, lets clicks through, is transparent and draws at
+      60 fps; the states recording, carving, inserted, heard nothing, microphone changed and hands-free.
+- [ ] Carving paced by the measured seconds of work per second of audio on this machine.
+- [ ] Menu bar item with the ᚨ template icon: microphone, latest texts, bokmål or nynorsk, ordskatt,
+      settings, quit.
+- [ ] Settings window with the tabs Generelt, Ordskatt, Historikk and Om.
+- [ ] First run: model download with progress (pinned revision, SHA-256), permissions, a test dictation.
+- [ ] `skald` command line over a local socket only the user can open; `--json` on every command; writes the
+      configuration file directly when the app is not running.
+- [ ] Claude skill in `packaging/skills/skald/`, installed with `skald skill install`; `skald mcp`.
+- [ ] `.app` bundle signed with Developer ID and notarized.
+
+## M3 Measurement
+
+Design: [Audio in](design.md#audio-in).
+
+- [ ] Test set: the same sentences read with a good USB microphone, with the built-in Mac microphone and from
+      a distance, with references in bokmål.
+- [ ] `skald bench`: word error rate and spacing errors (split or joined compounds), per configuration.
+- [ ] Compare greedy and beam 5, level normalisation, an 80 Hz high-pass, RNNoise, and NB-Whisper against
+      Bokfink. Keep what helps; write the numbers into `docs/research/`.
+- [ ] Bokfink in the model choice, marked beta.
+
+## M4 Windows
+
+- [ ] Right Ctrl hold; a Vulkan build that runs on NVIDIA, AMD and Intel, and says so plainly on a machine
+      without Vulkan.
+- [ ] Icon and menu in the notification area; the overlay as a topmost window that takes no focus.
+- [ ] Paste with Ctrl+V; windows running as administrator cannot receive it, and Skald says so.
+- [ ] Zip and manifest in `icebit-no/scoop-bucket`, a winget manifest, signing through SignPath Foundation.
+- [ ] Tested on a real Windows machine with an NVIDIA RTX GPU.
+
+## M5 Linux (Omarchy and Hyprland)
+
+- [ ] Hold-to-talk through the GlobalShortcuts portal, or Hyprland `bind`/`bindr` calling `skald start` and
+      `skald stop`.
+- [ ] Overlay as a layer-shell surface, insertion with wtype, icon through StatusNotifierItem (Waybar).
+- [ ] Vulkan build; AUR package `skald-bin`.
+
+## M6 Release and site
+
+Design: [Site](design.md#site).
+
+- [ ] Release pipeline after Ferric's: notarize on the Mac runner, cask to `icebit-no/homebrew-tap`, manifest
+      to `icebit-no/scoop-bucket`, AUR.
+- [ ] `icebit-no/skald-site`: Astro, an nginx image, app-sync and Caddy on svalbard, at skald.icebit.app.
+- [ ] Entry in the icebit.app rack.
+
+## Waiting on Thomas
+
+- The app icon: a rune cut into stone and painted red in the groove. A graphics round is in progress.
+- The hero of the site: concept A, «Skalden i stamnen», is chosen; it needs final polish and a bokmål version.
+- Nordlyd: access to `NbAiLab/nordlyd-asr-qwen06B-nov26preview` must be requested on Hugging Face before it
+  can be evaluated.

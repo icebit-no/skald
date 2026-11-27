@@ -10,7 +10,7 @@
 //! work, so a take made meanwhile waits for it. The command line's socket answers for as long as the loop
 //! runs.
 
-#[cfg(unix)]
+#[cfg(any(unix, windows))]
 use skald_control::{BindError, Server, Serving};
 
 use std::sync::Arc;
@@ -57,7 +57,8 @@ const MICROPHONES_EVERY: Duration = Duration::from_secs(3);
 const FIRST_KEY_EVENT_WITHIN: Duration = Duration::from_secs(2);
 
 pub(crate) fn run(options: Options) -> Result<(), Exit> {
-    let result = if options.terminal {
+    // Windows has no screen for Skald yet, so there it runs in the terminal, as with --terminal.
+    let result = if options.terminal || cfg!(windows) {
         dictate(options, None)
     } else {
         run_app(options)
@@ -365,7 +366,7 @@ fn dictate(options: Options, link: Option<Link>) -> Result<(), Exit> {
 
 /// Answers the command line on the socket. Without it Skald still takes dictation, and the commands work
 /// on the files, which the loop reads again when they change.
-#[cfg(unix)]
+#[cfg(any(unix, windows))]
 fn serve(paths: &Paths, control: Arc<Control>, out: &Out) -> Result<Option<Serving>, Exit> {
     match Server::bind(&paths.socket()) {
         Ok(server) => Ok(Some(server.serve(control))),
@@ -467,6 +468,9 @@ impl Running<'_> {
         match event {
             WorkerEvent::Loaded { device, took } => {
                 self.out.say(Line::ModelLoaded { device, took });
+                if cfg!(windows) && !skald_engine::gpu_available() {
+                    self.out.say(Line::NoVulkan);
+                }
                 self.out.say(Line::Ready(self.keys.key));
                 self.out.show(Event::ModelLoaded);
             }

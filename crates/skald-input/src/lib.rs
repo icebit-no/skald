@@ -50,6 +50,10 @@ pub use listening::{ListenerEvent, PressRefused, Unavailable};
 pub use macos::access::{
     accessibility_granted, open_accessibility_settings, request_accessibility,
 };
+#[cfg(windows)]
+pub use windows::access::{
+    accessibility_granted, open_accessibility_settings, request_accessibility,
+};
 
 /// Presses or releases the hold key for a key binding of the desktop. Here Skald listens to the keyboard
 /// itself, so a binding has nothing to add.

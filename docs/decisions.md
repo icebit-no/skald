@@ -32,6 +32,28 @@ whose probability works may add the check back.
 Evidence: [research/engine-check.md](research/engine-check.md). Changed: [research.md](research.md#stack),
 [design.md](design.md#silence) and [First run](design.md#first-run), [plan.md](plan.md) M1b.
 
+## D-21 — Clipboard and paste through NSPasteboard and CoreGraphics on macOS
+
+2026-11-27, Claude.
+
+The previous clipboard is put back as it was, every item with every type it held: rich text, images, files and
+types private to an app. arboard handles plain text, HTML and images, so Skald reads and writes NSPasteboard
+items itself through objc2, which handy-keys already brings in. The text that is on the clipboard only for the
+paste is marked transient, so clipboard history tools skip it. ⌘V is two CoreGraphics key events carrying the
+Command flag, which needs no dependency beyond those; enigo is not used.
+
+A mouse click while right ⌘ is held cancels the take, as a key does: ⌘-click is a shortcut.
+
+Restoring the clipboard means reading it, and once macOS enforces pasteboard privacy it may ask the user once
+whether Skald may. That is acceptable; if it is denied, the text stays on the clipboard, and first run says so
+(M2).
+
+Contents marked `org.nspasteboard.ConcealedType` or `org.nspasteboard.TransientType` are neither read nor put
+back; the dictated text stays on the clipboard instead. A password manager clears a secret only while the
+clipboard still holds what it put there, and a restore would put the secret back beyond that clearing. Restored
+contents carry no marker of their own, or the next dictation would refuse to put back what this one restored.
+Changed: [research.md](research.md#stack), [design.md](design.md#recording) (Recording and Insertion).
+
 ## D-20 — Microphone fallback, matching by name, a lost microphone and the menu pin
 
 2026-11-27, Claude.

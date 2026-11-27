@@ -6,7 +6,7 @@ own words.
 ## Recording
 
 - Hold right ⌘ (macOS) or right Ctrl (Windows, Linux). The take arms after 200 ms; another key pressed while it
-  is held cancels the take.
+  is held cancels the take. A mouse click counts as another key, since ⌘-click is a shortcut.
 - ⌃⌘X starts and stops a hands-free take on macOS. The key on Windows and Linux is chosen in M4 and M5; Ctrl+Alt is AltGr on Norwegian layouts.
 - A take is capped at 120 seconds. Start and end sounds can be turned off.
 
@@ -49,6 +49,11 @@ Any of them ends the take with «Hørte ingenting», and nothing is inserted.
 The text is put on the clipboard and pasted with ⌘V (Ctrl+V) after the key is released, with a trailing space so
 consecutive takes do not run together. Then the previous clipboard is put back, unless «Kopier også teksten til
 utklippstavlen» is ticked. Corrections are applied before insertion.
+
+Putting the previous clipboard back means reading it, and macOS may ask once whether Skald may do that. If the
+user says no, the text stays on the clipboard. Contents marked concealed or transient, as password managers
+mark a secret, are never read or put back; the text stays on the clipboard instead, so the secret is not
+restored where the manager's own clearing can no longer reach it.
 
 ## Microphones
 

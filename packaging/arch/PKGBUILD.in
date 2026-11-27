@@ -1,0 +1,45 @@
+# Maintainer: icebit <https://github.com/icebit-no>
+# Rendered by packaging/arch/aur.sh from Skald's repository; edit PKGBUILD.in there.
+
+pkgname=skald-bin
+pkgver=@VERSION@
+pkgrel=1
+pkgdesc="Norwegian push-to-talk dictation with the National Library of Norway's speech models, on your own machine"
+arch=('x86_64')
+url='https://skald.icebit.app'
+license=('MIT')
+# What the binary links (glibc, libgcc, libstdc++, ALSA, xcb, xkbcommon, the Vulkan loader) or opens as it
+# runs (Wayland's client library), the programs it runs (wtype for the paste, PipeWire's pw-play for the
+# sounds), and the icon theme its icons go into.
+depends=(
+  'alsa-lib'
+  'glibc'
+  'hicolor-icon-theme'
+  'libgcc'
+  'libstdc++'
+  'libxcb'
+  'libxkbcommon'
+  'libxkbcommon-x11'
+  'pipewire'
+  'vulkan-icd-loader'
+  'wayland'
+  'wtype'
+)
+optdepends=(
+  'vulkan-driver: the speech model on the GPU rather than the processor'
+  'pipewire-alsa: the microphone through PipeWire'
+  'sound-theme-freedesktop: the sounds as a take starts and its text is inserted'
+  'xdg-desktop-portal-hyprland: the keys through the GlobalShortcuts portal'
+)
+provides=('skald')
+conflicts=('skald')
+# The binary comes built from the release; a second, empty package of its symbols would hold nothing.
+options=('!debug')
+source_x86_64=("@SOURCE@")
+sha256sums_x86_64=('@SHA256@')
+
+package() {
+  cp -a "skald-${pkgver}-linux-${CARCH}/usr" "${pkgdir}/"
+  # Arch keeps a package's licence under the package's own name.
+  mv "${pkgdir}/usr/share/licenses/skald" "${pkgdir}/usr/share/licenses/${pkgname}"
+}

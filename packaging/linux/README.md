@@ -112,3 +112,12 @@ background, which Hyprland gives a layer surface only through a rule:
 layerrule = blur, skald
 layerrule = ignorezero, skald
 ```
+
+## The release tarball
+
+`packaging/linux/tarball.sh` packs `target/dist/skald-VERSION-linux-ARCH.tar.gz`, with its SHA-256 beside it,
+for the release (D-52): the release `skald`, the desktop entry `app.icebit.skald.desktop` and the icons in
+`hicolor`, these Hyprland lines as `share/skald/hyprland.conf`, this README, the licence and
+THIRD-PARTY-NOTICES once it exists, laid out as under `/usr`. The same checkout packs to the same bytes. Arch's
+package is made from it ([packaging/arch](../arch/README.md)); nothing is published until the release pipeline
+(M6).

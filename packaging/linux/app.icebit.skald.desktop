@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Skald
+GenericName=Diktering
+Comment=Norsk tale til tekst: hold inne en tast, snakk, slipp
+Exec=skald
+Icon=app.icebit.skald
+Terminal=false
+Categories=Utility;Accessibility;
+Keywords=diktering;tale;tekst;norsk;nynorsk;bokmål;
+StartupWMClass=app.icebit.skald
+StartupNotify=false

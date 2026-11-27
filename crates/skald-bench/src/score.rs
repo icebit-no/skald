@@ -15,8 +15,12 @@
 //! and «pull request» to «pull-request». A split into k words costs k word errors, as one substitution
 //! and k − 1 insertions would; a join of k words costs k, as one substitution and k − 1 deletions. So the
 //! two steps never change the count of word errors; of the alignments with the fewest word errors, the
-//! one with the most splits and joins is taken. The word errors inside splits and joins are the spacing
+//! one with the most splits and joins is taken, and of those the one with the most hyphen differences. The word errors inside splits and joins are the spacing
 //! part of the word error count, and the rest are the other errors.
+//!
+//! A **hyphen difference** is a substitution whose two words differ only in their hyphens
+//! («nord-østersjøen» → «nordøstersjøen», «epost» → «e-post»). It stays the substitution it is, among the
+//! word errors and the other errors; the count only says how many substitutions are of this kind.
 
 use std::ops::Range;
 
@@ -110,6 +114,24 @@ impl Score {
             .filter(|step| matches!(step, Step::Join { .. }))
             .count()
     }
+
+    pub fn hyphen_differences(&self) -> usize {
+        self.steps
+            .iter()
+            .filter(|step| match step {
+                Step::Substitute { reference, text } => {
+                    self.is_hyphen_difference(*reference, *text)
+                }
+                _ => false,
+            })
+            .count()
+    }
+
+    /// Whether the reference's word and the text's, by index, differ only in their hyphens.
+    pub fn is_hyphen_difference(&self, reference: usize, text: usize) -> bool {
+        let (r, t) = (&self.reference[reference], &self.text[text]);
+        r != t && spacing_key(r) == spacing_key(t)
+    }
 }
 
 /// A word as splits and joins compare it.
@@ -117,17 +139,53 @@ fn spacing_key(word: &str) -> String {
     word.replace('-', "")
 }
 
-/// The best alignment so far of a prefix of the reference with a prefix of the text.
+/// What an alignment of a prefix of the reference with a prefix of the text adds up to, and what a step
+/// adds to it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct Cost {
     word_errors: usize,
     spacing: usize,
+    hyphens: usize,
 }
 
 impl Cost {
+    const NONE: Cost = Cost {
+        word_errors: 0,
+        spacing: 0,
+        hyphens: 0,
+    };
+    const UNREACHED: Cost = Cost {
+        word_errors: usize::MAX,
+        ..Cost::NONE
+    };
+
+    fn errors(word_errors: usize) -> Cost {
+        Cost {
+            word_errors,
+            ..Cost::NONE
+        }
+    }
+
+    /// Fewer word errors first, then more splits and joins, then more hyphen differences.
     fn better_than(self, other: Cost) -> bool {
-        self.word_errors < other.word_errors
-            || (self.word_errors == other.word_errors && self.spacing > other.spacing)
+        use std::cmp::Reverse;
+        (
+            self.word_errors,
+            Reverse(self.spacing),
+            Reverse(self.hyphens),
+        ) < (
+            other.word_errors,
+            Reverse(other.spacing),
+            Reverse(other.hyphens),
+        )
+    }
+
+    fn plus(self, step: Cost) -> Cost {
+        Cost {
+            word_errors: self.word_errors + step.word_errors,
+            spacing: self.spacing + step.spacing,
+            hyphens: self.hyphens + step.hyphens,
+        }
     }
 }
 
@@ -142,65 +200,67 @@ enum Last {
     Join(usize),
 }
 
-/// The alignment with the fewest word errors and, among those, the most splits and joins.
+/// The alignment with the fewest word errors and, among those, the most splits and joins, then the most
+/// hyphen differences.
 pub fn align(reference: &[String], text: &[String]) -> Vec<Step> {
     let (n, m) = (reference.len(), text.len());
     let ref_keys: Vec<String> = reference.iter().map(|w| spacing_key(w)).collect();
     let text_keys: Vec<String> = text.iter().map(|w| spacing_key(w)).collect();
 
     let width = m + 1;
-    let mut cost = vec![
-        Cost {
-            word_errors: usize::MAX,
-            spacing: 0,
-        };
-        (n + 1) * width
-    ];
+    let mut cost = vec![Cost::UNREACHED; (n + 1) * width];
     let mut last = vec![Last::Start; (n + 1) * width];
-    cost[0] = Cost {
-        word_errors: 0,
-        spacing: 0,
-    };
+    cost[0] = Cost::NONE;
 
     for i in 0..=n {
         for j in 0..=m {
             if i == 0 && j == 0 {
                 continue;
             }
-            let mut best = Cost {
-                word_errors: usize::MAX,
-                spacing: 0,
-            };
+            let mut best = Cost::UNREACHED;
             let mut how = Last::Start;
-            let mut consider = |from: Cost, errors: usize, spacing: usize, step: Last| {
-                let candidate = Cost {
-                    word_errors: from.word_errors + errors,
-                    spacing: from.spacing + spacing,
-                };
+            let mut consider = |from: Cost, step: Cost, reached_by: Last| {
+                let candidate = from.plus(step);
                 if candidate.better_than(best) {
                     best = candidate;
-                    how = step;
+                    how = reached_by;
                 }
             };
             if i > 0 && j > 0 {
-                let errors = usize::from(reference[i - 1] != text[j - 1]);
-                consider(cost[(i - 1) * width + j - 1], errors, 0, Last::Diagonal);
+                let (r, t) = (&reference[i - 1], &text[j - 1]);
+                let step = if r == t {
+                    Cost::NONE
+                } else {
+                    Cost {
+                        hyphens: usize::from(ref_keys[i - 1] == text_keys[j - 1]),
+                        ..Cost::errors(1)
+                    }
+                };
+                consider(cost[(i - 1) * width + j - 1], step, Last::Diagonal);
             }
             if i > 0 {
-                consider(cost[(i - 1) * width + j], 1, 0, Last::Delete);
+                consider(cost[(i - 1) * width + j], Cost::errors(1), Last::Delete);
             }
             if j > 0 {
-                consider(cost[i * width + j - 1], 1, 0, Last::Insert);
+                consider(cost[i * width + j - 1], Cost::errors(1), Last::Insert);
             }
             if i > 0
                 && let Some(k) = joined_from_end(&ref_keys[i - 1], &text_keys[..j])
             {
-                consider(cost[(i - 1) * width + j - k], k, 1, Last::Split(k));
+                let step = Cost {
+                    spacing: 1,
+                    ..Cost::errors(k)
+                };
+                consider(cost[(i - 1) * width + j - k], step, Last::Split(k));
             }
             if j > 0
                 && let Some(k) = joined_from_end(&text_keys[j - 1], &ref_keys[..i])
             {
-                consider(cost[(i - k) * width + j - 1], k, 1, Last::Join(k));
+                let step = Cost {
+                    spacing: 1,
+                    ..Cost::errors(k)
+                };
+                consider(cost[(i - k) * width + j - 1], step, Last::Join(k));
             }
             cost[i * width + j] = best;
             last[i * width + j] = how;
@@ -268,6 +328,7 @@ pub struct Tally {
     pub spacing_word_errors: usize,
     pub splits: usize,
     pub joins: usize,
+    pub hyphen_differences: usize,
 }
 
 impl Tally {
@@ -278,6 +339,7 @@ impl Tally {
         self.spacing_word_errors += score.spacing_word_errors();
         self.splits += score.splits();
         self.joins += score.joins();
+        self.hyphen_differences += score.hyphen_differences();
     }
 
     /// Word errors per hundred reference words; none without reference words.
@@ -465,10 +527,49 @@ mod tests {
     }
 
     #[test]
-    fn a_word_that_differs_only_in_its_hyphen_is_a_substitution() {
-        let score = Score::new("pull-requesten", "pullrequesten");
+    fn a_word_that_differs_only_in_its_hyphens_is_a_hyphen_difference() {
+        for (reference, text) in [
+            ("pull-requesten", "pullrequesten"),
+            ("Nord-Østersjøen", "nordøstersjøen"),
+            ("epost", "e-post"),
+            ("e-post-adressen", "epost-adressen"),
+        ] {
+            let score = Score::new(reference, text);
+            assert_eq!(score.hyphen_differences(), 1, "{reference} → {text}");
+            assert_eq!(score.word_errors(), 1, "still a substitution");
+            assert_eq!(score.spacing_word_errors(), 0);
+            assert_eq!((score.splits(), score.joins()), (0, 0));
+        }
+    }
+
+    #[test]
+    fn a_hyphen_difference_is_found_where_another_substitution_costs_the_same() {
+        // «e-post» → «dag» with «epost» and «i» inserted costs as much as «e-post» → «epost» with «i» and
+        // «dag» inserted; the hyphen difference is taken.
+        let score = Score::new("med e-post", "med epost i dag");
+        assert_eq!(score.word_errors(), 3);
+        assert_eq!(score.hyphen_differences(), 1);
+    }
+
+    #[test]
+    fn other_substitutions_are_no_hyphen_difference() {
+        let score = Score::new("e-post sendt", "e-mail sendt");
         assert_eq!(score.word_errors(), 1);
-        assert_eq!((score.splits(), score.joins()), (0, 0));
+        assert_eq!(score.hyphen_differences(), 0);
+        assert_eq!(Score::new("e-post", "e-post").hyphen_differences(), 0);
+    }
+
+    #[test]
+    fn a_split_a_join_and_a_hyphen_difference_in_one_sentence() {
+        let score = Score::new(
+            "I dag sendte jeg e-post fra arbeidsdagen.",
+            "Idag sendte jeg epost fra arbeids dagen.",
+        );
+        assert_eq!(joins(&score), vec![pair("i dag", "idag")]);
+        assert_eq!(splits(&score), vec![pair("arbeidsdagen", "arbeids dagen")]);
+        assert_eq!(score.hyphen_differences(), 1);
+        assert_eq!(score.word_errors(), 5);
+        assert_eq!(score.spacing_word_errors(), 4);
     }
 
     #[test]
@@ -513,6 +614,7 @@ mod tests {
                 "pull requesten ble merget i går",
             ),
             ("en to tre fire", "fire tre to en"),
+            ("med e-post i dag", "med epost idag"),
             ("", "noe"),
         ];
         for (reference, text) in cases {
@@ -553,12 +655,14 @@ mod tests {
         let mut tally = Tally::default();
         tally.add(&Score::new("en lang arbeidsdag", "en lang arbeids dag"));
         tally.add(&Score::new("vi sees i dag", "vi ses idag"));
-        assert_eq!(tally.clips, 2);
-        assert_eq!(tally.reference_words, 7);
-        assert_eq!(tally.word_errors, 5);
+        tally.add(&Score::new("send en e-post", "send en epost"));
+        assert_eq!(tally.clips, 3);
+        assert_eq!(tally.reference_words, 10);
+        assert_eq!(tally.word_errors, 6);
         assert_eq!(tally.spacing_word_errors, 4);
         assert_eq!((tally.splits, tally.joins), (1, 1));
-        assert_eq!(tally.word_error_rate(), Some(500.0 / 7.0));
-        assert_eq!(tally.other_error_rate(), Some(100.0 / 7.0));
+        assert_eq!(tally.hyphen_differences, 1);
+        assert_eq!(tally.word_error_rate(), Some(60.0));
+        assert_eq!(tally.other_error_rate(), Some(20.0));
     }
 }

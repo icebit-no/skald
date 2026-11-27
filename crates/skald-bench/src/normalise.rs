@@ -18,9 +18,9 @@
 //!    quotes, brackets, dashes, slashes, and a comma, full stop, colon, question or exclamation mark at
 //!    the edge of a word.
 //!
-//! A word that differs only in its hyphens («pullrequesten», «pull-requesten») is a word error. Where
-//! the text splits a word or joins words, the alignment compares them without their hyphens (the
-//! `score` module).
+//! A word that differs only in its hyphens («pullrequesten», «pull-requesten») is a word error, which
+//! the `score` module also counts as a hyphen difference. Where the text splits a word or joins words,
+//! the alignment compares them without their hyphens.
 
 /// The words of `text` after the steps above.
 pub fn words(text: &str) -> Vec<String> {

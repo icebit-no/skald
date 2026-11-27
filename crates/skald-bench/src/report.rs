@@ -63,6 +63,8 @@ struct TakeLine<'a> {
     spacing_word_errors: usize,
     splits: Vec<Pair>,
     joins: Vec<Pair>,
+    /// Substitutions whose words differ only in their hyphens; not repeated among the substitutions.
+    hyphen_differences: Vec<Pair>,
     substitutions: Vec<Pair>,
     deletions: Vec<&'a str>,
     insertions: Vec<&'a str>,
@@ -76,6 +78,8 @@ struct TakeLine<'a> {
 struct Differences<'a> {
     splits: Vec<Pair>,
     joins: Vec<Pair>,
+    /// Substitutions whose words differ only in their hyphens; not repeated among the substitutions.
+    hyphen_differences: Vec<Pair>,
     substitutions: Vec<Pair>,
     deletions: Vec<&'a str>,
     insertions: Vec<&'a str>,
@@ -86,6 +90,7 @@ fn differences(score: &Score) -> Differences<'_> {
     let mut out = Differences {
         splits: Vec::new(),
         joins: Vec::new(),
+        hyphen_differences: Vec::new(),
         substitutions: Vec::new(),
         deletions: Vec::new(),
         insertions: Vec::new(),
@@ -96,10 +101,17 @@ fn differences(score: &Score) -> Differences<'_> {
             Step::Substitute {
                 reference: r,
                 text: t,
-            } => out.substitutions.push(Pair {
-                reference: reference[*r].clone(),
-                text: text[*t].clone(),
-            }),
+            } => {
+                let pair = Pair {
+                    reference: reference[*r].clone(),
+                    text: text[*t].clone(),
+                };
+                if score.is_hyphen_difference(*r, *t) {
+                    out.hyphen_differences.push(pair);
+                } else {
+                    out.substitutions.push(pair);
+                }
+            }
             Step::Delete { reference: r } => out.deletions.push(&reference[*r]),
             Step::Insert { text: t } => out.insertions.push(&text[*t]),
             Step::Split {
@@ -141,6 +153,7 @@ fn take_line<'a>(
         spacing_word_errors: result.score.spacing_word_errors(),
         splits: d.splits,
         joins: d.joins,
+        hyphen_differences: d.hyphen_differences,
         substitutions: d.substitutions,
         deletions: d.deletions,
         insertions: d.insertions,
@@ -234,10 +247,11 @@ impl Progress for Writer<'_> {
             Outcome::Ran { takes, .. } => {
                 let tally = tally(takes.iter());
                 eprintln!(
-                    "  {} ordfeil, {} særskrivinger, {} sammenskrivinger",
+                    "  {} ordfeil, {} særskrivinger, {} sammenskrivinger, {} bindestrekfeil",
                     percent(tally.word_error_rate()),
                     tally.splits,
-                    tally.joins
+                    tally.joins,
+                    tally.hyphen_differences
                 );
             }
             Outcome::Unavailable(reason) => eprintln!("{position}: ikke tilgjengelig: {reason}"),
@@ -305,6 +319,8 @@ pub struct Counts {
     pub other_error_rate: Option<f64>,
     pub splits: usize,
     pub joins: usize,
+    /// Substitutions whose words differ only in their hyphens, counted among the word errors.
+    pub hyphen_differences: usize,
     /// Takes the silence gate stopped, so nothing was inserted.
     pub heard_nothing: usize,
 }
@@ -320,6 +336,7 @@ fn counts<'a>(takes: impl Iterator<Item = &'a TakeResult> + Clone) -> Counts {
         other_error_rate: tally.other_error_rate().map(round1),
         splits: tally.splits,
         joins: tally.joins,
+        hyphen_differences: tally.hyphen_differences,
         heard_nothing: takes.filter(|t| t.heard_nothing.is_some()).count(),
     }
 }
@@ -420,13 +437,15 @@ impl Summary {
             out,
             "- Ordene sammenlignes etter normaliseringen i `crates/skald-bench/src/normalise.rs`, og \
              særskrivinger og sammenskrivinger telles slik `crates/skald-bench/src/score.rs` beskriver. \
-             «Uten mellomromsfeil» er ordfeilraten uten ordfeilene i særskrivinger og sammenskrivinger.\n"
+             «Uten mellomromsfeil» er ordfeilraten uten ordfeilene i særskrivinger og sammenskrivinger. \
+             «Bindestrekfeil» er ord som bare skiller seg fra referansens ord i bindestrekene; de er med i \
+             ordfeilene.\n"
         );
 
         out.push_str(
             "| Konfigurasjon | Opptak | Ord | Ordfeil | Ordfeilrate | Uten mellomromsfeil | Særskrivinger | \
-             Sammenskrivinger | Hørte ingenting | Transkribering |\n\
-             |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|\n",
+             Sammenskrivinger | Bindestrekfeil | Hørte ingenting | Transkribering |\n\
+             |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|\n",
         );
         for row in &self.configurations {
             let name = &row.configuration;
@@ -438,7 +457,7 @@ impl Summary {
                 } => {
                     let _ = writeln!(
                         out,
-                        "| `{name}` | {} | {} | {} | {} | {} | {} | {} | {} | {} s |",
+                        "| `{name}` | {} | {} | {} | {} | {} | {} | {} | {} | {} | {} s |",
                         c.takes,
                         c.reference_words,
                         c.word_errors,
@@ -446,15 +465,16 @@ impl Summary {
                         percent(c.other_error_rate),
                         c.splits,
                         c.joins,
+                        c.hyphen_differences,
                         c.heard_nothing,
                         decimal(*transcribe_s)
                     );
                 }
                 Status::NotAvailable { reason } => {
-                    let _ = writeln!(out, "| `{name}` | ikke tilgjengelig: {reason} |||||||||");
+                    let _ = writeln!(out, "| `{name}` | ikke tilgjengelig: {reason} ||||||||||");
                 }
                 Status::Failed { reason } => {
-                    let _ = writeln!(out, "| `{name}` | feilet: {reason} |||||||||");
+                    let _ = writeln!(out, "| `{name}` | feilet: {reason} ||||||||||");
                 }
             }
         }
@@ -465,8 +485,8 @@ impl Summary {
         if with_microphones {
             out.push_str(
                 "\n| Konfigurasjon | Mikrofon | Opptak | Ord | Ordfeilrate | Uten mellomromsfeil | \
-                 Særskrivinger | Sammenskrivinger | Hørte ingenting |\n\
-                 |---|---|---:|---:|---:|---:|---:|---:|---:|\n",
+                 Særskrivinger | Sammenskrivinger | Bindestrekfeil | Hørte ingenting |\n\
+                 |---|---|---:|---:|---:|---:|---:|---:|---:|---:|\n",
             );
             for row in &self.configurations {
                 let Status::Ran { microphones, .. } = &row.status else {
@@ -475,7 +495,7 @@ impl Summary {
                 for (microphone, c) in microphones {
                     let _ = writeln!(
                         out,
-                        "| `{}` | {microphone} | {} | {} | {} | {} | {} | {} | {} |",
+                        "| `{}` | {microphone} | {} | {} | {} | {} | {} | {} | {} | {} |",
                         row.configuration,
                         c.takes,
                         c.reference_words,
@@ -483,6 +503,7 @@ impl Summary {
                         percent(c.other_error_rate),
                         c.splits,
                         c.joins,
+                        c.hyphen_differences,
                         c.heard_nothing
                     );
                 }
@@ -545,11 +566,11 @@ mod tests {
 
     #[test]
     fn a_take_line_lists_each_kind_of_difference() {
-        let clip = clip("s01", "I dag var en lang arbeidsdag hjemme.", None);
+        let clip = clip("s01", "I dag var en lang arbeidsdag med e-post.", None);
         let result = result(
             0,
             &clip.reference,
-            "Idag var ei lang arbeids dag hjemme i dag.",
+            "Idag var ei lang arbeids dag med epost i dag.",
         );
         let line = take_line(&Configuration::default(), &clip, &result);
         assert_eq!(
@@ -573,6 +594,13 @@ mod tests {
                 text: "ei".into()
             }]
         );
+        assert_eq!(
+            line.hyphen_differences,
+            vec![Pair {
+                reference: "e-post".into(),
+                text: "epost".into()
+            }]
+        );
         assert_eq!(line.insertions, vec!["i", "dag"]);
         assert!(line.deletions.is_empty());
         let json = serde_json::to_string(&line).unwrap();
@@ -587,12 +615,12 @@ mod tests {
         let clips = [
             clip("a-usb", "en lang arbeidsdag", Some("usb")),
             clip("a-far", "en lang arbeidsdag", Some("distance")),
-            clip("b", "hei", None),
+            clip("b", "send en e-post", None),
         ];
         let takes = vec![
             result(0, &clips[0].reference, "en lang arbeidsdag"),
             result(1, &clips[1].reference, "en lang arbeids dag"),
-            result(2, &clips[2].reference, "hei"),
+            result(2, &clips[2].reference, "send en epost"),
         ];
         let configurations = [
             Configuration::default(),
@@ -616,15 +644,16 @@ mod tests {
         };
         assert_eq!(
             (counts.takes, counts.reference_words, counts.word_errors),
-            (3, 7, 2)
+            (3, 9, 3)
         );
-        assert_eq!(counts.splits, 1);
-        assert_eq!(counts.word_error_rate, Some(28.6));
-        assert_eq!(counts.other_error_rate, Some(0.0));
+        assert_eq!((counts.splits, counts.hyphen_differences), (1, 1));
+        assert_eq!(counts.word_error_rate, Some(33.3));
+        assert_eq!(counts.other_error_rate, Some(11.1));
         let names: Vec<&str> = microphones.keys().map(String::as_str).collect();
         assert_eq!(names, [NO_MICROPHONE, "distance", "usb"]);
         assert_eq!(microphones["distance"].splits, 1);
         assert_eq!(microphones["usb"].word_errors, 0);
+        assert_eq!(microphones[NO_MICROPHONE].hyphen_differences, 1);
 
         let summary = Summary {
             about: About {
@@ -641,19 +670,20 @@ mod tests {
         };
         let markdown = summary.markdown();
         assert!(
-            markdown.contains("| `nb-whisper-large,greedy,trim` | 3 | 7 | 2 | 28,6 % | 0,0 % | 1 | 0 | 0 | 1,5 s |"),
+            markdown.contains("| `nb-whisper-large,greedy,trim` | 3 | 9 | 3 | 33,3 % | 11,1 % | 1 | 0 | 1 | 0 | 1,5 s |"),
             "{markdown}"
         );
         assert!(markdown.contains(
             "| `nb-whisper-large,beam5,trim` | ikke tilgjengelig: motoren dekoder bare grådig |"
         ));
         assert!(markdown.contains(
-            "| `nb-whisper-large,greedy,trim` | distance | 1 | 3 | 66,7 % | 0,0 % | 1 | 0 | 0 |"
+            "| `nb-whisper-large,greedy,trim` | distance | 1 | 3 | 66,7 % | 0,0 % | 1 | 0 | 0 | 0 |"
         ));
 
         let json = serde_json::to_value(&summary).unwrap();
         assert_eq!(json["configurations"][0]["status"], "ran");
         assert_eq!(json["configurations"][0]["splits"], 1);
+        assert_eq!(json["configurations"][0]["hyphen_differences"], 1);
         assert_eq!(json["configurations"][1]["status"], "not_available");
     }
 

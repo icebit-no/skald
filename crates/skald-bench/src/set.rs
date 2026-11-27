@@ -1,5 +1,5 @@
 //! A test set: a folder of takes, each a WAV file with its reference beside it in a `.txt` file of the same
-//! name, as research/clips/fetch.py writes them:
+//! name, as research/clips/fetch.py and `skald bench record` write them:
 //!
 //! ```text
 //! setning-01-usb.wav   the take
@@ -18,6 +18,9 @@
 //! "*-mac" = "built-in"
 //! "*-far" = "distance"
 //! ```
+//!
+//! `skald bench record` names its takes after the microphone and the sentence (`usb-07`) and writes one
+//! line per microphone (`"usb-*" = "usb"`).
 //!
 //! Only the folder itself is read, not folders inside it, and files whose names start with a full stop
 //! are skipped.
@@ -40,9 +43,16 @@ pub struct Clip {
 
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
-struct Manifest {
+pub(crate) struct Manifest {
+    /// The microphone of each take, by a name pattern.
     #[serde(default)]
-    microphones: BTreeMap<String, String>,
+    pub(crate) microphones: BTreeMap<String, String>,
+}
+
+impl Manifest {
+    pub(crate) fn parse(text: &str) -> Result<Self, String> {
+        toml::from_str(text).map_err(|e| e.to_string())
+    }
 }
 
 /// The takes of a test set, in the order of their names.
@@ -111,7 +121,7 @@ pub fn load(folder: &Path) -> Result<Vec<Clip>, String> {
 }
 
 fn assign_microphones(clips: &mut [Clip], manifest: &str) -> Result<(), String> {
-    let manifest: Manifest = toml::from_str(manifest).map_err(|e| e.to_string())?;
+    let manifest = Manifest::parse(manifest)?;
     let mut used: BTreeMap<&str, bool> = manifest
         .microphones
         .keys()

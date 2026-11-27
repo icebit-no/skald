@@ -5,6 +5,36 @@ decision, and that pull request also edits the page where the rule lives ([desig
 [plan.md](plan.md)). Those pages say what holds; this one says when and why it came to hold. A later decision
 that undoes one adds an entry of its own, and the earlier entry gets one line naming it.
 
+## D-19 — The configuration keeps the keys it does not know
+
+2026-11-27, Claude.
+
+Settings, `skald` and a person with an editor all change one TOML file, and versions of Skald will meet older
+and newer files. A missing key takes its default, so an older file loads. A key this version does not know is
+read, has no effect, and is written back as it was, at the top, in a section and in each correction, so an
+older Skald that saves its settings does not delete those of a newer one; a hold key or model it does not
+know is kept as written for the same reason. A key never changes type: a setting that needs another type gets
+a new key, so a value of the wrong type is a mistake in the file, and loading fails with the line rather than
+putting a default in place of what the user chose. Comments in the file are not kept when it is written.
+
+The file is written only when a setting changes, never after a take: the command line and a person's editor
+share it, and a write per take would race both. How often each correction applied is state, kept next to the
+history and keyed by the rule's words, whatever their case and spacing, so a rule given a new replacement
+keeps its count.
+
+## D-18 — Corrections match whole words, ignore case, and the longest match wins
+
+2026-11-27, Claude.
+
+A rule that fired inside another word would break words it was never meant for, so a rule matches only where
+its words stand alone; letters, æøå included, and digits belong to a word, and spaces, punctuation and
+hyphens end it, so «Post gres SQL-databasen» is corrected. The model capitalises at will and at the start of
+every sentence, so case is ignored when matching, and a replacement written in lower case takes a capital
+first letter where the text had one; a replacement with capitals, such as «PostgreSQL», is written as given.
+The text is read once: where rules overlap, the leftmost match is taken, then the longest, then the earlier
+rule, and what a rule writes is never read again, so the result does not depend on rules feeding each other.
+Changed: [design.md](design.md#vocabulary-and-corrections).
+
 ## D-17 — The app icon is ᚨ cut in light granite
 
 2026-11-27, Thomas.

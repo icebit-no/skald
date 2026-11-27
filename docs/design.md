@@ -66,6 +66,9 @@ With Bokfink the same words are sent as keyword context.
 
 **Rettinger** are exact replacements for words the model hears right but writes wrong: «Post gres SQL» →
 «PostgreSQL», «mercha» → «merget». Each rule counts how often it applies, so the rules that work are visible.
+A rule matches whole words only and ignores case; a replacement written in lower case gets a capital first
+letter where the text had one, so a sentence still starts with a capital. Where two rules match at the same
+place, the longer match wins, and a replacement is never corrected again.
 
 ## History
 

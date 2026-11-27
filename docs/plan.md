@@ -52,7 +52,7 @@ by a script from a pinned source with SHA-256 checks, not committed.
 - [ ] Transcribe with NB-Whisper Large on Metal, loaded once, with beam search 5.
 - [ ] Insert by clipboard and ⌘V after the key is released; put the previous clipboard back unless the user
       chose to copy the text.
-- [ ] Vocabulary prompt and corrections from a TOML configuration; history of the five latest texts.
+- [x] Vocabulary prompt and corrections from a TOML configuration; history of the five latest texts.
 - [ ] Runs from a terminal and can replace diktafon for daily use.
 
 ## M2 The app on macOS

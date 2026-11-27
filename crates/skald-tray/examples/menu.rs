@@ -23,6 +23,7 @@ mod mac {
     use std::cell::RefCell;
     use std::ptr::NonNull;
     use std::rc::Rc;
+    use std::sync::{Arc, Mutex};
     use std::time::{Duration, Instant};
 
     use block2::RcBlock;
@@ -52,11 +53,11 @@ mod mac {
         app.setActivationPolicy(NSApplicationActivationPolicy::Accessory);
 
         let model = Rc::new(RefCell::new(sample()));
-        let chosen = Rc::new(RefCell::new(Vec::new()));
+        let chosen = Arc::new(Mutex::new(Vec::new()));
         let inbox = chosen.clone();
         let tray = Tray::new(&model.borrow(), move |action| {
             println!("{action:?}");
-            inbox.borrow_mut().push(action);
+            inbox.lock().unwrap().push(action);
         })
         .expect("the item is made on the main thread");
         let tray = RefCell::new(tray);
@@ -66,7 +67,7 @@ mod mac {
         let takes = RefCell::new(0usize);
         let tick = RcBlock::new(move |_timer: NonNull<NSTimer>| {
             let mut model = model.borrow_mut();
-            let actions: Vec<Action> = chosen.borrow_mut().drain(..).collect();
+            let actions: Vec<Action> = chosen.lock().unwrap().drain(..).collect();
             for action in actions {
                 act(&mut model, action, mtm);
             }

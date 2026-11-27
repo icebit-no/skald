@@ -91,9 +91,11 @@ impl Paths {
             }
             Os::Linux => {
                 let home = env.home.as_ref();
+                // A path from the root is absolute on Linux; `is_absolute` would ask the system the rule
+                // runs on, which on Windows also wants a drive.
                 let xdg = |set: &Option<PathBuf>, fallback: &str| {
                     set.clone()
-                        .filter(|p| p.is_absolute())
+                        .filter(|p| p.has_root())
                         .or_else(|| home.map(|h| h.join(fallback)))
                 };
                 let config_dir = xdg(&env.xdg_config_home, ".config")?.join("skald");
@@ -102,7 +104,7 @@ impl Paths {
                 let runtime_dir = env
                     .xdg_runtime_dir
                     .clone()
-                    .filter(|p| p.is_absolute())
+                    .filter(|p| p.has_root())
                     .map(|p| p.join("skald"))
                     .unwrap_or_else(|| state_dir.clone());
                 Some(Self {

@@ -444,6 +444,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(unix)]
     fn the_command_line_talks_to_the_running_skald_over_its_socket() {
         let run = running("control-socket", Vec::new());
         let serving = skald_control::Server::bind(&run.paths.socket())

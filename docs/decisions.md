@@ -22,6 +22,35 @@ the darker of the identity's ochre or gold on a light bar and the lighter on a d
 before «Avslutt Skald», as in macOS menus; design.md's single line for the last group was a compact list.
 Changed: [design.md](design.md#menu).
 
+## D-26 — Models downloaded with ureq over rustls, checked by the system's verifier
+
+2026-11-27, Claude; the folder layout set by the lead.
+
+`skald-models` fetches a model's file with ureq, a blocking HTTP client, over rustls with ring, and has the
+system check the server's certificate (rustls-platform-verifier: Security.framework on macOS, CryptoAPI on
+Windows, the system's certificate store on Linux), so a certificate the user's system trusts or revokes counts
+the same in Skald. A download is one long GET on a thread of its own, with a range when it goes on from a
+stopped one. An async client (reqwest) would bring tokio and hyper for that; native-tls would mean OpenSSL to
+build and ship on Linux and Windows. ring is in the tree for TLS and also gives the SHA-256, so no hashing
+crate is added. Hugging Face redirects the pinned URL to its CDN; the redirect is followed over HTTPS only, and
+the range goes with it. Nothing else is contacted.
+
+The models folder holds a folder per model, named by its id, with the file in it as the binary loads it
+(`nb-whisper-large/ggml-model.bin`), and Silero VAD's file at its top. A file takes that name only after its
+SHA-256 matched, and the hash is then written beside it (`ggml-model.bin.sha256`). So `skald model list` knows a
+file is checked without reading 3 GB, a file put there by hand is checked once before it is used, and a pin
+moved to a new file is not mistaken for the old one. A stopped download's part carries the start of its hash in
+its name, so it is never continued against another file.
+
+A broken connection is tried again up to five times, after 1, 2, 4, 8 and 16 s, and the count starts over
+whenever a try brings more of the file; then the download stops and keeps what arrived for the next one. The
+free-space check asks macOS for the room it would give a file the user asked for, which counts the purgeable
+space that statvfs leaves out.
+
+Evidence: the tests in `crates/skald-models/tests/download.rs`, and the pinned file fetched for a few seconds,
+stopped and resumed, with the bytes at the resume point matching the server's. Changed:
+[research.md](research.md#stack).
+
 ## D-25 — One binary is both the app and its command line
 
 2026-11-27, Claude.

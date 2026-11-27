@@ -46,7 +46,7 @@ The colours named below are the two Viking themes'; Kjedelig uses the system's a
 | Satt inn | A gold tick and the start of the text, in plain type, for about 1.5 s |
 | Hørte ingenting | «Hørte ingenting · lyttet på <mikrofon>» |
 | Ikke satt inn | «Ikke satt inn · ligger i Siste tekster», when the text could not be inserted |
-| Administratorvindu | «Kan ikke sette inn i et administratorvindu · ligger i Siste tekster», on Windows, when the window in front runs as administrator |
+| Administratorvindu | «Administratorvindu · ligger i Siste tekster», on Windows, when the window in front runs as administrator and refuses the text |
 | Transkriberingen feilet | «Transkriberingen feilet», when the model failed on the take |
 | Ingen mikrofon | «Ingen mikrofon er koblet til», when a take arms without one |
 | Mikrofon byttet | «<mikrofon> · koblet til, brukes nå», once, when the active microphone changes |

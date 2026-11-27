@@ -159,8 +159,8 @@ impl Overlay {
         self.drive(cx, |pill, now| pill.not_inserted(now));
     }
 
-    /// The window in front runs as administrator and refused the text: «Kan ikke sette inn i et
-    /// administratorvindu · ligger i Siste tekster».
+    /// The window in front runs as administrator and refused the text: «Administratorvindu · ligger i
+    /// Siste tekster».
     pub fn administrator_window(&mut self, cx: &mut App) {
         self.drive(cx, |pill, now| pill.administrator_window(now));
     }

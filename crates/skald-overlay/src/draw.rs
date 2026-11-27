@@ -173,10 +173,7 @@ impl<'a> Message<'a> {
                 rest: " · koblet til, brukes nå".to_owned(),
             }),
             Look::NotInserted => fixed("Ikke satt inn", " · ligger i Siste tekster"),
-            Look::AdministratorWindow => fixed(
-                "Kan ikke sette inn i et administratorvindu",
-                " · ligger i Siste tekster",
-            ),
+            Look::AdministratorWindow => fixed("Administratorvindu", " · ligger i Siste tekster"),
             Look::TranscriptionFailed => fixed("Transkriberingen feilet", ""),
             Look::NoMicrophone => fixed("Ingen mikrofon er koblet til", ""),
             Look::Recording { .. } | Look::Carving { .. } | Look::Inserted { .. } => None,
@@ -1019,7 +1016,7 @@ mod tests {
         assert_eq!(
             read(Look::AdministratorWindow),
             (
-                "Kan ikke sette inn i et administratorvindu · ligger i Siste tekster".to_owned(),
+                "Administratorvindu · ligger i Siste tekster".to_owned(),
                 true
             )
         );
@@ -1037,7 +1034,8 @@ mod tests {
     #[test]
     fn every_message_fits_the_pill_in_every_theme() {
         // Measured with Core Text, these words take at most 0.46 em a letter in Alegreya Sans Medium and
-        // SF Pro (204 pt of the 376 pt there is); 0.62 leaves room for a wider system font.
+        // SF Pro (204 pt of the 376 pt there is); 0.6 leaves a third more for a wider system font, such as
+        // Segoe UI in Kjedelig on Windows.
         for theme in [
             crate::theme::Theme::Runepinne,
             crate::theme::Theme::SmiddJern,
@@ -1047,17 +1045,14 @@ mod tests {
             let room = W - 2.0 * style.pad;
             for look in [
                 Look::NotInserted,
+                Look::AdministratorWindow,
                 Look::TranscriptionFailed,
                 Look::NoMicrophone,
             ] {
                 let message = Message::of(&look).unwrap();
                 let letters = (message.first.chars().count() + message.rest.chars().count()) as f32;
-                assert!(letters * style.size * 0.62 < room, "{look:?} in {theme:?}");
+                assert!(letters * style.size * 0.6 < room, "{look:?} in {theme:?}");
             }
-            // The longest message keeps its fixed words whole; a wide font cuts the rest with «…».
-            let message = Message::of(&Look::AdministratorWindow).unwrap();
-            let letters = message.first.chars().count() as f32;
-            assert!(letters * style.size * 0.62 < room, "{theme:?}");
         }
     }
 

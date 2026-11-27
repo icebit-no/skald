@@ -102,9 +102,10 @@ The hands-free chord on Windows is Ctrl+Win+X, the counterpart of ⌃⌘X: the W
 as right Ctrl stands for right ⌘, and Ctrl+Alt is AltGr. handy-keys keeps the chord from the app in front, as
 on macOS, and keeps the Windows key's release from opening the Start menu.
 
-When the window in front runs as administrator (D-38), the overlay says «Kan ikke sette inn i et
-administratorvindu · ligger i Siste tekster» for 2 s, as the other messages stand, rather than the general
-«Ikke satt inn»: the user can act on it.
+When the window in front runs as administrator (D-38), the overlay says «Administratorvindu · ligger i Siste
+tekster» for 2 s, as the other messages stand, rather than the general «Ikke satt inn»: the user can act on
+it. It follows «Ikke satt inn · ligger i Siste tekster» and fits the pill; «Kan ikke sette inn i et
+administratorvindu» did not.
 
 Skald does not ask for UI Access, which would let it hear the key in an administrator window and paste into
 it: Windows grants it only to a signed binary installed under Program Files, which belongs to M4's packaging

@@ -5,7 +5,7 @@ decision, and that pull request also edits the page where the rule lives ([desig
 [plan.md](plan.md)). Those pages say what holds; this one says when and why it came to hold. A later decision
 that undoes one adds an entry of its own, and the earlier entry gets one line naming it.
 
-## D-26 — The command line's protocol, and the same commands whether Skald runs or not
+## D-28 — The command line's protocol, and the same commands whether Skald runs or not
 
 2026-11-27, Claude; skald-control depending on skald-core alone agreed with the lead.
 

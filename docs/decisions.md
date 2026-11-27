@@ -66,6 +66,27 @@ already was. Evidence: on a headless sway with Waybar, the item registers with W
 shows the rune with the red dot while a take records, the menu read over D-Bus holds every entry, and
 «Avslutt Skald» clicked over D-Bus quits the app. Changed: [design.md](design.md#menu), [plan.md](plan.md) M5.
 
+## D-45 — Skald runs in the terminal on Windows until it has a screen; start at login and the permissions stand in
+
+2026-11-27, the lead (the order), Claude (the rest).
+
+Until the notification-area icon and the overlay exist on Windows, `skald` there runs the dictation loop in
+the terminal, as `--terminal` does, so dictation works on Windows before its screen is built. The hold key,
+the hands-free chord, the microphones, the model on its own thread, the insertion and the named pipe (D-40)
+work as on macOS, and the loop prints what the overlay will show.
+
+Start at login registers nothing yet: the entry has to name the installed program, and where Scoop and winget
+put it is M4's packaging item, so the setting is kept and does nothing on Windows until then. The first run's
+permissions read as granted, since Windows asks for none of them: the key and the paste need no grant, and
+the microphone is open to desktop programs unless the user has turned that off in the privacy settings, in
+which case it fails to open, as an unplugged one does.
+
+The console's Ctrl-C and Ctrl-Break end the loop as the signals do on Unix, so the model is dropped before the
+process exits, and a second one ends the process at once. Closing the console window gives the loop four
+seconds before Windows ends the process. The command the terminal prints for a missing model is `curl.exe`
+with the path in double quotes on Windows, which PowerShell and cmd.exe both read.
+
+
 ## D-44 — On Linux the overlay is a layer-shell surface, and the app's screen runs there
 
 2026-11-27, Claude; the layer-shell surface before the tray agreed with the lead.
@@ -90,7 +111,7 @@ The accent colour and reduced motion on Linux: D-47.
 
 ## D-43 — transcribe.cpp's backends are modules on Windows, so a machine without Vulkan starts on the CPU
 
-2026-11-27, Claude.
+2026-11-27, Claude; the words for the CPU fallback settled by the lead in review.
 
 On Windows skald-engine builds transcribe.cpp with its Vulkan backend, for NVIDIA, AMD and Intel GPUs alike,
 and with every backend as a module loaded at run time (transcribe.cpp's `dynamic-backends`): the Vulkan

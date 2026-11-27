@@ -5531,6 +5531,7 @@ dependencies = [
  "skald-overlay",
  "skald-settings",
  "skald-tray",
+ "windows-sys 0.61.2",
 ]
 
 [[package]]

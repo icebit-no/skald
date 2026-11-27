@@ -45,6 +45,9 @@ pub enum Inserted {
     TextKept,
     /// The text stays on the clipboard because the previous contents could not be read.
     PreviousUnreadable,
+    /// The text stays on the clipboard because the previous contents were marked concealed or transient,
+    /// as a password manager marks a secret, and are not put back.
+    PreviousMarkedPrivate,
     /// Something was copied after the text was pasted; that copy is left in place.
     CopiedMeanwhile,
 }
@@ -57,7 +60,7 @@ pub enum InsertError {
     KeysHeld,
     /// The clipboard refused the text.
     Clipboard,
-    /// The paste keystroke could not be sent. The previous clipboard contents are back.
+    /// The paste keystroke could not be sent. Previous contents that were to be put back are back.
     Paste,
 }
 
@@ -79,6 +82,24 @@ impl std::error::Error for InsertError {}
 /// Identifies one write to the clipboard; any later write gives a different stamp.
 pub(crate) type ChangeStamp = isize;
 
+/// What the clipboard held before the text.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum Previous<S> {
+    /// Read in full, to be written back after the paste.
+    Saved(S),
+    Unreadable,
+    /// Marked concealed or transient, as a password manager marks a secret. Its data is not read: put
+    /// back, the secret would outlive the manager's own clearing, which acts only while the clipboard
+    /// still holds what the manager put there.
+    MarkedPrivate,
+}
+
+/// What the clipboard is to hold once the text is pasted.
+enum AfterPaste<S> {
+    Restore(S),
+    LeaveText(Inserted),
+}
+
 /// What insertion needs from the desktop, so the sequence is tested without one.
 pub(crate) trait Desktop {
     /// Everything the clipboard held, to be written back unchanged.
@@ -86,8 +107,7 @@ pub(crate) trait Desktop {
 
     fn may_send_keys(&self) -> bool;
     fn modifiers_down(&self) -> bool;
-    /// `None` when the clipboard holds something that cannot be read.
-    fn read_clipboard(&mut self) -> Option<Self::Snapshot>;
+    fn read_clipboard(&mut self) -> Previous<Self::Snapshot>;
     /// `transient` marks the text as on the clipboard only for the paste, so clipboard history tools skip
     /// it.
     fn write_text(&mut self, text: &str, transient: bool) -> Option<ChangeStamp>;
@@ -118,36 +138,37 @@ pub(crate) fn insert_with<D: Desktop>(
     }
     wait_for_keys_up(desktop, options.keys_up_within)?;
 
-    let previous = if options.keep_text_on_clipboard {
-        None
+    let after_paste = if options.keep_text_on_clipboard {
+        AfterPaste::LeaveText(Inserted::TextKept)
     } else {
-        desktop.read_clipboard()
+        match desktop.read_clipboard() {
+            Previous::Saved(snapshot) => AfterPaste::Restore(snapshot),
+            Previous::Unreadable => AfterPaste::LeaveText(Inserted::PreviousUnreadable),
+            Previous::MarkedPrivate => AfterPaste::LeaveText(Inserted::PreviousMarkedPrivate),
+        }
     };
-    let restore = previous.is_some();
+    let restore = matches!(after_paste, AfterPaste::Restore(_));
     let stamp = desktop
         .write_text(&text, restore)
         .ok_or(InsertError::Clipboard)?;
 
     if !desktop.send_paste() {
-        if let Some(previous) = previous {
-            desktop.write_snapshot(previous);
+        if let AfterPaste::Restore(snapshot) = after_paste {
+            desktop.write_snapshot(snapshot);
         }
         return Err(InsertError::Paste);
     }
 
-    let Some(previous) = previous else {
-        return Ok(if options.keep_text_on_clipboard {
-            Inserted::TextKept
-        } else {
-            Inserted::PreviousUnreadable
-        });
+    let snapshot = match after_paste {
+        AfterPaste::Restore(snapshot) => snapshot,
+        AfterPaste::LeaveText(outcome) => return Ok(outcome),
     };
     desktop.sleep(RESTORE_AFTER);
     if desktop.change_stamp() != stamp {
         return Ok(Inserted::CopiedMeanwhile);
     }
     desktop
-        .write_snapshot(previous)
+        .write_snapshot(snapshot)
         .ok_or(InsertError::Clipboard)?;
     Ok(Inserted::PreviousRestored)
 }
@@ -212,7 +233,7 @@ mod tests {
         may_send_keys: bool,
         /// Modifiers stay down until this much time has passed.
         modifiers_down_until: Duration,
-        clipboard: Option<&'static str>,
+        clipboard: Previous<&'static str>,
         stamp: ChangeStamp,
         paste_works: bool,
         /// Someone copies something this long after the paste.
@@ -231,7 +252,7 @@ mod tests {
                 elapsed: Duration::ZERO,
                 may_send_keys: true,
                 modifiers_down_until: Duration::ZERO,
-                clipboard: Some("previous"),
+                clipboard: Previous::Saved("previous"),
                 stamp: 7,
                 paste_works: true,
                 copy_after_paste: None,
@@ -264,9 +285,9 @@ mod tests {
             self.elapsed < self.modifiers_down_until
         }
 
-        fn read_clipboard(&mut self) -> Option<&'static str> {
+        fn read_clipboard(&mut self) -> Previous<&'static str> {
             self.steps.push(Step::ReadClipboard);
-            self.clipboard
+            self.clipboard.clone()
         }
 
         fn write_text(&mut self, text: &str, transient: bool) -> Option<ChangeStamp> {
@@ -413,11 +434,42 @@ mod tests {
     #[test]
     fn an_unreadable_clipboard_leaves_the_text_rather_than_clearing_it() {
         let mut desktop = FakeDesktop::new();
-        desktop.clipboard = None;
+        desktop.clipboard = Previous::Unreadable;
 
         let result = insert_with(&mut desktop, "Hei", &InsertOptions::default());
 
         assert_eq!(result, Ok(Inserted::PreviousUnreadable));
+        assert_eq!(
+            desktop.steps,
+            [Step::ReadClipboard, written("Hei ", false), Step::SendPaste]
+        );
+    }
+
+    #[test]
+    fn contents_marked_private_are_not_put_back() {
+        let mut desktop = FakeDesktop::new();
+        desktop.clipboard = Previous::MarkedPrivate;
+
+        let result = insert_with(&mut desktop, "Hei", &InsertOptions::default());
+
+        assert_eq!(result, Ok(Inserted::PreviousMarkedPrivate));
+        assert_eq!(
+            desktop.steps,
+            [Step::ReadClipboard, written("Hei ", false), Step::SendPaste]
+        );
+        assert_eq!(desktop.current_text.as_deref(), Some("Hei "));
+        assert_eq!(desktop.elapsed, Duration::ZERO);
+    }
+
+    #[test]
+    fn a_failed_paste_leaves_the_text_when_the_previous_contents_were_marked_private() {
+        let mut desktop = FakeDesktop::new();
+        desktop.clipboard = Previous::MarkedPrivate;
+        desktop.paste_works = false;
+
+        let result = insert_with(&mut desktop, "Hei", &InsertOptions::default());
+
+        assert_eq!(result, Err(InsertError::Paste));
         assert_eq!(
             desktop.steps,
             [Step::ReadClipboard, written("Hei ", false), Step::SendPaste]

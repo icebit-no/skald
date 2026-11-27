@@ -4,7 +4,7 @@ use objc2_app_kit::NSPasteboard;
 use objc2_core_graphics::CGPreflightPostEventAccess;
 
 use super::{keyboard, pasteboard};
-use crate::insert::{ChangeStamp, Desktop};
+use crate::insert::{ChangeStamp, Desktop, Previous};
 
 #[derive(Debug, Default)]
 pub(crate) struct MacDesktop;
@@ -20,7 +20,7 @@ impl Desktop for MacDesktop {
         keyboard::modifiers_down()
     }
 
-    fn read_clipboard(&mut self) -> Option<pasteboard::Snapshot> {
+    fn read_clipboard(&mut self) -> Previous<pasteboard::Snapshot> {
         pasteboard::read(&NSPasteboard::generalPasteboard())
     }
 

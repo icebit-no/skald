@@ -9,42 +9,55 @@ use objc2_app_kit::{
 };
 use objc2_foundation::{NSArray, NSData, NSString};
 
-use crate::insert::ChangeStamp;
+use crate::insert::{ChangeStamp, Previous};
 
 /// Tells clipboard history tools not to record the content (nspasteboard.org).
 const TRANSIENT_TYPE: &str = "org.nspasteboard.TransientType";
+/// Marks a password or another secret (nspasteboard.org).
+const CONCEALED_TYPE: &str = "org.nspasteboard.ConcealedType";
 
 /// Each item's types with their data, in the pasteboard's order.
 pub(crate) struct Snapshot {
     items: Vec<Vec<(Retained<NSPasteboardType>, Retained<NSData>)>>,
 }
 
-/// `None` when the pasteboard holds types whose data cannot be read: written back, it would come out
+/// Unreadable when the pasteboard holds types whose data cannot be read: written back, it would come out
 /// empty.
-pub(crate) fn read(pasteboard: &NSPasteboard) -> Option<Snapshot> {
+pub(crate) fn read(pasteboard: &NSPasteboard) -> Previous<Snapshot> {
     autoreleasepool(|_| {
         if reading_denied(pasteboard) {
-            return None;
+            return Previous::Unreadable;
+        }
+        let pasteboard_items = pasteboard
+            .pasteboardItems()
+            .map(|items| items.to_vec())
+            .unwrap_or_default();
+        let marked_private = pasteboard_items.iter().any(|item| {
+            item.types().iter().any(|kind| {
+                let kind = kind.to_string();
+                kind == CONCEALED_TYPE || kind == TRANSIENT_TYPE
+            })
+        });
+        if marked_private {
+            return Previous::MarkedPrivate;
         }
         let mut items = Vec::new();
         let mut types_seen = false;
-        if let Some(pasteboard_items) = pasteboard.pasteboardItems() {
-            for item in pasteboard_items.iter() {
-                let types = item.types();
-                types_seen |= !types.is_empty();
-                let readable: Vec<_> = types
-                    .iter()
-                    .filter_map(|kind| item.dataForType(&kind).map(|data| (kind, data)))
-                    .collect();
-                if !readable.is_empty() {
-                    items.push(readable);
-                }
+        for item in &pasteboard_items {
+            let types = item.types();
+            types_seen |= !types.is_empty();
+            let readable: Vec<_> = types
+                .iter()
+                .filter_map(|kind| item.dataForType(&kind).map(|data| (kind, data)))
+                .collect();
+            if !readable.is_empty() {
+                items.push(readable);
             }
         }
         if types_seen && items.is_empty() {
-            None
+            Previous::Unreadable
         } else {
-            Some(Snapshot { items })
+            Previous::Saved(Snapshot { items })
         }
     })
 }
@@ -75,7 +88,7 @@ pub(crate) fn write_text(
     })
 }
 
-/// Marked transient, so clipboard history tools do not record the restored contents a second time.
+/// Written back exactly as read, with no marker of its own, so a later read sees the same contents.
 pub(crate) fn write_snapshot(pasteboard: &NSPasteboard, snapshot: Snapshot) -> Option<ChangeStamp> {
     autoreleasepool(|_| {
         let items = snapshot
@@ -86,7 +99,6 @@ pub(crate) fn write_snapshot(pasteboard: &NSPasteboard, snapshot: Snapshot) -> O
                 for (kind, data) in types {
                     item.setData_forType(&data, &kind);
                 }
-                mark_transient(&item);
                 item
             })
             .collect();
@@ -176,16 +188,20 @@ mod tests {
         }
     }
 
-    fn without_marker(contents: Vec<Vec<(String, Vec<u8>)>>) -> Vec<Vec<(String, Vec<u8>)>> {
-        contents
-            .into_iter()
-            .map(|types| {
-                types
-                    .into_iter()
-                    .filter(|(kind, _)| kind != TRANSIENT_TYPE)
-                    .collect()
-            })
-            .collect()
+    fn saved(previous: Previous<Snapshot>) -> Snapshot {
+        match previous {
+            Previous::Saved(snapshot) => snapshot,
+            Previous::Unreadable => panic!("unreadable"),
+            Previous::MarkedPrivate => panic!("marked private"),
+        }
+    }
+
+    fn kind(previous: &Previous<Snapshot>) -> &'static str {
+        match previous {
+            Previous::Saved(_) => "saved",
+            Previous::Unreadable => "unreadable",
+            Previous::MarkedPrivate => "marked private",
+        }
     }
 
     /// A type the pasteboard derives by conversion, such as UTF-16 text from RTF, is listed beside the
@@ -203,27 +219,35 @@ mod tests {
         ]);
         let before = scratch.contents();
 
-        let snapshot = read(&scratch.0).expect("readable");
+        let snapshot = saved(read(&scratch.0));
         write_text(&scratch.0, "dictated ", true).expect("text written");
         write_snapshot(&scratch.0, snapshot).expect("snapshot written");
 
-        assert_eq!(without_marker(scratch.contents()), before);
+        assert_eq!(scratch.contents(), before);
+        assert_eq!(kind(&read(&scratch.0)), "saved");
     }
 
     #[test]
-    fn restored_items_are_marked_transient() {
-        let scratch = Scratch::new();
-        scratch.put(&[&[("public.utf8-plain-text", b"x")], &[(RTF_TYPE, b"y")]]);
+    fn contents_marked_concealed_or_transient_are_marked_private() {
+        for marker in [CONCEALED_TYPE, TRANSIENT_TYPE] {
+            let scratch = Scratch::new();
+            scratch.put(&[
+                &[("public.utf8-plain-text", b"ordinary")],
+                &[("public.utf8-plain-text", b"hunter2"), (marker, b"")],
+            ]);
 
-        let snapshot = read(&scratch.0).expect("readable");
-        write_snapshot(&scratch.0, snapshot).expect("snapshot written");
-
-        for types in scratch.contents() {
-            assert!(
-                types.iter().any(|(kind, _)| kind == TRANSIENT_TYPE),
-                "{types:?}"
-            );
+            assert_eq!(kind(&read(&scratch.0)), "marked private", "{marker}");
         }
+    }
+
+    #[test]
+    fn the_text_for_the_paste_alone_is_marked_private_and_kept_text_is_not() {
+        let scratch = Scratch::new();
+
+        write_text(&scratch.0, "Hei ", true).expect("written");
+        assert_eq!(kind(&read(&scratch.0)), "marked private");
+        write_text(&scratch.0, "Hei ", false).expect("written");
+        assert_eq!(kind(&read(&scratch.0)), "saved");
     }
 
     #[test]
@@ -231,7 +255,7 @@ mod tests {
         let scratch = Scratch::new();
         write(&scratch.0, Vec::new()).expect("cleared");
 
-        let snapshot = read(&scratch.0).expect("readable");
+        let snapshot = saved(read(&scratch.0));
         assert!(snapshot.items.is_empty());
         write_text(&scratch.0, "dictated ", true).expect("text written");
         write_snapshot(&scratch.0, snapshot).expect("snapshot written");

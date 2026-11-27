@@ -32,6 +32,45 @@ clipboard; the hold key is up by then, since its release ended the take. The ins
 headless sway, with wl-clipboard and wev to look at the clipboard and the window in front. Changed:
 [design.md](design.md#insertion).
 
+## D-41 — Ctrl+Win+X on Windows; the overlay names an administrator window; no UI Access yet
+
+2026-11-27, the lead.
+
+The hands-free chord on Windows is Ctrl+Win+X, the counterpart of ⌃⌘X: the Windows key stands where ⌘ does,
+as right Ctrl stands for right ⌘, and Ctrl+Alt is AltGr. handy-keys keeps the chord from the app in front, as
+on macOS, and keeps the Windows key's release from opening the Start menu.
+
+When the window in front runs as administrator (D-38), the overlay says «Kan ikke sette inn i et
+administratorvindu · ligger i Siste tekster» for 2 s, as the other messages stand, rather than the general
+«Ikke satt inn»: the user can act on it.
+
+Skald does not ask for UI Access, which would let it hear the key in an administrator window and paste into
+it: Windows grants it only to a signed binary installed under Program Files, which belongs to M4's packaging
+item. Until then Skald says plainly that it cannot insert there. Changed: [design.md](design.md#recording)
+(Recording, Overlay, Insertion).
+
+## D-40 — The command line talks to Skald over a named pipe on Windows that only the user can open
+
+2026-11-27, Claude.
+
+On Windows, `skald` and the running Skald talk the protocol of D-28 over a named pipe,
+`\\.\pipe\skald-` and a hash of the socket's path in Skald's folders. The pipe namespace is shared by
+everyone on the machine, and the path holds the user's own folder, so each user's Skald has a pipe of its own,
+and so does a Skald given a folder of its own, as the tests are. The hash ignores case, as Windows paths do.
+
+The pipe's access list names the user alone, with nothing inherited, which is what the socket's 0700 folder and
+0600 mode are on Unix. The pipe takes no connections from other machines. Pipe names are first come, first
+served, so two more rules keep another program from standing in for Skald: the first instance is created
+with the flag that fails when the name is already held, which Skald reports as another Skald running, and the
+command line asks which process answers and goes on only when it runs as the same user. A pipe goes away with
+its last handle, so a Skald that crashed leaves nothing to clear.
+
+Skald keeps one instance listening at every moment, the next made before the connected one is handed to its
+thread, so a command run while Skald answers another never finds the pipe missing and writes the files behind
+the running Skald's back. Reads and writes are overlapped, so the command line's waits (30 s, 600 s for a
+transcription) and the server's 60 s idle limit hold as they do on the socket. windows-sys, already in the
+tree, is the only crate used; the interprocess crate would have brought its own async layers for one pipe.
+
 ## D-39 — On Linux the desktop's key bindings hold the key: `skald start`, `skald stop`, `skald toggle`
 
 2026-11-27, Claude; the binding and the portal as the two ways in set by the lead's brief for M5, the
@@ -66,6 +105,7 @@ the key's real state, with `invalid`. They are no MCP tools, since an agent has 
 and text is not inserted: each take is kept in the history and printed. Changed:
 [design.md](design.md#recording) (Recording, Command line), [plan.md](plan.md) M5.
 Insertion on Linux: D-42.
+
 
 ## D-38 — Right Ctrl, Ctrl+V and the clipboard on Windows; a window run as administrator is checked first
 
@@ -102,6 +142,8 @@ higher, and the paste is tried. The same rule keeps the hook from seeing keys pr
 take cannot start there; the check catches the focus moving to one during a take. Running Skald with UI
 Access would lift both, but needs a signed binary under Program Files, which is for M4's packaging.
 Changed: [research.md](research.md#stack).
+
+The hands-free chord on Windows, the overlay's words for an administrator window and UI Access: D-41.
 
 ## D-37 — `skald bench record` takes the test set while Enter is held; 60 sentences written for it
 

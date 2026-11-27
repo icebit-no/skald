@@ -42,15 +42,16 @@ impl Chord {
     }
 }
 
-/// ⌃⌘X, which starts and stops a hands-free take on macOS (docs/design.md, Recording).
+/// ⌃⌘X, which starts and stops a hands-free take (docs/design.md, Recording). handy-keys reads ⌘ as the
+/// Windows key on Windows, so there the same chord is Ctrl+Win+X.
 const CONTROL_COMMAND_X: Chord = Chord {
     modifiers: Modifiers::CTRL.union(Modifiers::CMD),
     key: Key::X,
 };
 
-/// The hands-free chord on this platform. Windows and Linux choose theirs with those platforms, since
-/// Ctrl+Alt is AltGr on Norwegian layouts.
-pub(crate) const HANDS_FREE: Option<Chord> = if cfg!(target_os = "macos") {
+/// The hands-free chord the listener catches on this platform. On Linux the desktop's own key binding starts
+/// and stops a hands-free take instead.
+pub(crate) const HANDS_FREE: Option<Chord> = if cfg!(any(target_os = "macos", windows)) {
     Some(CONTROL_COMMAND_X)
 } else {
     None
@@ -307,7 +308,7 @@ mod tests {
                 .matches(Modifiers::CTRL_RIGHT | Modifiers::CMD_LEFT)
         );
         assert!(!hotkey.modifiers.matches(Modifiers::CMD_LEFT));
-        #[cfg(target_os = "macos")]
+        #[cfg(any(target_os = "macos", windows))]
         assert_eq!(HANDS_FREE, Some(CONTROL_COMMAND_X));
     }
 

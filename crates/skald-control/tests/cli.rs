@@ -5,7 +5,7 @@ mod common;
 
 use std::fs;
 
-#[cfg(unix)]
+#[cfg(any(unix, windows))]
 use common::running;
 use common::{BUILT_IN, CONFIG, Folder, USB, commands_and_json, folder, skald, wav};
 use serde_json::json;
@@ -27,7 +27,7 @@ fn every_command_prints_its_json_while_skald_is_not_running() {
     }
 }
 
-#[cfg(unix)]
+#[cfg(any(unix, windows))]
 #[test]
 fn every_command_prints_the_same_json_through_the_running_skald() {
     let (folder, paths) = folder();
@@ -59,7 +59,7 @@ fn every_command_prints_the_same_json_through_the_running_skald() {
     serving.stop();
 }
 
-#[cfg(unix)]
+#[cfg(any(unix, windows))]
 #[test]
 fn the_running_skald_counts_the_tokens() {
     let (_folder, paths) = folder();

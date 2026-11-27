@@ -1,7 +1,8 @@
 //! Where the speech model and Silero VAD are found, and whether they are there: the files given on the
 //! command line, or those the models folder holds by skald-models' layout (D-26). A model file put in the
 //! folder by hand is checked against its pinned SHA-256 once, as a downloaded one was; a missing or wrong
-//! file stops Skald at start, with where it goes and where to get it.
+//! model stops Skald at start, with where it goes and where to get it. Silero VAD is the binary's own,
+//! written into the models folder when it is not there.
 
 use std::path::{Path, PathBuf};
 
@@ -14,6 +15,8 @@ use crate::say::Exit;
 pub(crate) struct ModelFiles {
     pub(crate) model: PathBuf,
     pub(crate) vad: PathBuf,
+    /// The binary's own Silero VAD goes at `vad`; false for a file given on the command line.
+    vad_built_in: bool,
     /// The registry's entry when the model file is the one it pins, so it is checked against it; `None` for
     /// a file given on the command line.
     pinned: Option<&'static Model>,
@@ -28,11 +31,13 @@ impl ModelFiles {
         vad: Option<PathBuf>,
     ) -> Result<Self, Exit> {
         let models_dir = paths.models_dir();
+        let vad_built_in = vad.is_none();
         let vad = vad.unwrap_or_else(|| skald_models::vad_path(&models_dir));
         if let Some(model) = model {
             return Ok(Self {
                 model,
                 vad,
+                vad_built_in,
                 pinned: None,
             });
         }
@@ -44,12 +49,14 @@ impl ModelFiles {
         Ok(Self {
             model,
             vad,
+            vad_built_in,
             pinned: Some(pinned),
         })
     }
 
     /// Fails before anything else starts when a file is missing or is not the pinned one. A pinned file that
     /// was never checked is read once to check it, which takes a few seconds; `checking` is called first.
+    /// The built-in Silero VAD is put in place here.
     pub(crate) fn check(&self, checking: impl FnOnce()) -> Result<(), Exit> {
         match self.pinned {
             Some(pinned) => check_pinned(pinned, &self.model, checking)?,
@@ -61,7 +68,12 @@ impl ModelFiles {
             }
             None => {}
         }
-        if !self.vad.is_file() {
+        if self.vad_built_in {
+            crate::vad::put_in_place(&self.vad).map_err(|error| Exit::VadUnwritable {
+                path: self.vad.clone(),
+                reason: error.to_string(),
+            })?;
+        } else if !self.vad.is_file() {
             return Err(Exit::VadMissing {
                 path: self.vad.clone(),
             });
@@ -164,6 +176,25 @@ mod tests {
         assert!(matches!(
             files.check(quiet),
             Err(Exit::ModelWrongFile { ref path, .. }) if *path == files.model
+        ));
+    }
+
+    #[test]
+    fn the_built_in_silero_vad_is_put_in_the_models_folder() {
+        let scratch = Scratch::new("models-vad");
+        let model = scratch.0.join("model.bin");
+        fs::write(&model, b"any model").unwrap();
+        let paths = Paths::in_one_folder(&scratch.0);
+        let files = ModelFiles::locate(&paths, DEFAULT_MODEL, Some(model), None).unwrap();
+        assert_eq!(files.check(quiet), Ok(()));
+        assert_eq!(fs::read(&files.vad).unwrap(), crate::vad::SILERO_VAD);
+
+        // A folder where the file goes cannot be replaced.
+        fs::remove_file(&files.vad).unwrap();
+        fs::create_dir_all(&files.vad).unwrap();
+        assert!(matches!(
+            files.check(quiet),
+            Err(Exit::VadUnwritable { ref path, .. }) if *path == files.vad
         ));
     }
 

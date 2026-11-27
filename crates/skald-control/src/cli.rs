@@ -18,7 +18,7 @@ use crate::skill::{self, Status};
 
 /// Every command with its arguments and what it does, for the help and for a command given the wrong
 /// arguments.
-pub(crate) const COMMANDS: [(&str, &str); 21] = [
+pub(crate) const COMMANDS: [(&str, &str); 22] = [
     ("last", "Den siste teksten"),
     ("history", "De fem siste tekstene"),
     ("fix list", "Rettingene, og hvor ofte hver er brukt"),
@@ -54,6 +54,10 @@ pub(crate) const COMMANDS: [(&str, &str); 21] = [
     (
         "transcribe <fil.wav>",
         "Skriv ut teksten i en lydfil, med rettingene brukt",
+    ),
+    (
+        "bench <mappe> [valg]",
+        "Kjør et testsett gjennom konfigurasjonene og tell feilene",
     ),
     (
         "skill install [--dir <mappe>]",

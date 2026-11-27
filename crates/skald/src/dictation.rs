@@ -5,7 +5,8 @@
 //! The microphone opens at the press, before the take arms, so the first words are kept; a press that does
 //! not arm closes it again and throws the audio away. A take ends at the release (or when the watchdog
 //! finds the key up), at the 120-second cap, or when its microphone disappears; another key pressed while
-//! it runs cancels it.
+//! it runs cancels it. A hands-free take opens the microphone at the chord and ends at the chord's next
+//! press, at the cap, or when its microphone disappears.
 
 use std::mem;
 use std::sync::Arc;
@@ -19,6 +20,7 @@ use skald_audio::{
 use skald_core::Config;
 use skald_input::HoldEvent;
 
+use crate::events::Event;
 use crate::pipeline::Job;
 use crate::say::{Exit, Line};
 use crate::sounds::{Chime, Sound};
@@ -69,7 +71,14 @@ enum Hold<T> {
     Idle,
     /// Down and not yet armed: the take opened at the press, or why there is none.
     Pressed(Result<T, Unopened>),
-    Recording(T),
+    Recording(Live<T>),
+}
+
+/// A take recording, held or hands-free.
+struct Live<T> {
+    take: T,
+    number: u64,
+    hands_free: bool,
 }
 
 enum Unopened {
@@ -86,7 +95,11 @@ pub(crate) struct Dictation<M: Microphones> {
     hold: Hold<M::Take>,
     config: Arc<Config>,
     order: Vec<Microphone>,
+    takes_started: u64,
+    /// A hands-free take ended without the chord, or could not start, since last asked.
+    hands_free_ended: bool,
     lines: Vec<Line>,
+    events: Vec<Event>,
     jobs: Vec<Job>,
 }
 
@@ -99,7 +112,10 @@ impl<M: Microphones> Dictation<M> {
             hold: Hold::Idle,
             order: microphone_order(&config),
             config,
+            takes_started: 0,
+            hands_free_ended: false,
             lines: Vec::new(),
+            events: Vec::new(),
             jobs: Vec::new(),
         }
     }
@@ -111,6 +127,16 @@ impl<M: Microphones> Dictation<M> {
     /// No take is opening or running, so the hold key may be listened for anew.
     pub(crate) fn is_idle(&self) -> bool {
         matches!(self.hold, Hold::Idle)
+    }
+
+    /// A take is recording, so its level readings are wanted as they come.
+    pub(crate) fn is_recording(&self) -> bool {
+        matches!(self.hold, Hold::Recording(_))
+    }
+
+    /// The microphones a take is chosen from, as the menu lists them.
+    pub(crate) fn microphones(&self) -> &M {
+        &self.microphones
     }
 
     /// Takes the settings for the takes that end from now on, and moves to another microphone at once if
@@ -125,6 +151,12 @@ impl<M: Microphones> Dictation<M> {
     }
 
     pub(crate) fn on_hold(&mut self, event: HoldEvent) -> Result<(), Exit> {
+        if let Hold::Recording(Live {
+            hands_free: true, ..
+        }) = self.hold
+        {
+            return self.on_hold_while_hands_free(event);
+        }
         match event {
             HoldEvent::Pressed { .. } => {
                 // Whatever an earlier hold left open closes before the next take opens.
@@ -135,64 +167,146 @@ impl<M: Microphones> Dictation<M> {
             HoldEvent::Armed { .. } => {
                 let opened = match mem::replace(&mut self.hold, Hold::Idle) {
                     Hold::Pressed(opened) => opened,
-                    Hold::Recording(take) => Ok(take),
+                    Hold::Recording(live) => Ok(live.take),
                     // A press this loop never saw, as one made while it started.
                     Hold::Idle => self.open()?,
                 };
-                match opened {
-                    Ok(take) => {
-                        if self.config.sounds {
-                            self.chime.play(Sound::Armed);
-                        }
-                        self.lines
-                            .push(Line::Recording(take.microphone().name.clone()));
-                        self.hold = Hold::Recording(take);
-                    }
-                    Err(Unopened::NoMicrophone) => self.lines.push(Line::NoMicrophone),
-                    Err(Unopened::Failed { microphone, error }) => {
-                        self.lines.push(Line::CaptureFailed { microphone, error });
-                    }
-                }
+                self.start(opened, false);
             }
             HoldEvent::Released | HoldEvent::ReleaseMissed => {
-                if let Hold::Recording(take) = mem::replace(&mut self.hold, Hold::Idle) {
-                    self.finish(take);
+                if let Hold::Recording(live) = mem::replace(&mut self.hold, Hold::Idle) {
+                    self.finish(live);
                 }
             }
             HoldEvent::Cancelled => {
-                if let Hold::Recording(_) = mem::replace(&mut self.hold, Hold::Idle) {
-                    self.lines.push(Line::Cancelled);
+                if let Hold::Recording(live) = mem::replace(&mut self.hold, Hold::Idle) {
+                    self.cancel(&live);
                 }
             }
+            HoldEvent::HandsFreeStarted { .. } => {
+                // The chord spoils any hold before it, so nothing else is open; whatever is goes.
+                self.hold = Hold::Idle;
+                let opened = self.open()?;
+                if opened.is_err() {
+                    self.hands_free_ended = true;
+                }
+                self.start(opened, true);
+            }
+            // A hands-free take this loop has already ended.
+            HoldEvent::HandsFreeStopped => {}
         }
         Ok(())
     }
 
-    /// Ends a take at the cap or when its microphone disappears, and reports microphone changes.
-    pub(crate) fn poll(&mut self) {
-        if let Hold::Recording(take) = &mut self.hold {
-            let ended = take.events().into_iter().find_map(|event| match event {
-                TakeEvent::Level(_) => None,
-                TakeEvent::Capped => Some(Line::Capped),
-                TakeEvent::MicrophoneLost => {
-                    Some(Line::MicrophoneLost(take.microphone().name.clone()))
+    /// While a hands-free take records, only the chord and a cancel reach it.
+    fn on_hold_while_hands_free(&mut self, event: HoldEvent) -> Result<(), Exit> {
+        match event {
+            HoldEvent::HandsFreeStopped => {
+                if let Hold::Recording(live) = mem::replace(&mut self.hold, Hold::Idle) {
+                    self.finish(live);
                 }
-            });
+            }
+            HoldEvent::Cancelled => {
+                if let Hold::Recording(live) = mem::replace(&mut self.hold, Hold::Idle) {
+                    self.cancel(&live);
+                }
+            }
+            HoldEvent::Pressed { .. }
+            | HoldEvent::NotArmed
+            | HoldEvent::Armed { .. }
+            | HoldEvent::Released
+            | HoldEvent::ReleaseMissed
+            | HoldEvent::HandsFreeStarted { .. } => {}
+        }
+        Ok(())
+    }
+
+    /// A take begins recording on the microphone it opened, or says why it could not.
+    fn start(&mut self, opened: Result<M::Take, Unopened>, hands_free: bool) {
+        match opened {
+            Ok(take) => {
+                if self.config.sounds {
+                    self.chime.play(Sound::Armed);
+                }
+                let microphone = take.microphone().name.clone();
+                self.lines.push(if hands_free {
+                    Line::RecordingHandsFree(microphone)
+                } else {
+                    Line::Recording(microphone)
+                });
+                self.takes_started += 1;
+                let number = self.takes_started;
+                self.events.push(Event::Recording {
+                    take: number,
+                    hands_free,
+                });
+                self.hold = Hold::Recording(Live {
+                    take,
+                    number,
+                    hands_free,
+                });
+            }
+            Err(Unopened::NoMicrophone) => self.lines.push(Line::NoMicrophone),
+            Err(Unopened::Failed { microphone, error }) => {
+                self.lines.push(Line::CaptureFailed { microphone, error });
+            }
+        }
+    }
+
+    fn cancel(&mut self, live: &Live<M::Take>) {
+        self.lines.push(Line::Cancelled);
+        self.events.push(Event::Cancelled { take: live.number });
+    }
+
+    /// Passes on the level readings, ends a take at the cap or when its microphone disappears, and reports
+    /// microphone changes.
+    pub(crate) fn poll(&mut self) {
+        if let Hold::Recording(live) = &mut self.hold {
+            let mut ended = None;
+            for event in live.take.events() {
+                match event {
+                    TakeEvent::Level(dbfs) => self.events.push(Event::Level(dbfs)),
+                    TakeEvent::Capped => {
+                        ended.get_or_insert(Line::Capped);
+                    }
+                    TakeEvent::MicrophoneLost => {
+                        let name = live.take.microphone().name.clone();
+                        ended.get_or_insert(Line::MicrophoneLost(name));
+                    }
+                }
+                if ended.is_some() {
+                    break;
+                }
+            }
             if let Some(line) = ended {
                 self.lines.push(line);
-                if let Hold::Recording(take) = mem::replace(&mut self.hold, Hold::Idle) {
-                    self.finish(take);
+                if let Hold::Recording(live) = mem::replace(&mut self.hold, Hold::Idle) {
+                    self.hands_free_ended |= live.hands_free;
+                    self.finish(live);
                 }
             }
         }
         for change in self.microphones.changes() {
-            self.lines
-                .push(Line::MicrophoneChanged(change.to.map(|m| m.name)));
+            let name = change.to.map(|m| m.name);
+            if let Some(name) = &name {
+                self.events.push(Event::MicrophoneChanged(name.clone()));
+            }
+            self.lines.push(Line::MicrophoneChanged(name));
         }
     }
 
     pub(crate) fn take_lines(&mut self) -> Vec<Line> {
         mem::take(&mut self.lines)
+    }
+
+    pub(crate) fn take_events(&mut self) -> Vec<Event> {
+        mem::take(&mut self.events)
+    }
+
+    /// Whether a hands-free take ended without the chord, or could not start, since last asked, so the
+    /// key listener knows the next chord starts one.
+    pub(crate) fn take_hands_free_ended(&mut self) -> bool {
+        mem::take(&mut self.hands_free_ended)
     }
 
     pub(crate) fn take_jobs(&mut self) -> Vec<Job> {
@@ -218,15 +332,17 @@ impl<M: Microphones> Dictation<M> {
         }
     }
 
-    fn finish(&mut self, take: M::Take) {
-        let recording = take.stop();
+    fn finish(&mut self, live: Live<M::Take>) {
+        let recording = live.take.stop();
         self.jobs.push(Job {
+            take: live.number,
             recording,
             config: Arc::clone(&self.config),
             ended_at: Instant::now(),
             unix_ms: unix_ms(SystemTime::now()),
         });
         self.lines.push(Line::Carving);
+        self.events.push(Event::Carving { take: live.number });
     }
 }
 
@@ -745,5 +861,196 @@ mod tests {
 
         config.pinned_microphone = Some("  ".into());
         assert_eq!(microphone_order(&config).len(), 2);
+    }
+
+    fn hands_free_started() -> HoldEvent {
+        HoldEvent::HandsFreeStarted { at: Instant::now() }
+    }
+
+    #[test]
+    fn the_chord_records_hands_free_until_it_is_pressed_again() {
+        let Setup {
+            mut dictation,
+            played,
+            log,
+            ..
+        } = setup();
+        hold(&mut dictation, &[hands_free_started()]);
+        assert_eq!(log.borrow().opened, ["Shure MV7"]);
+        assert_eq!(played.sounds(), [Sound::Armed]);
+        assert_eq!(
+            dictation.take_lines(),
+            [Line::RecordingHandsFree("Shure MV7".into())]
+        );
+        assert_eq!(
+            dictation.take_events(),
+            [Event::Recording {
+                take: 1,
+                hands_free: true
+            }]
+        );
+        assert!(dictation.is_recording());
+
+        hold(&mut dictation, &[HoldEvent::HandsFreeStopped]);
+        assert_eq!(dictation.take_lines(), [Line::Carving]);
+        assert_eq!(dictation.take_events(), [Event::Carving { take: 1 }]);
+        let jobs = dictation.take_jobs();
+        assert_eq!(jobs.len(), 1);
+        assert_eq!(jobs[0].take, 1);
+        assert!(dictation.is_idle());
+        assert!(
+            !dictation.take_hands_free_ended(),
+            "the chord ended it, as the listener knows"
+        );
+    }
+
+    #[test]
+    fn the_hold_key_reaches_no_hands_free_take() {
+        let Setup {
+            mut dictation, log, ..
+        } = setup();
+        hold(&mut dictation, &[hands_free_started()]);
+        dictation.take_lines();
+        hold(
+            &mut dictation,
+            &[
+                pressed(),
+                HoldEvent::NotArmed,
+                pressed(),
+                armed(),
+                HoldEvent::Released,
+                HoldEvent::ReleaseMissed,
+                hands_free_started(),
+            ],
+        );
+        assert!(dictation.take_lines().is_empty());
+        assert!(dictation.take_jobs().is_empty());
+        assert_eq!(log.borrow().opened.len(), 1, "no second microphone");
+        assert_eq!(log.borrow().thrown_away, 0);
+        assert!(dictation.is_recording());
+
+        hold(&mut dictation, &[HoldEvent::Cancelled]);
+        assert_eq!(dictation.take_lines(), [Line::Cancelled]);
+        assert_eq!(log.borrow().thrown_away, 1);
+    }
+
+    #[test]
+    fn the_cap_ends_a_hands_free_take_and_the_listener_is_told() {
+        let Setup {
+            mut dictation,
+            events,
+            ..
+        } = setup();
+        hold(&mut dictation, &[hands_free_started()]);
+        dictation.take_lines();
+        events.borrow_mut().push(TakeEvent::Capped);
+        dictation.poll();
+        assert_eq!(dictation.take_lines(), [Line::Capped, Line::Carving]);
+        assert_eq!(dictation.take_jobs().len(), 1);
+        assert!(dictation.take_hands_free_ended());
+        assert!(!dictation.take_hands_free_ended(), "told once");
+
+        // The chord pressed afterwards stops nothing here.
+        hold(&mut dictation, &[HoldEvent::HandsFreeStopped]);
+        assert!(dictation.take_jobs().is_empty());
+    }
+
+    #[test]
+    fn a_held_take_ended_at_the_cap_tells_the_listener_nothing() {
+        let Setup {
+            mut dictation,
+            events,
+            ..
+        } = setup();
+        hold(&mut dictation, &[pressed(), armed()]);
+        events.borrow_mut().push(TakeEvent::Capped);
+        dictation.poll();
+        assert!(!dictation.take_hands_free_ended());
+    }
+
+    #[test]
+    fn a_hands_free_take_without_a_microphone_says_so_and_frees_the_chord() {
+        let Setup { mut dictation, .. } = setup();
+        dictation.microphones.active = None;
+        hold(&mut dictation, &[hands_free_started()]);
+        assert_eq!(dictation.take_lines(), [Line::NoMicrophone]);
+        assert!(dictation.take_events().is_empty());
+        assert!(dictation.is_idle());
+        assert!(dictation.take_hands_free_ended());
+    }
+
+    #[test]
+    fn levels_reach_the_screen_and_each_take_has_a_number_of_its_own() {
+        let Setup {
+            mut dictation,
+            events,
+            ..
+        } = setup();
+        hold(&mut dictation, &[pressed(), armed()]);
+        events
+            .borrow_mut()
+            .extend([TakeEvent::Level(-30.0), TakeEvent::Level(-24.5)]);
+        dictation.poll();
+        hold(&mut dictation, &[HoldEvent::Released]);
+        hold(&mut dictation, &[pressed(), armed(), HoldEvent::Cancelled]);
+        assert_eq!(
+            dictation.take_events(),
+            [
+                Event::Recording {
+                    take: 1,
+                    hands_free: false
+                },
+                Event::Level(-30.0),
+                Event::Level(-24.5),
+                Event::Carving { take: 1 },
+                Event::Recording {
+                    take: 2,
+                    hands_free: false
+                },
+                Event::Cancelled { take: 2 },
+            ]
+        );
+        assert_eq!(dictation.take_jobs()[0].take, 1);
+    }
+
+    #[test]
+    fn readings_after_the_cap_are_not_passed_on() {
+        let Setup {
+            mut dictation,
+            events,
+            ..
+        } = setup();
+        hold(&mut dictation, &[pressed(), armed()]);
+        dictation.take_events();
+        events.borrow_mut().extend([
+            TakeEvent::Level(-30.0),
+            TakeEvent::Capped,
+            TakeEvent::Level(-20.0),
+        ]);
+        dictation.poll();
+        assert_eq!(
+            dictation.take_events(),
+            [Event::Level(-30.0), Event::Carving { take: 1 }]
+        );
+    }
+
+    #[test]
+    fn a_new_microphone_reaches_the_screen_and_none_only_the_terminal() {
+        let Setup { mut dictation, .. } = setup();
+        dictation.microphones.changes = vec![
+            MicrophoneChange {
+                from: Some(mic("MacBook Pro-mikrofon")),
+                to: Some(mic("Yeti")),
+            },
+            MicrophoneChange {
+                from: Some(mic("Yeti")),
+                to: None,
+            },
+        ];
+        dictation.poll();
+        assert_eq!(
+            dictation.take_events(),
+            [Event::MicrophoneChanged("Yeti".into())]
+        );
     }
 }

@@ -1,5 +1,6 @@
-//! The command line. With no command, `skald` takes dictation; with one (`skald last`, `skald vocab add`, …)
-//! the arguments go to skald-control (D-25), with the folder `--dir` names.
+//! The command line. With no command, `skald` runs the app, or takes dictation in the terminal with
+//! `--terminal`; with one (`skald last`, `skald vocab add`, …) the arguments go to skald-control (D-25),
+//! with the folder `--dir` names, and `skald bench …` goes to skald-bench.
 
 use std::ffi::OsString;
 use std::path::PathBuf;
@@ -12,6 +13,8 @@ pub(crate) struct Options {
     pub(crate) vad: Option<PathBuf>,
     /// Timings for every take.
     pub(crate) verbose: bool,
+    /// Dictation in the terminal alone, without the overlay and the menu bar item, as for debugging.
+    pub(crate) terminal: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -25,13 +28,21 @@ pub(crate) enum Invocation {
         dir: Option<PathBuf>,
         args: Vec<OsString>,
     },
+    /// The arguments after `bench`, and the options before it this binary does not take.
+    Bench(Vec<OsString>),
+}
+
+/// What macOS adds when it starts the app from Finder or at login on some versions: the process serial
+/// number, `-psn_0_12345`. It says nothing to Skald.
+fn from_launch_services(arg: &OsString) -> bool {
+    arg.to_str().is_some_and(|arg| arg.starts_with("-psn_"))
 }
 
 /// Reads the arguments after the program's name. The error is the line to show the user.
 pub(crate) fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Invocation, String> {
     let mut options = Options::default();
     let mut theirs = Vec::new();
-    let mut args = args.into_iter();
+    let mut args = args.into_iter().filter(|arg| !from_launch_services(arg));
     while let Some(arg) = args.next() {
         let Some(flag) = arg.to_str() else {
             return Err(format!("Forstår ikke argumentet {}.", arg.display()));
@@ -46,9 +57,18 @@ pub(crate) fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Invocati
             "--model" => options.model = Some(path("--model")?),
             "--vad" => options.vad = Some(path("--vad")?),
             "-v" | "--verbose" => options.verbose = true,
+            "--terminal" => options.terminal = true,
             "-h" | "--help" => return Ok(Invocation::Help),
             "-V" | "--version" => return Ok(Invocation::Version),
             flag if flag.starts_with('-') => theirs.push(arg),
+            "bench" => {
+                // skald-bench reads Skald's own folders and takes `--model` and `--vad` in its own form.
+                if options != Options::default() {
+                    return Err("Valgene til skald bench står etter «bench».".into());
+                }
+                theirs.extend(args);
+                return Ok(Invocation::Bench(theirs));
+            }
             _ => {
                 theirs.push(arg);
                 theirs.extend(args);
@@ -70,18 +90,21 @@ Skald: norsk tale til tekst, rett på maskinen.
 
 Bruk: skald [valg]
 
-Uten kommando tar skald imot diktering: hold høyre ⌘, snakk, slipp, og teksten
-settes inn der markøren er. Ctrl-C avslutter.
+Uten kommando starter skald, med ᚨ i menylinjen: hold høyre ⌘, snakk, slipp, og
+teksten settes inn der markøren er. ⌃⌘X starter og stopper et håndfritt opptak.
+Avslutt Skald fra menyen, eller med Ctrl-C i terminalen.
 
 Valg:
+  --terminal       ta imot diktering i terminalen, uten overlegg og meny
   --dir <mappe>    hold innstillinger, historikk og modeller i denne ene mappen
   --model <fil>    talemodellen (ellers <modeller>/<modell>/ggml-model.bin)
-  --vad <fil>      Silero VAD (ellers <modeller>/silero-vad-v6.2-F32.gguf)
+  --vad <fil>      Silero VAD (ellers Skalds egen, i <modeller>)
   -v, --verbose    vis tider for hvert opptak
   -h, --help       vis denne hjelpen
   -V, --version    vis versjonen
 
-Kommandoene for ordskatt, rettinger, innstillinger og historikk: skald help";
+Kommandoene for ordskatt, rettinger, innstillinger og historikk: skald help
+Testsett gjennom konfigurasjonene: skald bench --help";
 
 #[cfg(test)]
 mod tests {
@@ -103,6 +126,7 @@ mod tests {
             model: Some(PathBuf::from("m.bin")),
             vad: Some(PathBuf::from("v.gguf")),
             verbose: true,
+            terminal: true,
         };
         let args = [
             "--dir",
@@ -110,6 +134,7 @@ mod tests {
             "--model",
             "m.bin",
             "-v",
+            "--terminal",
             "--vad",
             "v.gguf",
         ];
@@ -153,6 +178,47 @@ mod tests {
             command(None, &["help"]),
             "the commands' own help"
         );
+    }
+
+    #[test]
+    fn the_process_serial_number_macos_adds_is_ignored() {
+        assert_eq!(
+            parse(&["-psn_0_1234567"]),
+            Ok(Invocation::Dictate(Options::default()))
+        );
+        assert_eq!(
+            parse(&["--terminal", "-psn_0_42"]),
+            Ok(Invocation::Dictate(Options {
+                terminal: true,
+                ..Options::default()
+            }))
+        );
+        assert_eq!(
+            parse(&["-psn_0_42", "last", "--json"]),
+            command(None, &["last", "--json"])
+        );
+    }
+
+    #[test]
+    fn bench_goes_to_skald_bench_with_its_own_options() {
+        let bench =
+            |args: &[&str]| Ok(Invocation::Bench(args.iter().map(OsString::from).collect()));
+        assert_eq!(
+            parse(&["bench", "opptak", "--config", "greedy,no-trim"]),
+            bench(&["opptak", "--config", "greedy,no-trim"])
+        );
+        assert_eq!(
+            parse(&["--json", "bench", "opptak", "--vad", "v.gguf"]),
+            bench(&["--json", "opptak", "--vad", "v.gguf"])
+        );
+        assert_eq!(parse(&["bench"]), bench(&[]));
+        for before in [&["--dir", "/tmp/s"][..], &["--vad", "v.gguf"], &["-v"]] {
+            let args: Vec<&str> = before.iter().chain(&["bench", "opptak"]).copied().collect();
+            assert_eq!(
+                parse(&args),
+                Err("Valgene til skald bench står etter «bench».".into())
+            );
+        }
     }
 
     #[test]

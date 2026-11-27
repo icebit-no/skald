@@ -64,10 +64,12 @@ impl Drop for AccessWatch {
     }
 }
 
-/// Whether the permission is granted, asked fresh. AXIsProcessTrusted() answers from a cache that can
-/// keep saying yes after a revoke, so a yes is confirmed by creating an active event tap, which makes the
-/// window server check. A no is trusted as it is, so asking never creates a tap without the permission.
-pub(crate) fn accessibility_granted() -> bool {
+/// Whether Accessibility is granted to this process, asked fresh, without prompting. AXIsProcessTrusted()
+/// answers from a cache that can keep saying yes after a revoke, so a yes is confirmed by creating an
+/// active event tap, which makes the window server check. A no is trusted as it is, so asking never
+/// creates a tap without the permission. Each yes costs a tap made and taken down, so ask when the answer
+/// is needed rather than on every frame.
+pub fn accessibility_granted() -> bool {
     handy_keys::check_accessibility() && active_tap_allowed()
 }
 
@@ -103,6 +105,16 @@ pub fn open_accessibility_settings() -> std::io::Result<()> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_no_from_the_system_is_the_answer_and_asking_again_agrees() {
+        // CI's runner grants the test nothing; a terminal granted Accessibility passes it on.
+        let granted = accessibility_granted();
+        if !handy_keys::check_accessibility() {
+            assert!(!granted);
+        }
+        assert_eq!(accessibility_granted(), granted);
+    }
 
     #[test]
     fn the_watch_registers_and_reports_no_change_at_start() {

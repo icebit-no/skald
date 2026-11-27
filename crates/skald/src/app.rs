@@ -1,15 +1,20 @@
-//! Skald in a terminal on macOS: the hold key, the microphones and the model joined into one loop, each
-//! line a user reads printed as it happens.
+//! Skald on macOS: the hold key, the microphones and the model joined into one loop. The app runs the loop
+//! on a thread of its own and the screen (`shell`: the overlay, the menu bar item, the settings window) on
+//! the main thread, which GPUI owns; with `--terminal` the loop runs on the main thread alone. Either way
+//! each line a user reads is printed as it happens.
 //!
 //! Start-up checks what can stop Skald before the model takes seconds to load: the files, Accessibility,
-//! then the microphone permission. The model loads on the pipeline's thread while the keys already work,
-//! so a take made meanwhile waits for it. The command line's socket answers for as long as the loop runs.
+//! then the microphone permission. The screen appears once they have passed, and the model loads on the
+//! pipeline's thread while the keys already work, so a take made meanwhile waits for it. The command
+//! line's socket answers for as long as the loop runs.
 
 #[cfg(unix)]
 use skald_control::{BindError, Server, Serving};
 
 use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, Receiver, RecvTimeoutError};
+use std::thread;
 use std::time::{Duration, Instant};
 
 use skald_audio::MicrophoneAccess;
@@ -22,41 +27,145 @@ use skald_input::{HoldKey, HoldListener, Inserter, ListenerEvent, Unavailable};
 use crate::cli::Options;
 use crate::control::{Control, Settings};
 use crate::dictation::{Dictation, Microphones, SystemMicrophones, microphone_order};
+use crate::events::{Ending, Event, MicrophoneList};
 use crate::files::{self, ConfigFile};
+use crate::login;
 use crate::models::ModelFiles;
-use crate::pipeline::{Worker, WorkerEvent};
+use crate::pipeline::{Worker, WorkerEvent, WorkerHandle};
 use crate::say::{Exit, Line, Printer, report_lines};
+use crate::shell;
 use crate::signals;
 use crate::sounds::{Afplay, Chime};
 
 /// The longest the loop waits for a key before it looks at everything else.
 const TICK: Duration = Duration::from_millis(100);
 
+/// The same while a take records, so each level reading reaches the overlay soon after it is taken.
+const TICK_WHILE_RECORDING: Duration = Duration::from_millis(20);
+
 const CONFIG_EVERY: Duration = Duration::from_secs(1);
+
+/// How often the microphones connected are listed for the menu and the settings window. The system tells
+/// the loop only when the microphone in use changes, not when another one comes or goes.
+const MICROPHONES_EVERY: Duration = Duration::from_secs(3);
 
 /// The key listener says within this time whether it may listen.
 const FIRST_KEY_EVENT_WITHIN: Duration = Duration::from_secs(2);
 
 pub(crate) fn run(options: Options) -> Result<(), Exit> {
-    let result = run_until_stopped(options);
-    // Opening the right pane of System Settings saves the user looking for it.
-    match result {
-        Err(Exit::NoAccessibility) => {
+    let result = if options.terminal {
+        dictate(options, None)
+    } else {
+        run_app(options)
+    };
+    if let Err(exit) = &result {
+        open_settings_for(exit);
+    }
+    result
+}
+
+/// Opens the pane of System Settings a missing permission is granted in, which saves the user looking for
+/// it.
+pub(crate) fn open_settings_for(exit: &Exit) {
+    match exit {
+        Exit::NoAccessibility => {
             let _ = skald_input::open_accessibility_settings();
         }
-        Err(Exit::MicrophoneDenied) => {
+        Exit::MicrophoneDenied => {
             let _ = std::process::Command::new("open")
                 .arg("x-apple.systempreferences:com.apple.preference.security?Privacy_Microphone")
                 .status();
         }
         _ => {}
     }
-    result
 }
 
-fn run_until_stopped(options: Options) -> Result<(), Exit> {
-    let out = Printer {
+/// What the screen needs of the running loop: the same running Skald the socket answers for, the model's
+/// thread for what needs the model, and the folders.
+pub(crate) struct Ready {
+    pub(crate) control: Arc<Control>,
+    pub(crate) worker: WorkerHandle,
+    pub(crate) paths: Paths,
+}
+
+/// The loop's side of the screen: where its events go, the screen's wish that it stop, and where it says
+/// it is ready.
+pub(crate) struct Link {
+    events: async_channel::Sender<Event>,
+    stop: Arc<AtomicBool>,
+    ready: mpsc::Sender<Ready>,
+}
+
+/// Starts the loop on a thread of its own and, once it is ready, the screen on this one. A loop that
+/// stops before it is ready never shows a screen, and its reason is returned.
+fn run_app(options: Options) -> Result<(), Exit> {
+    let printer = Printer {
         verbose: options.verbose,
+    };
+    let (events, inbox) = async_channel::unbounded();
+    let stop = Arc::new(AtomicBool::new(false));
+    let (ready, started) = mpsc::channel();
+    let link = Link {
+        events: events.clone(),
+        stop: Arc::clone(&stop),
+        ready,
+    };
+    let dictation = thread::Builder::new()
+        .name("skald-dictation".into())
+        .spawn(move || {
+            let result = dictate(options, Some(link));
+            // The screen may already be gone, and then no one needs to know.
+            let _ = events.send_blocking(Event::Stopped);
+            result
+        })
+        .map_err(|error| Exit::CannotStart(error.to_string()))?;
+    match started.recv() {
+        Ok(ready) => shell::run(ready, inbox, stop, dictation, printer),
+        Err(_) => dictation.join().unwrap_or(Err(Exit::Stopped)),
+    }
+}
+
+/// Where the loop's news goes: the terminal, and the screen when there is one.
+struct Out {
+    printer: Printer,
+    link: Option<Link>,
+}
+
+impl Out {
+    fn say(&self, line: Line) {
+        self.printer.say(line);
+    }
+
+    fn show(&self, event: Event) {
+        if let Some(link) = &self.link {
+            // The channel holds any number of events; it fails only once the screen is gone.
+            let _ = link.events.try_send(event);
+        }
+    }
+
+    fn has_screen(&self) -> bool {
+        self.link.is_some()
+    }
+
+    fn stop_asked(&self) -> bool {
+        self.link
+            .as_ref()
+            .is_some_and(|link| link.stop.load(Ordering::Acquire))
+    }
+
+    fn ready(&self, ready: Ready) {
+        if let Some(link) = &self.link {
+            let _ = link.ready.send(ready);
+        }
+    }
+}
+
+fn dictate(options: Options, link: Option<Link>) -> Result<(), Exit> {
+    let out = Out {
+        printer: Printer {
+            verbose: options.verbose,
+        },
+        link,
     };
     out.say(Line::Version);
     let paths = files::paths(options.dir.as_deref())?;
@@ -87,8 +196,8 @@ fn run_until_stopped(options: Options) -> Result<(), Exit> {
     });
     signals::install().map_err(|error| Exit::CannotStart(error.to_string()))?;
 
-    let mut keys = Keys::start(hold_key(&config.hold_key, out))?;
-    keys.wait_until_known(out)?;
+    let mut keys = Keys::start(hold_key(&config.hold_key, &out))?;
+    keys.wait_until_known(&out)?;
 
     match skald_audio::microphone_access() {
         MicrophoneAccess::Denied => return Err(Exit::MicrophoneDenied),
@@ -99,6 +208,9 @@ fn run_until_stopped(options: Options) -> Result<(), Exit> {
     let microphones =
         SystemMicrophones::start(microphone_order(&config)).map_err(Exit::Microphones)?;
     out.say(Line::Microphone(microphones.active().map(|m| m.name)));
+    if let Some(line) = login::apply(config.start_at_login) {
+        out.say(line);
+    }
 
     out.say(Line::LoadingModel);
     let chime: Arc<dyn Chime> = Arc::new(Afplay);
@@ -111,20 +223,23 @@ fn run_until_stopped(options: Options) -> Result<(), Exit> {
         },
         Inserter::new(),
         Arc::clone(&chime),
-        state,
+        state.clone(),
         paths.state_file(),
         events,
     )
     .map_err(|error| Exit::CannotStart(error.to_string()))?;
     let config = Arc::new(config);
     let settings = Arc::new(Settings::new(Arc::clone(&config)));
-    let serving = serve(
-        &paths,
-        Control::new(paths.clone(), Arc::clone(&settings), worker.handle()),
-        out,
-    )?;
-    let dictation = Dictation::new(microphones, chime, config);
+    let control = Arc::new(Control::new(
+        paths.clone(),
+        Arc::clone(&settings),
+        worker.handle(),
+    ));
+    let serving = serve(&paths, Arc::clone(&control), &out)?;
+    let dictation = Dictation::new(microphones, chime, Arc::clone(&config));
 
+    out.show(Event::Settings(Arc::clone(&config)));
+    out.show(Event::State(state));
     let mut running = Running {
         keys,
         dictation,
@@ -133,8 +248,17 @@ fn run_until_stopped(options: Options) -> Result<(), Exit> {
         config_file,
         settings,
         model_given: options.model.is_some(),
+        start_at_login: config.start_at_login,
+        listed: None,
+        next_listing: Instant::now(),
         out,
     };
+    running.list_microphones();
+    running.out.ready(Ready {
+        control,
+        worker: worker.handle(),
+        paths: paths.clone(),
+    });
     let result = running.listen();
     // The event tap goes first, then the socket and the microphones; the worker finishes the takes it has
     // and drops the model last.
@@ -151,9 +275,9 @@ fn run_until_stopped(options: Options) -> Result<(), Exit> {
 /// Answers the command line on the socket. Without it Skald still takes dictation, and the commands work
 /// on the files, which the loop reads again when they change.
 #[cfg(unix)]
-fn serve(paths: &Paths, control: Control, out: Printer) -> Result<Option<Serving>, Exit> {
+fn serve(paths: &Paths, control: Arc<Control>, out: &Out) -> Result<Option<Serving>, Exit> {
     match Server::bind(&paths.socket()) {
-        Ok(server) => Ok(Some(server.serve(Arc::new(control)))),
+        Ok(server) => Ok(Some(server.serve(control))),
         Err(BindError::AlreadyRunning) => Err(Exit::AlreadyRunning),
         Err(error) => {
             out.say(Line::NoSocket(error.to_string()));
@@ -170,7 +294,12 @@ struct Running<'w> {
     config_file: ConfigFile,
     settings: Arc<Settings>,
     model_given: bool,
-    out: Printer,
+    /// The setting the login item was last brought to.
+    start_at_login: bool,
+    /// The microphones last shown on the screen.
+    listed: Option<MicrophoneList>,
+    next_listing: Instant,
+    out: Out,
 }
 
 impl Running<'_> {
@@ -178,39 +307,44 @@ impl Running<'_> {
         let mut next_config_look = Instant::now() + CONFIG_EVERY;
         let mut wanted_key = self.keys.key;
         loop {
-            if signals::received() {
+            if signals::received() || self.out.stop_asked() {
                 self.out.say(Line::Stopping);
                 return Ok(());
             }
-            if let Some(event) = self.keys.next(TICK)? {
+            let tick = if self.dictation.is_recording() {
+                TICK_WHILE_RECORDING
+            } else {
+                TICK
+            };
+            if let Some(event) = self.keys.next(tick)? {
                 self.on_key_event(event)?;
             }
             self.dictation.poll();
             for line in self.dictation.take_lines() {
                 self.out.say(line);
             }
+            let mut microphone_changed = false;
+            for event in self.dictation.take_events() {
+                microphone_changed |= matches!(event, Event::MicrophoneChanged(_));
+                self.out.show(event);
+            }
+            if self.dictation.take_hands_free_ended() {
+                self.keys.listener.hands_free_ended();
+            }
             for job in self.dictation.take_jobs() {
                 self.worker.submit(job);
             }
             for event in self.worker_events.try_iter() {
-                match event {
-                    WorkerEvent::Loaded { device, took } => {
-                        self.out.say(Line::ModelLoaded { device, took });
-                        self.out.say(Line::Ready(self.keys.key));
-                    }
-                    WorkerEvent::LoadFailed(reason) => return Err(Exit::ModelLoad(reason)),
-                    WorkerEvent::Done(report) => {
-                        for line in report_lines(&report) {
-                            self.out.say(line);
-                        }
-                    }
-                }
+                self.on_worker_event(event)?;
             }
             if self.settings.take_written() || Instant::now() >= next_config_look {
                 next_config_look = Instant::now() + CONFIG_EVERY;
                 if let Some(key) = self.look_at_config() {
                     wanted_key = key;
                 }
+            }
+            if microphone_changed || Instant::now() >= self.next_listing {
+                self.list_microphones();
             }
             if wanted_key != self.keys.key && self.dictation.is_idle() {
                 self.keys = Keys::start(wanted_key)?;
@@ -238,6 +372,34 @@ impl Running<'_> {
         Ok(())
     }
 
+    fn on_worker_event(&self, event: WorkerEvent) -> Result<(), Exit> {
+        match event {
+            WorkerEvent::Loaded { device, took } => {
+                self.out.say(Line::ModelLoaded { device, took });
+                self.out.say(Line::Ready(self.keys.key));
+                self.out.show(Event::ModelLoaded);
+            }
+            WorkerEvent::LoadFailed(reason) => return Err(Exit::ModelLoad(reason)),
+            WorkerEvent::Done(report) => {
+                for line in report_lines(&report) {
+                    self.out.say(line);
+                }
+                self.out.show(Event::Ended {
+                    take: report.take,
+                    ending: Ending::of(&report),
+                });
+                self.out.show(Event::State(report.state));
+            }
+            WorkerEvent::HistoryCorrected(corrected) => {
+                if let Some(reason) = corrected.error {
+                    self.out.say(Line::StateNotSaved(reason));
+                }
+                self.out.show(Event::State(corrected.state));
+            }
+        }
+        Ok(())
+    }
+
     /// Takes a changed configuration; returns the hold key it asks for.
     fn look_at_config(&mut self) -> Option<HoldKey> {
         let config = match self.config_file.changed()? {
@@ -251,11 +413,37 @@ impl Running<'_> {
         if config.model != self.dictation.config().model && !self.model_given {
             self.out.say(Line::ModelAtRestart);
         }
-        let key = hold_key(&config.hold_key, self.out);
+        if config.start_at_login != self.start_at_login {
+            self.start_at_login = config.start_at_login;
+            if let Some(line) = login::apply(config.start_at_login) {
+                self.out.say(line);
+            }
+        }
+        let key = hold_key(&config.hold_key, &self.out);
         let config = Arc::new(config);
         self.settings.set(Arc::clone(&config));
-        self.dictation.set_config(config);
+        self.dictation.set_config(Arc::clone(&config));
+        self.out.show(Event::Settings(config));
         Some(key)
+    }
+
+    /// Shows the microphones connected when they differ from those last shown; only with a screen.
+    fn list_microphones(&mut self) {
+        self.next_listing = Instant::now() + MICROPHONES_EVERY;
+        if !self.out.has_screen() {
+            return;
+        }
+        let Ok(connected) = skald_audio::connected_microphones() else {
+            return;
+        };
+        let list = MicrophoneList {
+            connected: connected.microphones.into_iter().map(|m| m.name).collect(),
+            in_use: self.dictation.microphones().active().map(|m| m.name),
+        };
+        if self.listed.as_ref() != Some(&list) {
+            self.listed = Some(list.clone());
+            self.out.show(Event::Microphones(list));
+        }
     }
 }
 
@@ -287,7 +475,7 @@ impl Keys {
 
     /// Waits for the listener's first word on whether it may listen, so a missing permission is told
     /// before the model loads.
-    fn wait_until_known(&mut self, out: Printer) -> Result<(), Exit> {
+    fn wait_until_known(&mut self, out: &Out) -> Result<(), Exit> {
         match self.next(FIRST_KEY_EVENT_WITHIN)? {
             Some(ListenerEvent::Unavailable(Unavailable::NoAccessibility)) => {
                 Err(Exit::NoAccessibility)
@@ -303,7 +491,7 @@ impl Keys {
 }
 
 /// The configuration's hold key, or the platform's own, said, for a key this version does not know.
-fn hold_key(key: &ConfigHoldKey, out: Printer) -> HoldKey {
+fn hold_key(key: &ConfigHoldKey, out: &Out) -> HoldKey {
     listened_key(key).unwrap_or_else(|name| {
         out.say(Line::UnknownHoldKey(name));
         HoldKey::PLATFORM_DEFAULT
@@ -337,5 +525,53 @@ mod tests {
             listened_key(&ConfigHoldKey::Unknown("right-option".into())),
             Err("right-option".into())
         );
+    }
+
+    fn linked() -> (
+        Out,
+        async_channel::Receiver<Event>,
+        Arc<AtomicBool>,
+        Receiver<Ready>,
+    ) {
+        let (events, inbox) = async_channel::unbounded();
+        let stop = Arc::new(AtomicBool::new(false));
+        let (ready, started) = mpsc::channel();
+        let out = Out {
+            printer: Printer { verbose: false },
+            link: Some(Link {
+                events,
+                stop: Arc::clone(&stop),
+                ready,
+            }),
+        };
+        (out, inbox, stop, started)
+    }
+
+    #[test]
+    fn the_screen_hears_the_loop_and_can_ask_it_to_stop() {
+        let (out, inbox, stop, _started) = linked();
+        assert!(out.has_screen());
+        out.show(Event::ModelLoaded);
+        out.show(Event::Level(-20.0));
+        assert_eq!(inbox.try_recv(), Ok(Event::ModelLoaded));
+        assert_eq!(inbox.try_recv(), Ok(Event::Level(-20.0)));
+        assert!(!out.stop_asked());
+        stop.store(true, Ordering::Release);
+        assert!(out.stop_asked());
+
+        // The screen gone, the loop still runs.
+        drop(inbox);
+        out.show(Event::ModelLoaded);
+    }
+
+    #[test]
+    fn in_the_terminal_nobody_is_shown_anything_or_stops_the_loop() {
+        let out = Out {
+            printer: Printer { verbose: false },
+            link: None,
+        };
+        assert!(!out.has_screen());
+        out.show(Event::ModelLoaded);
+        assert!(!out.stop_asked());
     }
 }

@@ -75,6 +75,10 @@ overlay has set GPUI up). The binary joins them.
 - [x] Menu bar item with the ᚨ template icon: microphone, latest texts, bokmål or nynorsk, ordskatt,
       settings, quit.
 - [x] Settings window with the tabs Generelt, Ordskatt, Historikk and Om.
+- [ ] The app: `skald` runs the overlay, the menu bar item and the settings window on GPUI, the dictation loop
+      on a thread of its own and the socket beside them, `--terminal` without them; ⌃⌘X for a hands-free take;
+      Silero VAD inside the binary; start at login through SMAppService; `skald bench`. Built in the app
+      wiring's pull request; ticked when Thomas's real test (#22) passes.
 - [ ] First run: model download with progress (pinned revision, SHA-256), permissions, a test dictation.
 - [x] `skald` command line over a local socket only the user can open; `--json` on every command; writes the
       configuration file directly when the app is not running.

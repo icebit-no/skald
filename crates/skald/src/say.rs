@@ -15,9 +15,6 @@ use skald_models::Model;
 use crate::files::{ConfigError, LockError};
 use crate::pipeline::{Outcome, Report, Timings};
 
-/// Silero VAD v6.2 as GGUF, at the revision docs/research/engine-check.md checked.
-const VAD_URL: &str = "https://huggingface.co/handy-computer/silero-vad-v6.2-gguf/resolve/a9b2d61c20ae4ddf3644edb34969e8185a485448/silero-vad-v6.2-F32.gguf";
-
 const SETTINGS: &str = "Systeminnstillinger › Personvern og sikkerhet";
 
 #[derive(Debug, Clone, PartialEq)]
@@ -49,6 +46,7 @@ pub(crate) enum Line {
     HoldKeyChanged(HoldKey),
     MicrophoneChanged(Option<String>),
     Recording(String),
+    RecordingHandsFree(String),
     Carving,
     Cancelled,
     Capped,
@@ -78,6 +76,19 @@ pub(crate) enum Line {
     ListenerFailed(String),
     ListenerBack,
     NoSocket(String),
+    LoginItemNeedsApp,
+    LoginItemUnsupported,
+    LoginItemNeedsApproval,
+    LoginItemOn,
+    LoginItemOff,
+    LoginItemFailed(String),
+    NoMenuBarItem(String),
+    SettingNotChanged(String),
+    DownloadFailed {
+        model: &'static str,
+        reason: String,
+    },
+    Downloaded(&'static str),
     Stopping,
 }
 
@@ -147,6 +158,7 @@ impl fmt::Display for Line {
             Line::HoldKeyChanged(key) => write!(f, "Hold {} for å snakke.", key_name(*key)),
             Line::MicrophoneChanged(Some(name)) => write!(f, "{name} · koblet til, brukes nå"),
             Line::Recording(name) => write!(f, "Opptak · {name}"),
+            Line::RecordingHandsFree(name) => write!(f, "Håndfritt opptak · {name} · ⌃⌘X stopper"),
             Line::Carving => f.write_str("rister …"),
             Line::Cancelled => f.write_str("Avbrutt."),
             Line::Capped => write!(
@@ -199,6 +211,29 @@ impl fmt::Display for Line {
                 f,
                 "Kommandolinjen når ikke denne Skald ({reason}); skald-kommandoer skriver rett i filene."
             ),
+            Line::LoginItemNeedsApp => {
+                f.write_str("Start ved innlogging slås på når Skald kjører som Skald.app.")
+            }
+            Line::LoginItemUnsupported => {
+                f.write_str("Start ved innlogging krever macOS 13 eller nyere.")
+            }
+            Line::LoginItemNeedsApproval => f.write_str(
+                "Tillat Skald under Systeminnstillinger › Generelt › Påloggingsobjekter, så starter \
+                 Skald ved innlogging.",
+            ),
+            Line::LoginItemOn => f.write_str("Skald starter ved innlogging."),
+            Line::LoginItemOff => f.write_str("Skald starter ikke ved innlogging."),
+            Line::LoginItemFailed(reason) => {
+                write!(f, "Kunne ikke endre start ved innlogging: {reason}")
+            }
+            Line::NoMenuBarItem(reason) => write!(f, "Skald fikk ikke plass i menylinjen: {reason}."),
+            Line::SettingNotChanged(reason) => {
+                write!(f, "Innstillingen ble ikke endret: {reason}")
+            }
+            Line::DownloadFailed { model, reason } => {
+                write!(f, "Nedlastingen av {model} stoppet: {reason}")
+            }
+            Line::Downloaded(model) => write!(f, "{model} er lastet ned og sjekket."),
             Line::Stopping => f.write_str("Avslutter …"),
         }
     }
@@ -271,8 +306,13 @@ pub(crate) enum Exit {
         pinned: &'static Model,
     },
     ModelUnreadable(String),
+    /// A file given with `--vad` that is not there.
     VadMissing {
         path: PathBuf,
+    },
+    VadUnwritable {
+        path: PathBuf,
+        reason: String,
     },
     ModelLoad(String),
     NoAccessibility,
@@ -281,6 +321,8 @@ pub(crate) enum Exit {
     Microphones(CaptureError),
     CannotStart(String),
     KeysStopped,
+    /// The dictation's thread ended without saying why.
+    Stopped,
     #[cfg(not(target_os = "macos"))]
     UnsupportedSystem,
 }
@@ -347,10 +389,12 @@ impl fmt::Display for Exit {
             Exit::ModelUnreadable(reason) => write!(f, "Kunne ikke lese talemodellen: {reason}"),
             Exit::VadMissing { path } => write!(
                 f,
-                "Fant ikke Silero VAD: {path}\nLast ned silero-vad-v6.2-F32.gguf (1,2 MB) og legg den \
-                 der:\n  curl -L --create-dirs -o '{path}' {VAD_URL}\nEller gi stien med --vad.",
-                path = path.display()
+                "Fant ikke Silero VAD: {}\nUten --vad bruker Skald sin egen.",
+                path.display()
             ),
+            Exit::VadUnwritable { path, reason } => {
+                write!(f, "Kunne ikke legge Silero VAD i {}: {reason}", path.display())
+            }
             Exit::ModelLoad(reason) => write!(f, "Kunne ikke laste talemodellen: {reason}"),
             Exit::NoAccessibility => write!(
                 f,
@@ -372,6 +416,7 @@ impl fmt::Display for Exit {
             }
             Exit::CannotStart(reason) => write!(f, "Kunne ikke starte: {reason}"),
             Exit::KeysStopped => f.write_str("Tastelytteren stoppet uventet."),
+            Exit::Stopped => f.write_str("Dikteringen stoppet uventet."),
             #[cfg(not(target_os = "macos"))]
             Exit::UnsupportedSystem => f.write_str("Skald kjører foreløpig bare på macOS."),
         }
@@ -495,10 +540,12 @@ mod tests {
 
     fn report(outcome: Outcome) -> Report {
         Report {
+            take: 1,
             microphone: "Shure MV7".into(),
             outcome,
             timings: Timings::default(),
             state_error: None,
+            state: skald_core::state::State::default(),
         }
     }
 
@@ -669,7 +716,10 @@ mod tests {
             path: PathBuf::from("/m/silero-vad-v6.2-F32.gguf"),
         }
         .to_string();
-        assert!(vad.contains(VAD_URL), "{vad}");
+        assert_eq!(
+            vad,
+            "Fant ikke Silero VAD: /m/silero-vad-v6.2-F32.gguf\nUten --vad bruker Skald sin egen."
+        );
     }
 
     #[test]

@@ -8,6 +8,7 @@ publish.workspace = true
 
 [dependencies]
 skald-audio.workspace = true
+skald-bench = { path = "../skald-bench" }
 skald-control.workspace = true
 skald-core.workspace = true
 skald-engine.workspace = true
@@ -20,3 +21,18 @@ hound = "=3.5.1"
 [target.'cfg(unix)'.dependencies]
 # sigaction, for Ctrl-C and the other signals that end the loop; already in the tree through cpal.
 libc = "=0.2.191"
+
+# The app's screen: the overlay, the menu bar item and the settings window, on GPUI.
+[target.'cfg(target_os = "macos")'.dependencies]
+skald-overlay = { path = "../skald-overlay" }
+skald-settings = { path = "../skald-settings" }
+skald-tray.workspace = true
+# GPUI at the revision the overlay and the settings window take: the application, its run loop and
+# tasks, the clipboard.
+gpui-kit = { git = "https://github.com/longbridge/gpui-kit", rev = "1e7ffaa6d1c0c230cb84099584e6c057531d5a5d", version = "=0.7.1", default-features = false }
+# Carries the loop's events, the menu's actions and download progress to tasks on GPUI's main thread;
+# already in the tree through GPUI.
+async-channel = "=2.5.0"
+# SMAppService for start at login, through the Objective-C runtime; in the tree through skald-input.
+objc2 = "=0.6.5"
+objc2-foundation = { version = "=0.3.2", default-features = false, features = ["std", "NSError", "NSString"] }

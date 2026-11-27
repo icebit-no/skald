@@ -12,6 +12,8 @@ own words.
 - So macOS shows its microphone indicator for a moment at each right-⌘ shortcut; that is accepted for the first words.
 - A take ends when the key is released, at the cap, or when its microphone disappears.
 - ⌃⌘X starts and stops a hands-free take on macOS. The key on Windows and Linux is chosen in M4 and M5; Ctrl+Alt is AltGr on Norwegian layouts.
+  While a hands-free take runs, the hold key starts nothing and other keys cancel nothing, so the user can type
+  and use shortcuts; ⌃⌘X itself never reaches the app in front.
 - A take is capped at 120 seconds. On macOS the system sound Tink plays when a take arms and Pop as its text is
   inserted; the sounds can be turned off.
 

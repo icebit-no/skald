@@ -5,9 +5,10 @@ decision, and that pull request also edits the page where the rule lives ([desig
 [plan.md](plan.md)). Those pages say what holds; this one says when and why it came to hold. A later decision
 that undoes one adds an entry of its own, and the earlier entry gets one line naming it.
 
-## D-36 — `skald bench record` takes the test set while Enter is held; 60 sentences written for it
+## D-37 — `skald bench record` takes the test set while Enter is held; 60 sentences written for it
 
-2026-11-27, Claude; how far «from a distance» is, and the microphones read with, are Thomas's to confirm.
+2026-11-27, Claude; «from a distance» as the built-in Mac microphone at 2 m, and Thomas looking through the
+sentences before he reads them, settled by the lead in review.
 
 The test set's 60 sentences were written for Skald (`research/test-set/`, MIT) to provoke what M3 measures:
 compounds split or joined, hyphens, borrowed words with Norwegian endings, numbers, dates and names. Each
@@ -29,7 +30,8 @@ the key events on all three systems. Without its default features it adds five c
 crossterm_winapi (Windows only), mio, signal-hook and signal-hook-mio.
 
 «From a distance» is the Mac's built-in microphone about 2 m away, in a normal voice, against about 50 cm for
-the built-in microphone and 15 to 25 cm for the USB microphone. Evidence: the tests in
+the built-in microphone and 15 to 25 cm for the USB microphone. Thomas looks through the sentences before he
+reads them. Evidence: the tests in
 `crates/skald-bench/src/record`. Changed: [plan.md](plan.md) M3 and Waiting on Thomas.
 
 ## D-35 — The first-run window is a view over the app's download and test, and reads the permissions itself

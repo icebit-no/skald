@@ -30,7 +30,9 @@ write numbers as digits and clock times in words, and avoid forms bokmål allows
 
 ## Recording
 
-`skald bench record` shows one sentence at a time and records it while Enter is held:
+Look through `sentences.txt` before reading it; a take keeps the reference it was read with, so a sentence
+changed later only changes the takes read after. `skald bench record` shows one sentence at a time and records
+it while Enter is held:
 
 ```sh
 cargo run --release -p skald-bench --example bench -- record ~/skald-testsett --microphone usb --device "…"

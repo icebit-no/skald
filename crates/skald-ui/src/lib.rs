@@ -1,5 +1,5 @@
 //! What Skald's windows share: the identity's colours in light and dark mode, a text field's colours in
-//! them, and gpui-kit set up once.
+//! them, gpui-kit set up once, and the name the system knows the windows by.
 //!
 //! The overlay has themes of its own (D-24) and takes neither.
 
@@ -9,6 +9,10 @@ use gpui_kit::base::input::InputEditorStyle;
 use gpui_kit::{App, Global};
 
 pub use palette::{Palette, with_alpha};
+
+/// The name Skald's windows give the system, the bundle identifier on macOS (D-34); a Wayland compositor
+/// matches its window rules against it.
+pub const APP_ID: &str = "app.icebit.skald";
 
 struct Initialized;
 

@@ -52,6 +52,30 @@ colours and drawn again when it changes; the dot takes the identity's ochre or g
 taskbar (D-27). The icon comes back when Explorer restarts. windows-sys, already in the tree, is the only
 crate used. Changed: [design.md](design.md#menu).
 
+## D-47 — Linux in the system's own words, by bindings only, with autostart, sounds and the portal's settings
+
+2026-11-27, the lead, from the list of what was left of M5; Claude for how each is done.
+
+Every line a user reads names the system's own key, chord and place for the item, in bokmål: `skald --help`
+says «panelet», right Ctrl and Ctrl+Super+X on Linux, and «systemstatusfeltet» and Ctrl+Win+X on Windows,
+where macOS says «menylinjen», right ⌘ and ⌃⌘X; the line for an item that could not be made gives its reason
+in bokmål too. Skald takes the keys on Linux from the desktop's bindings and the GlobalShortcuts portal
+alone (D-39): it never reads `/dev/input` and never asks for the `input` group, which would hand every
+program of the user every keystroke.
+
+«Start Skald ved innlogging» writes an XDG autostart entry, `skald.desktop` in `$XDG_CONFIG_HOME/autostart`,
+naming the binary that wrote it, and removes it when turned off; an entry the user wrote under that name,
+which lacks Skald's own marker line, is left alone. A compositor that ignores autostart entries starts Skald
+from `exec-once`, which the Linux README gives. The start and end sounds on Linux are the freedesktop sound
+theme's «audio-volume-change» and «complete», played with pw-play or paplay in a process of their own as on
+macOS, and silent where the theme or both players are missing; the setting is honoured as on macOS.
+
+Kjedelig reads the accent colour and reduced motion from the Settings portal through ashpd, in a pull request
+of its own. X11 is out of scope for now, and the README says so. The first-run and settings windows name
+themselves `app.icebit.skald`, the bundle identifier on macOS (D-34), so a Hyprland window rule can float
+them; the README gives the rule. Changed: [design.md](design.md#recording) (Recording).
+
+
 ## D-46 — The tray on Linux is a StatusNotifierItem through ksni
 
 2026-11-27, Claude.
@@ -115,6 +139,7 @@ to the hint rather than run under it.
 
 Evidence: the overlay on a headless sway with software Vulkan, photographed recording, hands-free, after a
 take that heard nothing, and in Kjedelig. Changed: [design.md](design.md#overlay), [plan.md](plan.md) M5.
+The accent colour and reduced motion on Linux: D-47.
 
 ## D-43 — transcribe.cpp's backends are modules on Windows, so a machine without Vulkan starts on the CPU
 
@@ -238,7 +263,7 @@ the key's real state, with `invalid`. They are no MCP tools, since an agent has 
 (the tray and the overlay, later in M5), `skald` there runs the loop in the terminal, as `--terminal` does,
 and text is not inserted: each take is kept in the history and printed. Changed:
 [design.md](design.md#recording) (Recording, Command line), [plan.md](plan.md) M5.
-Insertion on Linux: D-42. The screen on Linux: D-44. The tray on Linux: D-46.
+Insertion on Linux: D-42. The screen on Linux: D-44. The tray on Linux: D-46. Bindings only: D-47.
 
 
 ## D-38 — Right Ctrl, Ctrl+V and the clipboard on Windows; a window run as administrator is checked first

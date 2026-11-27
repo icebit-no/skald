@@ -48,8 +48,10 @@ by a script from a pinned source with SHA-256 checks, not committed.
       release.
 - [x] Capture with cpal, resampled to 16 kHz mono with rubato, level readings for the meter; the microphone
       chosen by the priority list.
-- [ ] The silence gate: level, VAD (at least 250 ms of speech), known phrases.
-- [ ] Transcribe with NB-Whisper Large on Metal, loaded once, with beam search 5.
+- [x] The silence gate: level, VAD (at least 250 ms of speech), known phrases.
+- [x] Transcribe with NB-Whisper Large on Metal, loaded once.
+- [ ] Beam search 5 (D-16). transcribe.cpp decodes Whisper greedily only; waiting on Thomas
+      ([engine-check.md](research/engine-check.md#beam-search-three-ways-and-the-one-recommended)).
 - [x] Insert by clipboard and ⌘V after the key is released; put the previous clipboard back unless the user
       chose to copy the text.
 - [x] Vocabulary prompt and corrections from a TOML configuration; history of the five latest texts.

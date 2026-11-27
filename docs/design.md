@@ -42,7 +42,8 @@ Whisper turns silence into «ja», «ja takk» or «den satt». A take is transc
 3. **Known phrases:** the whole text is a known silence phrase and VAD found almost no speech. The list grows
    from real cases.
 
-Any of them ends the take with «Hørte ingenting», and nothing is inserted.
+Any of them ends the take with «Hørte ingenting», and nothing is inserted; so does a text with no word in it,
+only punctuation or nothing.
 
 ## Insertion
 

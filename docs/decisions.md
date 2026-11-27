@@ -5,6 +5,35 @@ decision, and that pull request also edits the page where the rule lives ([desig
 [plan.md](plan.md)). Those pages say what holds; this one says when and why it came to hold. A later decision
 that undoes one adds an entry of its own, and the earlier entry gets one line naming it.
 
+## D-23 — transcribe.cpp as a vendored crate with Skald's patches; 500 ms kept around the speech
+
+2026-11-27, Claude.
+
+Skald builds transcribe.cpp with its two patches (D-22) from a copy of the `transcribe-cpp-sys` crate in
+`third_party/`, which the root `Cargo.toml` puts in place of the crates.io crate; the safe `transcribe-cpp`
+crate stays from crates.io. The copy is the published crate as it is plus the patches, and a script writes it
+from the crate's SHA-256 and the patch files, so what differs from upstream is the patches and nothing else,
+and anyone can check that. The other ways each cost more: a patched install elsewhere (`TRANSCRIBE_DIR`) is a
+separate build on every machine and in CI; a git submodule needs CI changes; a fork would be a public
+repository of Thomas's; applying the patches at build time needs a patch tool on every machine. The price is
+about 35 MB of C++ source in the repository (5 MB as the published crate), marked as vendored so pull requests
+collapse it. The copy goes when an upstream release carries both changes.
+
+The budget patch lets the prompt and the text before each 30-second window share Whisper's 223 tokens, the
+prompt first, as whisper.cpp does: the second of the two fixes engine-check.md names (the first, the prompt
+alone at each window's head, was not measured). The 97 s take with the full 213-token ordskatt then has 9.8 %
+word errors, against 60.3 % in stock transcribe.cpp and 10.5 % in whisper.cpp, so the meter keeps its 223
+tokens.
+
+The silence before and after the speech is cut with 500 ms kept on either side. Cut at Silero's own 30 ms of
+padding, the 20 FLEURS clips lost words (5.2 → 5.9 % word errors clean, 20.2 → 23.9 % with noise); with
+500 ms they came out about as with the whole take (5.6 % and 19.2 %). A text with no word in it ends a take as
+the silence checks do: there is nothing to insert.
+
+Evidence: [research/engine-check.md](research/engine-check.md), the model tests in `crates/skald-engine/tests`,
+the margins in `crates/skald-engine/src/vad.rs`. Changed: [plan.md](plan.md) M1b,
+[design.md](design.md#silence).
+
 ## D-22 — transcribe.cpp's Rust crates, a patched build, NbAiLab's model file, no no-speech check
 
 2026-11-27, Claude; the patched build, the model file and the silence gate settled by the lead in review.

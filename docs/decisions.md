@@ -5,6 +5,33 @@ decision, and that pull request also edits the page where the rule lives ([desig
 [plan.md](plan.md)). Those pages say what holds; this one says when and why it came to hold. A later decision
 that undoes one adds an entry of its own, and the earlier entry gets one line naming it.
 
+## D-22 — transcribe.cpp's Rust crates, a patched build, NbAiLab's model file, no no-speech check
+
+2026-11-27, Claude; the patched build, the model file and the silence gate settled by the lead in review.
+
+`skald-engine` binds transcribe.cpp through `transcribe-cpp` and `transcribe-cpp-sys`, the crates published from
+the transcribe.cpp repository with each release, pinned to the exact version of the library. transcribe-rs, the
+first candidate, does not use transcribe.cpp: it wraps whisper.cpp and ONNX Runtime and cannot run Bokfink. A
+binding of our own would redo what `transcribe-cpp-sys` already is: FFI generated from the same header and checked
+against its ABI hash. The safe crate lacks the Whisper extension's prompt placement and the per-window decoding
+trace; Skald uses `transcribe-cpp-sys` for those two until the safe crate has them. The choice holds while
+transcribe.cpp is the only engine; a second engine for beam search would reopen it.
+
+Skald builds transcribe.cpp with its own patches until upstream releases them: the budget for a prompt carried
+into every 30-second window, without which a full ordskatt breaks long takes, and Bokfink's language names
+([bokfink-gguf.md](research/bokfink-gguf.md)). So the ordskatt meter keeps its 223 tokens; the engine caps a
+carried prompt at 111 tokens only while the budget patch is not in the build.
+
+First run downloads NbAiLab's own `ggml-model.bin` at a pinned revision with its SHA-256. transcribe.cpp loads it
+directly, it gives the reference text, and the National Library hosts it, so Skald hosts no model file.
+
+The silence gate drops the model's no-speech probability, D-11's third check. It never fires: NB-Whisper's is
+0.000 on every silent take, and Bokfink has none. Level, Silero VAD and known phrases carry the gate. A model
+whose probability works may add the check back.
+
+Evidence: [research/engine-check.md](research/engine-check.md). Changed: [research.md](research.md#stack),
+[design.md](design.md#silence) and [First run](design.md#first-run), [plan.md](plan.md) M1b.
+
 ## D-20 — Microphone fallback, matching by name, a lost microphone and the menu pin
 
 2026-11-27, Claude.
@@ -118,6 +145,8 @@ command and `skald mcp` for agents that use MCP. The skill ships with the app an
 Whisper turns silence into «ja», «ja takk» or «den satt». A take passes four checks before anything is
 inserted: the level, Silero VAD, the model's no-speech probability and a list of known phrases. Changed:
 [design.md](design.md#silence).
+
+The no-speech check was dropped in D-22.
 
 ## D-10 — Microphones in a priority list
 

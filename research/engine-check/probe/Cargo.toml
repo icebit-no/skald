@@ -1,0 +1,17 @@
+[package]
+name = "engine-probe"
+version = "0.1.0"
+edition = "2021"
+publish = false
+description = "Runs NB-Whisper and Silero VAD through transcribe.cpp for the M1a engine check"
+license = "MIT"
+
+# Its own workspace, so the repository's future Cargo workspace does not claim it.
+[workspace]
+
+[dependencies]
+# The safe binding (VAD) and its raw FFI (the Whisper run extension and chunk
+# traces, which the safe binding does not expose). Metal is the default feature.
+transcribe-cpp = "=0.5.1"
+transcribe-cpp-sys = "=0.5.1"
+hound = "=3.5.1"

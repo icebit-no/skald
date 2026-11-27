@@ -1,0 +1,1884 @@
+{
+ "none": [
+  {
+   "file": "vocab-01",
+   "audio_s": 4.4894,
+   "text": "Jeg har merget Ulrekøsten og kjørt migreringen mot Kostgresskul.",
+   "status": "ok",
+   "load_ms": 113.0687,
+   "runs_ms": [
+    816.0
+   ],
+   "median_ms": 815.9619,
+   "mel_ms": 4.798,
+   "encode_ms": 449.522,
+   "decode_ms": 361.494,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.3512,
+     "compression_ratio": 0.8308,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  {
+   "file": "vocab-02",
+   "audio_s": 3.0417,
+   "text": "Kan biorebase Branken før vi merger den Tvimveien?",
+   "status": "ok",
+   "runs_ms": [
+    724.8
+   ],
+   "median_ms": 724.7797,
+   "mel_ms": 4.436,
+   "encode_ms": 444.353,
+   "decode_ms": 275.844,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.4189,
+     "compression_ratio": 0.7843,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  {
+   "file": "vocab-03",
+   "audio_s": 4.5511,
+   "text": "Hulrekuesten feiler fordi kubenetes klusteret mangler en sikret.",
+   "status": "ok",
+   "runs_ms": [
+    775.2
+   ],
+   "median_ms": 775.2077,
+   "mel_ms": 4.521,
+   "encode_ms": 443.109,
+   "decode_ms": 327.422,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.3516,
+     "compression_ratio": 0.8197,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  {
+   "file": "vocab-04",
+   "audio_s": 4.1879,
+   "text": "Vi bytter fra SQ Lite til PostgreSQ ElinesterElis.",
+   "status": "ok",
+   "runs_ms": [
+    753.7
+   ],
+   "median_ms": 753.69,
+   "mel_ms": 4.386,
+   "encode_ms": 443.643,
+   "decode_ms": 305.504,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.4439,
+     "compression_ratio": 0.807,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  {
+   "file": "vocab-05",
+   "audio_s": 2.7348,
+   "text": "SKALL setter inn teksten der markøren står.",
+   "status": "ok",
+   "runs_ms": [
+    681.8
+   ],
+   "median_ms": 681.8099,
+   "mel_ms": 3.16,
+   "encode_ms": 443.463,
+   "decode_ms": 235.02,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.3895,
+     "compression_ratio": 0.7442,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  {
+   "file": "vocab-06",
+   "audio_s": 2.7204,
+   "text": "Har du pushet committen til gitt hug ennå?",
+   "status": "ok",
+   "runs_ms": [
+    703.7
+   ],
+   "median_ms": 703.7029,
+   "mel_ms": 4.632,
+   "encode_ms": 444.387,
+   "decode_ms": 254.524,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.5013,
+     "compression_ratio": 0.766,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  {
+   "file": "vocab-07",
+   "audio_s": 4.1372,
+   "text": "Transribbe CPP kjører NB visper med metall på merken.",
+   "status": "ok",
+   "runs_ms": [
+    746.2
+   ],
+   "median_ms": 746.1772,
+   "mel_ms": 4.543,
+   "encode_ms": 443.586,
+   "decode_ms": 297.877,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.3252,
+     "compression_ratio": 0.8,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  {
+   "file": "vocab-08",
+   "audio_s": 3.2472,
+   "text": "Vi har merket den i går, så deployen gikk ut i natt.",
+   "status": "ok",
+   "runs_ms": [
+    735.0
+   ],
+   "median_ms": 734.9885,
+   "mel_ms": 4.425,
+   "encode_ms": 442.918,
+   "decode_ms": 287.465,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.3483,
+     "compression_ratio": 0.7925,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  {
+   "file": "vocab-long",
+   "audio_s": 97.1114,
+   "text": "God morgen, her er en kort oppdatering om hva jeg har gjort denne uken. Mandag gikk mest med til å rydde opp i gamle oppgaver og svare på e-post. SKAL setter inn teksten der markøren står. Tirsdag satt jeg sammen med teamet og planla arbeidet for de neste to ukene. Vi ble enige om å prioritere stabilitet for å ha nye funksjoner en stund. Kan du rebase branken før vi merger den til meg inn? Onsdag jobbet jeg videre med databasen. Jeg har merget pulrequesten og kjørt migreringen mot postgre-sql. Torsdag hadde vi et langt møte om hvordan vi skal rulle ut endringene. Pulrequesten feiler fordi kubernettet klusteret mangler en secret. Vi landet på å gjøre det gradvis, først for noen forbrukere og så for alle. Har du pushet committen til gitt hub.no? Vi bytter fra sq-lite til sq-lite. Fredag brukte jeg på dokumentasjon og på å skrive ned det vi har lært. TransribbeCPP kjører NB visper med metal på Mac-en. Neste uke vil jeg se nærmere på ytelsen, særlig når mange bruker systemet samtidig. Jeg merket den i går, så deployen gikk ut i natt. Jeg trenger også hjelp til å sette opp et nytt testmiljø. Hvis noen har tid, setter jeg stor pris på en gjennomgang av koden. Ellers går det fint, og jeg gleder meg til helgen. Det var alt for nå, takk for at dere hørte på.",
+   "status": "ok",
+   "runs_ms": [
+    6832.5
+   ],
+   "median_ms": 6832.5211,
+   "mel_ms": 11.612,
+   "encode_ms": 443.978,
+   "decode_ms": 6376.3892,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.2688,
+     "compression_ratio": 0.9649,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    },
+    {
+     "t0_ms": 30000.0,
+     "t1_ms": 60000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.3556,
+     "compression_ratio": 0.9606,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    },
+    {
+     "t0_ms": 60000.0,
+     "t1_ms": 90000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.3074,
+     "compression_ratio": 0.9632,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    },
+    {
+     "t0_ms": 90000.0,
+     "t1_ms": 97110.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.3022,
+     "compression_ratio": 0.8675,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  }
+ ],
+ "prompt": [
+  {
+   "file": "vocab-01",
+   "audio_s": 4.4894,
+   "text": "Jeg har merget pull-requesten og kjørt migreringen mot postgreSQL.",
+   "status": "ok",
+   "load_ms": 114.6198,
+   "runs_ms": [
+    856.9
+   ],
+   "median_ms": 856.854,
+   "mel_ms": 4.557,
+   "encode_ms": 443.339,
+   "decode_ms": 408.577,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.3686,
+     "compression_ratio": 0.8358,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  {
+   "file": "vocab-02",
+   "audio_s": 3.0417,
+   "text": "Kan biorebase branchen før vi merger den tvimmeveien?",
+   "status": "ok",
+   "runs_ms": [
+    766.2
+   ],
+   "median_ms": 766.1598,
+   "mel_ms": 4.518,
+   "encode_ms": 443.516,
+   "decode_ms": 317.878,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.4971,
+     "compression_ratio": 0.7925,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  {
+   "file": "vocab-03",
+   "audio_s": 4.5511,
+   "text": "Pull-requesten feiler fordi kubenetes-klusteret mangler en secret.",
+   "status": "ok",
+   "runs_ms": [
+    815.9
+   ],
+   "median_ms": 815.8725,
+   "mel_ms": 4.375,
+   "encode_ms": 443.327,
+   "decode_ms": 367.926,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.4161,
+     "compression_ratio": 0.8254,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  {
+   "file": "vocab-04",
+   "audio_s": 4.1879,
+   "text": "Vi bytter fra SQ Lite til PostgreSQ. Eller neste release.",
+   "status": "ok",
+   "runs_ms": [
+    768.0
+   ],
+   "median_ms": 767.9744,
+   "mel_ms": 4.615,
+   "encode_ms": 442.884,
+   "decode_ms": 320.215,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.4468,
+     "compression_ratio": 0.7925,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  {
+   "file": "vocab-05",
+   "audio_s": 2.7348,
+   "text": "SKAL setter inn teksten der markøren står.",
+   "status": "ok",
+   "runs_ms": [
+    715.4
+   ],
+   "median_ms": 715.3857,
+   "mel_ms": 4.629,
+   "encode_ms": 443.624,
+   "decode_ms": 266.876,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.3723,
+     "compression_ratio": 0.7442,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  {
+   "file": "vocab-06",
+   "audio_s": 2.7204,
+   "text": "Har du pushet commiten til gitt hug.no?",
+   "status": "ok",
+   "runs_ms": [
+    725.4
+   ],
+   "median_ms": 725.4054,
+   "mel_ms": 4.387,
+   "encode_ms": 443.335,
+   "decode_ms": 277.414,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.4531,
+     "compression_ratio": 0.7556,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  {
+   "file": "vocab-07",
+   "audio_s": 4.1372,
+   "text": "Transribbe cpp kjører NB visper med metall på merken.",
+   "status": "ok",
+   "runs_ms": [
+    777.6
+   ],
+   "median_ms": 777.6007,
+   "mel_ms": 4.525,
+   "encode_ms": 443.835,
+   "decode_ms": 328.96,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.3412,
+     "compression_ratio": 0.8,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  {
+   "file": "vocab-08",
+   "audio_s": 3.2472,
+   "text": "Vi har merget den i går, så deployen gikk ut i natt.",
+   "status": "ok",
+   "runs_ms": [
+    768.9
+   ],
+   "median_ms": 768.9088,
+   "mel_ms": 4.438,
+   "encode_ms": 443.583,
+   "decode_ms": 320.603,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.3401,
+     "compression_ratio": 0.7925,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  {
+   "file": "vocab-long",
+   "audio_s": 97.1114,
+   "text": "God morgen, her er en kort oppdatering om hva jeg har gjort denne uken. Mandag gikk mest med til å rydde opp i gamle oppgaver og svare på e-post. SKAL setter inn teksten der markøren står. Tirsdag satt jeg sammen med teamet og planla å arbeide for de neste to ukene. Vi ble enige om å prioritere stabilitet for å ha nye funksjoner en stund. Kan du rebase branken før vi merger den til meg inn? Onsdag jobbet jeg videre med databasen. Jeg har merget pulrequesten og kjørt migreringen mot postgre-sql. Torsdag hadde vi et langt møte om hvordan vi skal rulle ut endringene. Pulrequesten feiler fordi kubernettet klusteret mangler en secret. Vi landet på å gjøre det gradvis, først for noen forbrukere og så for alle. Har du pushet committen til gitt hub.no? Vi bytter fra sq-lite til sq-lite. Fredag brukte jeg på dokumentasjon og på å skrive ned det vi har lært. TransribbeCPP kjører NB visper med metal på Mac-en. Neste uke vil jeg se nærmere på ytelsen, særlig når mange bruker systemet samtidig. Jeg merket den i går, så deployen gikk ut i natt. Jeg trenger også hjelp til å sette opp et nytt testmiljø. Hvis noen har tid, setter jeg stor pris på en gjennomgang av koden. Ellers går det fint, og jeg gleder meg til helgen. Det var alt for nå, takk for at dere hørte på.",
+   "status": "ok",
+   "runs_ms": [
+    6904.0
+   ],
+   "median_ms": 6904.0464,
+   "mel_ms": 11.693,
+   "encode_ms": 444.086,
+   "decode_ms": 6447.4648,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.2649,
+     "compression_ratio": 0.9653,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    },
+    {
+     "t0_ms": 30000.0,
+     "t1_ms": 60000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.3556,
+     "compression_ratio": 0.9606,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    },
+    {
+     "t0_ms": 60000.0,
+     "t1_ms": 90000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.3074,
+     "compression_ratio": 0.9632,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    },
+    {
+     "t0_ms": 90000.0,
+     "t1_ms": 97110.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.3022,
+     "compression_ratio": 0.8675,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  }
+ ],
+ "prompt+condition": [
+  {
+   "file": "vocab-01",
+   "audio_s": 4.4894,
+   "text": "Jeg har merget pull-requesten og kjørt migreringen mot postgreSQL.",
+   "status": "ok",
+   "load_ms": 114.8081,
+   "runs_ms": [
+    857.4
+   ],
+   "median_ms": 857.4312,
+   "mel_ms": 4.315,
+   "encode_ms": 444.135,
+   "decode_ms": 408.643,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.3686,
+     "compression_ratio": 0.8358,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  {
+   "file": "vocab-02",
+   "audio_s": 3.0417,
+   "text": "Kan biorebase branchen før vi merger den tvimmeveien?",
+   "status": "ok",
+   "runs_ms": [
+    768.5
+   ],
+   "median_ms": 768.4819,
+   "mel_ms": 4.569,
+   "encode_ms": 444.046,
+   "decode_ms": 319.636,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.4971,
+     "compression_ratio": 0.7925,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  {
+   "file": "vocab-03",
+   "audio_s": 4.5511,
+   "text": "Pull-requesten feiler fordi kubenetes-klusteret mangler en secret.",
+   "status": "ok",
+   "runs_ms": [
+    817.7
+   ],
+   "median_ms": 817.6937,
+   "mel_ms": 3.103,
+   "encode_ms": 442.799,
+   "decode_ms": 371.539,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.4161,
+     "compression_ratio": 0.8254,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  {
+   "file": "vocab-04",
+   "audio_s": 4.1879,
+   "text": "Vi bytter fra SQ Lite til PostgreSQ. Eller neste release.",
+   "status": "ok",
+   "runs_ms": [
+    765.9
+   ],
+   "median_ms": 765.8529,
+   "mel_ms": 4.44,
+   "encode_ms": 442.95,
+   "decode_ms": 318.219,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.4468,
+     "compression_ratio": 0.7925,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  {
+   "file": "vocab-05",
+   "audio_s": 2.7348,
+   "text": "SKAL setter inn teksten der markøren står.",
+   "status": "ok",
+   "runs_ms": [
+    713.1
+   ],
+   "median_ms": 713.0971,
+   "mel_ms": 4.415,
+   "encode_ms": 442.259,
+   "decode_ms": 266.172,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.3723,
+     "compression_ratio": 0.7442,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  {
+   "file": "vocab-06",
+   "audio_s": 2.7204,
+   "text": "Har du pushet commiten til gitt hug.no?",
+   "status": "ok",
+   "runs_ms": [
+    725.1
+   ],
+   "median_ms": 725.1362,
+   "mel_ms": 4.612,
+   "encode_ms": 443.524,
+   "decode_ms": 276.751,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.4531,
+     "compression_ratio": 0.7556,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  {
+   "file": "vocab-07",
+   "audio_s": 4.1372,
+   "text": "Transribbe cpp kjører NB visper med metall på merken.",
+   "status": "ok",
+   "runs_ms": [
+    778.1
+   ],
+   "median_ms": 778.0532,
+   "mel_ms": 4.446,
+   "encode_ms": 442.673,
+   "decode_ms": 330.67,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.3412,
+     "compression_ratio": 0.8,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  {
+   "file": "vocab-08",
+   "audio_s": 3.2472,
+   "text": "Vi har merget den i går, så deployen gikk ut i natt.",
+   "status": "ok",
+   "runs_ms": [
+    767.3
+   ],
+   "median_ms": 767.2949,
+   "mel_ms": 4.498,
+   "encode_ms": 442.855,
+   "decode_ms": 319.684,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.3401,
+     "compression_ratio": 0.7925,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  {
+   "file": "vocab-long",
+   "audio_s": 97.1114,
+   "text": "God morgen, her er en kort oppdatering om hva jeg har gjort denne uken. Mandag gikk mest med til å rydde opp i gamle oppgaver og svare på e-post. SKAL setter inn teksten der markøren står. Tirsdag satt jeg sammen med teamet og planla å arbeide for de neste to ukene. Vi ble enige om å prioritere stabilitet for å ha nye funksjoner en stund. Kan du rebase branken før vi merger den til meg inn? Onsdag jobbet jeg videre med databasen. Det tok lengre tid enn ventet, fordi testene var trege og noen av dem feilet tilfeldig. Jeg har merget pull-requesten og kjørt migreringen mot postgre-sql. Torsdag hadde vi et langt møte om hvordan vi skal rulle ut endringene. Pull-requesten feiler fordi kubernettes-klusteret mangler en secret. Vi landet på å gjøre det gradvis, først for noen forbrukere og så for alle. Har du pushet commiten til gitt hub.no? Fredag brukte jeg på dokumentasjon og på å skrive ned det vi har lært. Transribbe cpp kjører NB visper med metal på Mac-en. Neste uke vil jeg se nærmere på ytelsen, særlig når mange bruker systemet samtidig. Jeg merget den i går, så deployen gikk ut i natt. Jeg trenger også hjelp til å sette opp et nytt testmiljø. Hvis noen har tid, setter jeg stor pris på en gjennomgang av koden. Ellers går det fint, og jeg gleder meg til helgen. Det var alt for nå, takk for at dere hørte på.",
+   "status": "ok",
+   "runs_ms": [
+    7372.4
+   ],
+   "median_ms": 7372.3824,
+   "mel_ms": 11.663,
+   "encode_ms": 443.584,
+   "decode_ms": 6916.4609,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.2649,
+     "compression_ratio": 0.9653,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    },
+    {
+     "t0_ms": 30000.0,
+     "t1_ms": 60000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.2558,
+     "compression_ratio": 0.9653,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    },
+    {
+     "t0_ms": 60000.0,
+     "t1_ms": 90000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.3076,
+     "compression_ratio": 0.9632,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    },
+    {
+     "t0_ms": 90000.0,
+     "t1_ms": 97110.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.3142,
+     "compression_ratio": 0.8675,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  }
+ ],
+ "prompt+carry": [
+  {
+   "file": "vocab-01",
+   "audio_s": 4.4894,
+   "text": "Jeg har merget pull-requesten og kjørt migreringen mot postgreSQL.",
+   "status": "ok",
+   "load_ms": 115.8519,
+   "runs_ms": [
+    854.4
+   ],
+   "median_ms": 854.4126,
+   "mel_ms": 4.659,
+   "encode_ms": 443.933,
+   "decode_ms": 405.428,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.3686,
+     "compression_ratio": 0.8358,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  {
+   "file": "vocab-02",
+   "audio_s": 3.0417,
+   "text": "Kan biorebase branchen før vi merger den tvimmeveien?",
+   "status": "ok",
+   "runs_ms": [
+    767.4
+   ],
+   "median_ms": 767.4269,
+   "mel_ms": 4.603,
+   "encode_ms": 444.085,
+   "decode_ms": 318.462,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.4971,
+     "compression_ratio": 0.7925,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  {
+   "file": "vocab-03",
+   "audio_s": 4.5511,
+   "text": "Pull-requesten feiler fordi kubenetes-klusteret mangler en secret.",
+   "status": "ok",
+   "runs_ms": [
+    820.4
+   ],
+   "median_ms": 820.3879,
+   "mel_ms": 4.558,
+   "encode_ms": 443.076,
+   "decode_ms": 372.499,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.4161,
+     "compression_ratio": 0.8254,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  {
+   "file": "vocab-04",
+   "audio_s": 4.1879,
+   "text": "Vi bytter fra SQ Lite til PostgreSQ. Eller neste release.",
+   "status": "ok",
+   "runs_ms": [
+    768.0
+   ],
+   "median_ms": 768.0195,
+   "mel_ms": 4.64,
+   "encode_ms": 444.152,
+   "decode_ms": 318.856,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.4468,
+     "compression_ratio": 0.7925,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  {
+   "file": "vocab-05",
+   "audio_s": 2.7348,
+   "text": "SKAL setter inn teksten der markøren står.",
+   "status": "ok",
+   "runs_ms": [
+    714.8
+   ],
+   "median_ms": 714.7518,
+   "mel_ms": 4.488,
+   "encode_ms": 442.918,
+   "decode_ms": 267.085,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.3723,
+     "compression_ratio": 0.7442,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  {
+   "file": "vocab-06",
+   "audio_s": 2.7204,
+   "text": "Har du pushet commiten til gitt hug.no?",
+   "status": "ok",
+   "runs_ms": [
+    725.7
+   ],
+   "median_ms": 725.71,
+   "mel_ms": 4.488,
+   "encode_ms": 443.375,
+   "decode_ms": 277.603,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.4531,
+     "compression_ratio": 0.7556,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  {
+   "file": "vocab-07",
+   "audio_s": 4.1372,
+   "text": "Transribbe cpp kjører NB visper med metall på merken.",
+   "status": "ok",
+   "runs_ms": [
+    778.6
+   ],
+   "median_ms": 778.581,
+   "mel_ms": 4.32,
+   "encode_ms": 442.559,
+   "decode_ms": 331.447,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.3412,
+     "compression_ratio": 0.8,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  {
+   "file": "vocab-08",
+   "audio_s": 3.2472,
+   "text": "Vi har merget den i går, så deployen gikk ut i natt.",
+   "status": "ok",
+   "runs_ms": [
+    766.7
+   ],
+   "median_ms": 766.7245,
+   "mel_ms": 4.517,
+   "encode_ms": 443.227,
+   "decode_ms": 318.703,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.3401,
+     "compression_ratio": 0.7925,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  {
+   "file": "vocab-long",
+   "audio_s": 97.1114,
+   "text": "God morgen, her er en kort oppdatering om hva jeg har gjort denne uken. Mandag gikk mest med til å rydde opp i gamle oppgaver og svare på e-post. SKAL setter inn teksten der markøren står. Tirsdag satt jeg sammen med teamet og planla å arbeide for de neste to ukene. Vi ble enige om å prioritere stabilitet for å ha nye funksjoner en stund. Kan du rebase branken før vi merger den til meg inn? Onsdag jobbet jeg videre med databasen. Det tok lengre tid enn ventet, fordi testene var trege og noen av dem feilet tilfeldig. Jeg har merget pull-requesten og kjørt migreringen mot postgre-sql. Torsdag hadde vi et langt møte om hvordan vi skal rulle ut endringene. Pull-requesten feiler fordi kubernettes-klusteret mangler en secret. Vi landet på å gjøre det gradvis, først for noen forbrukere og så for alle. Har du pushet commiten til gitt hub.no? Neste uke vil jeg se nærmere på ytelsen, særlig når mange bruker systemet samtidig. Jeg merget den i går, så deployen gikk ut i natt. Jeg trenger også hjelp til å sette opp et nytt testmiljø. Hvis noen har tid, setter jeg stor pris på en gjennomgang av koden. Ellers går det fint, og jeg gleder meg til helgen. Det var alt for nå, takk for at dere hørte på.",
+   "status": "ok",
+   "runs_ms": [
+    6957.3
+   ],
+   "median_ms": 6957.345,
+   "mel_ms": 11.67,
+   "encode_ms": 443.384,
+   "decode_ms": 6501.6138,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.2649,
+     "compression_ratio": 0.9653,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    },
+    {
+     "t0_ms": 30000.0,
+     "t1_ms": 60000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.2558,
+     "compression_ratio": 0.9653,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    },
+    {
+     "t0_ms": 60000.0,
+     "t1_ms": 90000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.3119,
+     "compression_ratio": 0.9474,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    },
+    {
+     "t0_ms": 90000.0,
+     "t1_ms": 97110.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.3134,
+     "compression_ratio": 0.8675,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  }
+ ],
+ "prompt+carry, capped": [
+  {
+   "file": "vocab-01",
+   "audio_s": 4.4894,
+   "text": "Jeg har merget pull-requesten og kjørt migreringen mot postgreSQL.",
+   "status": "ok",
+   "load_ms": 109.4061,
+   "runs_ms": [
+    858.7
+   ],
+   "median_ms": 858.7368,
+   "mel_ms": 4.71,
+   "encode_ms": 444.255,
+   "decode_ms": 409.319,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.3686,
+     "compression_ratio": 0.8358,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  {
+   "file": "vocab-02",
+   "audio_s": 3.0417,
+   "text": "Kan biorebase branchen før vi merger den tvimmeveien?",
+   "status": "ok",
+   "runs_ms": [
+    766.0
+   ],
+   "median_ms": 765.9935,
+   "mel_ms": 4.372,
+   "encode_ms": 443.493,
+   "decode_ms": 317.878,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.4971,
+     "compression_ratio": 0.7925,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  {
+   "file": "vocab-03",
+   "audio_s": 4.5511,
+   "text": "Pull-requesten feiler fordi kubenetes-klusteret mangler en secret.",
+   "status": "ok",
+   "runs_ms": [
+    817.7
+   ],
+   "median_ms": 817.7051,
+   "mel_ms": 4.391,
+   "encode_ms": 444.251,
+   "decode_ms": 368.796,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.4161,
+     "compression_ratio": 0.8254,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  {
+   "file": "vocab-04",
+   "audio_s": 4.1879,
+   "text": "Vi bytter fra SQ Lite til PostgreSQ. Eller neste release.",
+   "status": "ok",
+   "runs_ms": [
+    767.2
+   ],
+   "median_ms": 767.2095,
+   "mel_ms": 4.336,
+   "encode_ms": 444.734,
+   "decode_ms": 317.869,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.4468,
+     "compression_ratio": 0.7925,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  {
+   "file": "vocab-05",
+   "audio_s": 2.7348,
+   "text": "SKAL setter inn teksten der markøren står.",
+   "status": "ok",
+   "runs_ms": [
+    714.6
+   ],
+   "median_ms": 714.6004,
+   "mel_ms": 4.465,
+   "encode_ms": 444.225,
+   "decode_ms": 265.66,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.3723,
+     "compression_ratio": 0.7442,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  {
+   "file": "vocab-06",
+   "audio_s": 2.7204,
+   "text": "Har du pushet commiten til gitt hug.no?",
+   "status": "ok",
+   "runs_ms": [
+    727.2
+   ],
+   "median_ms": 727.1683,
+   "mel_ms": 4.465,
+   "encode_ms": 444.119,
+   "decode_ms": 278.302,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.4531,
+     "compression_ratio": 0.7556,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  {
+   "file": "vocab-07",
+   "audio_s": 4.1372,
+   "text": "Transribbe cpp kjører NB visper med metall på merken.",
+   "status": "ok",
+   "runs_ms": [
+    777.0
+   ],
+   "median_ms": 777.0372,
+   "mel_ms": 4.535,
+   "encode_ms": 442.865,
+   "decode_ms": 329.376,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.3412,
+     "compression_ratio": 0.8,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  {
+   "file": "vocab-08",
+   "audio_s": 3.2472,
+   "text": "Vi har merget den i går, så deployen gikk ut i natt.",
+   "status": "ok",
+   "runs_ms": [
+    767.4
+   ],
+   "median_ms": 767.4053,
+   "mel_ms": 4.623,
+   "encode_ms": 443.936,
+   "decode_ms": 318.572,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.3401,
+     "compression_ratio": 0.7925,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  {
+   "file": "vocab-long",
+   "audio_s": 97.1114,
+   "text": "God morgen, her er en kort oppdatering om hva jeg har gjort denne uken. Mandag gikk mest med til å rydde opp i gamle oppgaver og svare på e-post. SKAL setter inn teksten der markøren står. Tirsdag satt jeg sammen med teamet og planla å arbeide for de neste to ukene. Vi ble enige om å prioritere stabilitet for å ha nye funksjoner en stund. Kan du rebase branken før vi merger den til meg inn? Onsdag jobbet jeg videre med databasen. Det tok lengre tid enn ventet, fordi testene var trege og noen av dem feilet tilfeldig. Jeg har merget pull-requesten og kjørt migreringen mot postgre-sql. Torsdag hadde vi et langt møte om hvordan vi skal rulle ut endringene. Pull-requesten feiler fordi kubernettes-klusteret mangler en secret. Vi landet på å gjøre det gradvis, først for noen forbrukere og så for alle. Har du pushet commiten til gitt hub.no? Fredag brukte jeg på dokumentasjon og på å skrive ned det vi har lært. Transribbe cpp kjører NB-visper med metal på Macen. Neste uke vil jeg se nærmere på ytelsen, særlig når mange bruker systemet samtidig. Jeg merget den i går, så deployen gikk ut i natt. Jeg trenger også hjelp til å sette opp et nytt testmiljø. Ellers går det fint, og jeg gleder meg til helgen. Det var alt for nå, takk for at dere hørte på.",
+   "status": "ok",
+   "runs_ms": [
+    7135.4
+   ],
+   "median_ms": 7135.385,
+   "mel_ms": 11.688,
+   "encode_ms": 444.138,
+   "decode_ms": 6678.8828,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.2649,
+     "compression_ratio": 0.9653,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    },
+    {
+     "t0_ms": 30000.0,
+     "t1_ms": 60000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.2558,
+     "compression_ratio": 0.9653,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    },
+    {
+     "t0_ms": 60000.0,
+     "t1_ms": 90000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.3091,
+     "compression_ratio": 0.9562,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    },
+    {
+     "t0_ms": 90000.0,
+     "t1_ms": 97110.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.3109,
+     "compression_ratio": 0.8675,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  }
+ ],
+ "long prompt+carry": [
+  {
+   "file": "vocab-01",
+   "audio_s": 4.4894,
+   "text": "Jeg har merget pull-requesten og kjørt migreringen mot postgresquel.",
+   "status": "ok",
+   "load_ms": 116.4065,
+   "runs_ms": [
+    899.8
+   ],
+   "median_ms": 899.8475,
+   "mel_ms": 4.642,
+   "encode_ms": 443.171,
+   "decode_ms": 451.508,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.3526,
+     "compression_ratio": 0.8358,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  {
+   "file": "vocab-02",
+   "audio_s": 3.0417,
+   "text": "Kan biorebase branken før vi merger den tvimveien?",
+   "status": "ok",
+   "runs_ms": [
+    802.8
+   ],
+   "median_ms": 802.7794,
+   "mel_ms": 4.557,
+   "encode_ms": 443.594,
+   "decode_ms": 354.19,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.4693,
+     "compression_ratio": 0.7843,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  {
+   "file": "vocab-03",
+   "audio_s": 4.5511,
+   "text": "Pull-requesten feiler fordi kubenetes-klusteret mangler en secret.",
+   "status": "ok",
+   "runs_ms": [
+    876.2
+   ],
+   "median_ms": 876.249,
+   "mel_ms": 4.484,
+   "encode_ms": 443.03,
+   "decode_ms": 428.328,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.4136,
+     "compression_ratio": 0.8308,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  {
+   "file": "vocab-04",
+   "audio_s": 4.1879,
+   "text": "Vi bytter fra SQ Lite til PostgreSQ. ElinesterElis.",
+   "status": "ok",
+   "runs_ms": [
+    845.1
+   ],
+   "median_ms": 845.0657,
+   "mel_ms": 4.534,
+   "encode_ms": 442.977,
+   "decode_ms": 397.14,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.4492,
+     "compression_ratio": 0.8136,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  {
+   "file": "vocab-05",
+   "audio_s": 2.7348,
+   "text": "SKAL setter inn teksten der markøren står.",
+   "status": "ok",
+   "runs_ms": [
+    761.1
+   ],
+   "median_ms": 761.0791,
+   "mel_ms": 4.519,
+   "encode_ms": 443.225,
+   "decode_ms": 312.931,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.4036,
+     "compression_ratio": 0.7442,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  {
+   "file": "vocab-06",
+   "audio_s": 2.7204,
+   "text": "Har du pushet commiten til gitt hug.no?",
+   "status": "ok",
+   "runs_ms": [
+    771.2
+   ],
+   "median_ms": 771.2229,
+   "mel_ms": 4.445,
+   "encode_ms": 442.843,
+   "decode_ms": 323.54,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.4715,
+     "compression_ratio": 0.7556,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  {
+   "file": "vocab-07",
+   "audio_s": 4.1372,
+   "text": "TransribbeCPP kjører NB visper med metal på merken.",
+   "status": "ok",
+   "runs_ms": [
+    825.1
+   ],
+   "median_ms": 825.097,
+   "mel_ms": 4.518,
+   "encode_ms": 442.873,
+   "decode_ms": 377.278,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.3777,
+     "compression_ratio": 0.8,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  {
+   "file": "vocab-08",
+   "audio_s": 3.2472,
+   "text": "Vi har merget den i går, så deployen gikk ut i natt.",
+   "status": "ok",
+   "runs_ms": [
+    814.2
+   ],
+   "median_ms": 814.1993,
+   "mel_ms": 4.622,
+   "encode_ms": 443.63,
+   "decode_ms": 365.523,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.3625,
+     "compression_ratio": 0.7925,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  {
+   "file": "vocab-long",
+   "audio_s": 97.1114,
+   "text": "God morgen, her er en kort oppdatering om hva jeg har gjort denne uken. Mandag gikk mest med til å rydde opp i gamle oppgaver og svare på e-post. SKAL setter inn teksten der markøren står. Tirsdag satt jeg sammen med teamet og planla å arbeide for de neste to ukene. Vi ble enige om å prioritere stabilitet for å ha nye funksjoner en stund. Kan du rebase branchen før vi merger den til meg inn? Onsdag jobbet jeg videre med databasen. Den ventet på en lengre tid den ventet, fordi testene var trege og noen av dem feilet tilfeldig. Jeg har merget pullrequesten og kjørt migrerten og kjørt migreringen mot postgre-squel. Torsdag hadde vi et langt pulle p Torsdag brukteg brukte jeg på dokumentas Det var altfor nå, og jeg",
+   "status": "ok",
+   "runs_ms": [
+    5214.2
+   ],
+   "median_ms": 5214.1623,
+   "mel_ms": 11.505,
+   "encode_ms": 443.024,
+   "decode_ms": 4758.7871,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.2759,
+     "compression_ratio": 0.9651,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    },
+    {
+     "t0_ms": 30000.0,
+     "t1_ms": 60000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.5671,
+     "compression_ratio": 0.9364,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    },
+    {
+     "t0_ms": 40040.0,
+     "t1_ms": 70040.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.4578,
+     "compression_ratio": 0.7027,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    },
+    {
+     "t0_ms": 70040.0,
+     "t1_ms": 97110.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.8108,
+     "compression_ratio": 0.6207,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  }
+ ],
+ "long prompt+carry, capped": [
+  {
+   "file": "vocab-01",
+   "audio_s": 4.4894,
+   "text": "Jeg har merget Ulrekøsten og kjørt migreringen mot PostgreSQL.",
+   "status": "ok",
+   "load_ms": 118.503,
+   "runs_ms": [
+    807.0
+   ],
+   "median_ms": 806.9695,
+   "mel_ms": 4.556,
+   "encode_ms": 444.041,
+   "decode_ms": 357.763,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.3732,
+     "compression_ratio": 0.8254,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  {
+   "file": "vocab-02",
+   "audio_s": 3.0417,
+   "text": "Kan biorebase Branken før vi merger den Tvimveien?",
+   "status": "ok",
+   "runs_ms": [
+    728.8
+   ],
+   "median_ms": 728.7655,
+   "mel_ms": 4.799,
+   "encode_ms": 444.538,
+   "decode_ms": 278.925,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.4227,
+     "compression_ratio": 0.7843,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  {
+   "file": "vocab-03",
+   "audio_s": 4.5511,
+   "text": "Hulrekuesten feiler fordi kubenetes klusteret mangler en sikret.",
+   "status": "ok",
+   "runs_ms": [
+    779.7
+   ],
+   "median_ms": 779.67,
+   "mel_ms": 4.63,
+   "encode_ms": 443.386,
+   "decode_ms": 331.266,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.3648,
+     "compression_ratio": 0.8197,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  {
+   "file": "vocab-04",
+   "audio_s": 4.1879,
+   "text": "Vi bytter fra SQ Lite til PostgreSQEL i neste release.",
+   "status": "ok",
+   "runs_ms": [
+    749.0
+   ],
+   "median_ms": 748.979,
+   "mel_ms": 4.49,
+   "encode_ms": 443.563,
+   "decode_ms": 300.516,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.3957,
+     "compression_ratio": 0.8,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  {
+   "file": "vocab-05",
+   "audio_s": 2.7348,
+   "text": "SKALD setter inn teksten der markøren står.",
+   "status": "ok",
+   "runs_ms": [
+    687.3
+   ],
+   "median_ms": 687.2705,
+   "mel_ms": 4.212,
+   "encode_ms": 442.908,
+   "decode_ms": 239.754,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.3923,
+     "compression_ratio": 0.7442,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  {
+   "file": "vocab-06",
+   "audio_s": 2.7204,
+   "text": "Har du pushet committen til gitt hug ennå?",
+   "status": "ok",
+   "runs_ms": [
+    707.0
+   ],
+   "median_ms": 707.0169,
+   "mel_ms": 3.645,
+   "encode_ms": 443.914,
+   "decode_ms": 259.034,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.4832,
+     "compression_ratio": 0.766,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  {
+   "file": "vocab-07",
+   "audio_s": 4.1372,
+   "text": "Transribbe CPP kjører NB visper med metall på merken.",
+   "status": "ok",
+   "runs_ms": [
+    748.2
+   ],
+   "median_ms": 748.1762,
+   "mel_ms": 4.48,
+   "encode_ms": 443.042,
+   "decode_ms": 300.258,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.3152,
+     "compression_ratio": 0.8,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  {
+   "file": "vocab-08",
+   "audio_s": 3.2472,
+   "text": "Vi har merket den i går, så deployen gikk ut i natt.",
+   "status": "ok",
+   "runs_ms": [
+    737.7
+   ],
+   "median_ms": 737.7337,
+   "mel_ms": 4.418,
+   "encode_ms": 443.285,
+   "decode_ms": 289.63,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.3488,
+     "compression_ratio": 0.7925,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  },
+  {
+   "file": "vocab-long",
+   "audio_s": 97.1114,
+   "text": "God morgen, her er en kort oppdatering om hva jeg har gjort denne uken. Mandag gikk mest med til å rydde opp i gamle oppgaver og svare på e-post. SKALD setter inn teksten der markøren står. Tirsdag satt jeg sammen med teamet og planla arbeidet for de neste to ukene. Vi ble enige om å prioritere stabilitet for å ha nye funksjoner en stund. Kan du rebase branken før vi merger den til meg inn? Onsdag jobbet jeg videre med databasen. Jeg har merget pulrequesten og kjørt migreringen mot PostgreSQL. Torsdag hadde vi et langt møte om hvordan vi skal rulle ut endringene. Pulrequesten feiler fordi kubernettet klusteret mangler en secret. Vi landet på å gjøre det gradvis, først for noen forbrukere og så for alle. Har du pushet committen til gitt hub.no? Vi bytter fra sku-lite til sku-mangel. Fredag brukte jeg på dokumentasjon og på å skrive ned det vi har lært. TransribbeCPP kjører NB visper med metal på Mac-en. Neste uke vil jeg se nærmere på ytelsen, særlig når mange bruker systemet samtidig. Jeg merket den i går, så deployen gikk ut i natt. Jeg trenger også hjelp til å sette opp et nytt testmiljø. Hvis noen har tid, setter jeg stor pris på en gjennomgang av koden. Ellers går det fint, og jeg gleder meg til helgen. Det var alt for nå, takk for at dere hørte på.",
+   "status": "ok",
+   "runs_ms": [
+    6877.5
+   ],
+   "median_ms": 6877.4977,
+   "mel_ms": 11.537,
+   "encode_ms": 443.439,
+   "decode_ms": 6421.7202,
+   "windows": [
+    {
+     "t0_ms": 0.0,
+     "t1_ms": 30000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.2679,
+     "compression_ratio": 0.9649,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    },
+    {
+     "t0_ms": 30000.0,
+     "t1_ms": 60000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.3858,
+     "compression_ratio": 0.9606,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    },
+    {
+     "t0_ms": 60000.0,
+     "t1_ms": 90000.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.304,
+     "compression_ratio": 0.9632,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    },
+    {
+     "t0_ms": 90000.0,
+     "t1_ms": 97110.0,
+     "no_speech_prob": 0.0,
+     "avg_logprob": -0.2996,
+     "compression_ratio": 0.8675,
+     "temperature": 0.0,
+     "fallbacks": 0.0,
+     "no_speech_triggered": false
+    }
+   ]
+  }
+ ],
+ "wc prompt+carry": [
+  {
+   "file": "vocab-01",
+   "text": "Jeg har merget pull-requesten og kjørt migreringen mot postgreSQL."
+  },
+  {
+   "file": "vocab-02",
+   "text": "Kan biorebase branken før vi merger den tvimme veien?"
+  },
+  {
+   "file": "vocab-03",
+   "text": "Pull-requesten feiler fordi kubenetes-klusteret mangler en secret."
+  },
+  {
+   "file": "vocab-04",
+   "text": "Vi bytter fra SQ Lite til PostgreSQ. ElinesterElis."
+  },
+  {
+   "file": "vocab-05",
+   "text": "SKAL setter inn teksten der markøren står."
+  },
+  {
+   "file": "vocab-06",
+   "text": "Har du pushet commiten til gitt hug.no?"
+  },
+  {
+   "file": "vocab-07",
+   "text": "Transribbe cpp kjører NB visper med metal på merken."
+  },
+  {
+   "file": "vocab-08",
+   "text": "Vi har merket den i går, så deployen gikk ut i natt."
+  },
+  {
+   "file": "vocab-long",
+   "text": "God morgen, her er en kort oppdatering om hva jeg har gjort denne uken. Mandag gikk mest med til å rydde opp i gamle oppgaver og svare på e-post. SKAL setter inn teksten der markøren står. Tirsdag satt jeg sammen med teamet og planla arbeidet for de neste to ukene. Vi ble enige om å prioritere stabilitet for å ha nye funksjoner en stund. Kan du rebase branken før vi merger den til meg inn? Onsdag jobbet jeg videre med databasen. Jeg har merget pull-requesten og kjørt migreringen mot postgre-sql. Torsdag hadde vi et langt møte om hvordan vi skal rulle ut endringene. Pull-requesten feiler fordi kubernettes-klusteret mangler en secret. Vi landet på å gjøre det gradvis, først for noen forbrukere og så for alle. Har du pushet commiten til gitt hub.no? Vi bytter fra sq-lite til sq-lite. Fredag brukte jeg på dokumentasjon og på å skrive ned det vi har lært. Transribbe cpp kjører NB-visper med metal på Macen. Neste uke vil jeg se nærmere på ytelsen, særlig når mange bruker systemet samtidig. Jeg merget den i går, så deployen gikk ut i natt. Jeg trenger også hjelp til å sette opp et nytt testmiljø. Hvis noen har tid, setter jeg stor pris på en gjennomgang av koden. Ellers går det fint, og jeg gleder meg til helgen. Det var alt for nå, takk for at dere hørte på."
+  }
+ ],
+ "wc long prompt+carry": [
+  {
+   "file": "vocab-01",
+   "text": "Jeg har merget pull-requesten og kjørt migreringen mot postgresquel."
+  },
+  {
+   "file": "vocab-02",
+   "text": "Kan biorebase branken før vi merger den tvimmveien?"
+  },
+  {
+   "file": "vocab-03",
+   "text": "Pull-re-questen feiler fordi kuben-etes-klusteret mangler en secret."
+  },
+  {
+   "file": "vocab-04",
+   "text": "Vi bytter fra SQ Lite til PostgreSQ. ElinesterElis."
+  },
+  {
+   "file": "vocab-05",
+   "text": "SKAL setter inn teksten der markøren står."
+  },
+  {
+   "file": "vocab-06",
+   "text": "Har du pushet commiten til gitt hug.no?"
+  },
+  {
+   "file": "vocab-07",
+   "text": "TransribbeCPP kjører NB visper med metal på merken."
+  },
+  {
+   "file": "vocab-08",
+   "text": "Vi har merket den i går, så deployen gikk ut i natt."
+  },
+  {
+   "file": "vocab-long",
+   "text": "God morgen, her er en kort oppdatering om hva jeg har gjort denne uken. Mandag gikk mest med til å rydde opp i gamle oppgaver og svare på e-post. SKAL setter inn teksten der markøren står. Tirsdag satt jeg sammen med teamet og planla arbeidet for de neste to ukene. Vi ble enige om å prioritere stabilitet for å ha nye funksjoner en stund. Kan du rebase branken før vi merger den til meg? Onsdag jobbet jeg videre med databasen. Det tok tid. Det tok lengre tid enn ventet, fordi testene var trege og noen av dem feilet tilfeldig. Jeg har merget pull-requesten og kjørt migreringen mot postgre-sql. Torsdag hadde vi et langt møte om hvordan vi skal rulle ut endringene. Pull-requesten feiler fordi kubernet-klusteret mangler en secret. Vi landet på å gjøre det gradvis, først for noen forbrukere og så for alle. Har du pushet commiten til gitt hub.no? Vi bytter fra sq-lite til Fredag brukte jeg på dokumentasjon og på å skrive ned det vi har lært. TransribbeCPP kjører NB-visper med metal på Mac-en. Neste uke vil jeg se nærmere på ytelsen, særlig når mange bruker systemet samtidig. Jeg merket den i går, så deployen gikk ut i natt. Jeg trenger også hjelp til å sette opp et nytt testmiljø. Hvis noen har tid, setter jeg stor pris på en gjennomgang av koden. Ellers går det fint, og jeg gleder meg til helgen. Det var alt for nå, takk for at dere hørte på."
+  }
+ ]
+}

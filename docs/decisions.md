@@ -5,6 +5,16 @@ decision, and that pull request also edits the page where the rule lives ([desig
 [plan.md](plan.md)). Those pages say what holds; this one says when and why it came to hold. A later decision
 that undoes one adds an entry of its own, and the earlier entry gets one line naming it.
 
+## D-17 — The app icon is ᚨ cut in light granite
+
+2026-11-27, Thomas.
+
+Four stones were drawn, each with the rune cut as a V-groove and painted red ochre: light granite, dark gneiss,
+granite with a cut frame line, and a free-standing standing stone. Light, coarse granite without a frame line was
+chosen. The standing stone was liked best, but its outline does not fit among the macOS icons, which share a
+rounded square. The frame line was left out; it makes the rune smaller at the small sizes. Changed:
+[design.md](design.md#identity), [plan.md](plan.md) M2.
+
 ## D-16 — Spacing errors are measured before anything is tuned
 
 2026-11-27, Thomas.

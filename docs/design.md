@@ -167,8 +167,11 @@ Strokes that meet another stroke have butt caps and end on its centre line; free
 ```
 
 **Icon.** ᚨ, ansuz, the rune of Odin, who gave people the mead of poetry; the Old English rune poem calls it «the
-source of all speech». It is cut into stone as a V-groove and painted red inside the groove. The 16 and 32 pt
-sizes get their own drawings. The final version is waiting on Thomas.
+source of all speech». It is cut as a V-groove into light, coarse-grained grey granite and painted red ochre
+inside the groove. The stone fills the rounded square that macOS icons share, with no frame line around the rune.
+Light falls from the top left, so the shadow in the groove shows that the rune is cut, not painted on. The 16 and
+32 pt sizes get their own drawings, with a wider groove and less grain. The menu bar icon is the flat rune in one
+colour, without stone.
 
 **Words.** Viking words appear only in «rister …», «Ordskatt», «Sagaen» and the site's tagline. Everything else
 says plainly what it does.

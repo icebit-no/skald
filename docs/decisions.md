@@ -5,6 +5,61 @@ decision, and that pull request also edits the page where the rule lives ([desig
 [plan.md](plan.md)). Those pages say what holds; this one says when and why it came to hold. A later decision
 that undoes one adds an entry of its own, and the earlier entry gets one line naming it.
 
+## D-30 — The overlay window opens per appearance; the runes show once the text has arrived
+
+2026-11-27, Claude; the runes, how long the two messages stand and the bars under reduced motion settled by the
+lead in review.
+
+`skald-overlay` opens the overlay's window when the pill appears and closes it once the pill has faded out,
+on the screen with the keyboard focus each time (AppKit's main screen), centred 32 pt above the Dock. GPUI
+cannot move a window, and a closed window draws nothing between takes. The window is a GPUI PopUp, a
+non-activating panel that never takes focus. GPUI caps a window without focus at about 30 frames a second
+through `inactive_frame_interval`, and the pill never has focus, so the overlay turns the cap off; the window
+draws at the display's rate while it shows. GPUI has no option for click-through or for leaving out AppKit's
+window shadow, so both are set on the native window. GPUI's blurred background, which Kjedelig uses, covers the
+whole window as a rectangle, the shadow's room included; the overlay sizes the blur to the pill and masks it to
+the capsule.
+
+The chisel's pace is the median of the latest eight takes' seconds of work, from the release to the text, per
+second of audio, starting from 0.12 (NB-Whisper Large on an M4 Pro, M1a). It is kept while the app runs. The
+bars run linear in decibels from −60 dBFS, below the room tone skald-core measured, to −15 dBFS. A letter with
+an accent is carved as the letter without it.
+
+The text does not exist while the chisel moves, so the runes cannot stand behind it from the start as the
+drawings show. Until the text arrives, the bars the chisel has passed are drawn as fresh cuts; when it arrives,
+the runes of the carved stretch appear, the chisel runs out in 150 ms, the row of at most 40 runes, the start
+of the text, stands 0.4 s, and Satt inn follows. Hørte ingenting stands 2 s and Mikrofon byttet 2.5 s; a
+microphone change during a take waits until the take is done. With reduced motion the recording bars are a
+still picture of the last 2.4 s, replaced once a second with the time, so the pill still shows that the
+microphone hears. Changed: [design.md](design.md#overlay), [plan.md](plan.md) M2.
+
+## D-28 — The command line's protocol, and the same commands whether Skald runs or not
+
+2026-11-27, Claude; skald-control depending on skald-core alone agreed with the lead.
+
+`skald` and the running Skald talk JSON lines over the socket, one request and one answer, each with the
+protocol version, so a Skald updated while it ran tells the command line to start it again instead of
+misreading it. The socket's folder is made 0700 before the socket is created, and the socket 0600; the folder
+keeps others out in the moment between. A socket nobody answers on is what a crash leaves, and binding
+replaces it; anything else at that path is left alone. Windows gets a named pipe in M4.
+
+Every command is carried out by the same code on top of one trait, which the app implements and the command
+line implements on the files while Skald is not running, so the answer and its `--json` object are the same
+either way, with `running` saying which. While Skald is not running, a change is written under a lock on the
+configuration's folder, so commands an agent runs at once do not lose each other's change, and the file is
+replaced in one step. What the files cannot say (the microphones connected, the models downloaded, a
+transcription) comes from a second trait the binary implements, so skald-control depends on skald-core alone.
+The ordskatt's token count needs the model's tokenizer, so it is shown only while Skald runs.
+
+`skald config` takes the configuration file's keys and values, and true or false also as ja, nei, på or av.
+It sets only values this version knows, though the file keeps the others (D-19), and it points settings with
+a command of their own to that command. `skald vocab sentence` sets the ordskatt's sentence, which the
+settings window can change too, and `skald mic use --first` removes the pin. `skald model use` refuses a model
+that is not downloaded. `skald transcribe` prints the text Skald would insert, with the model's text before
+corrections and the rules that applied. A command exits with 0 when done, 1 when it failed and 2 for wrong
+arguments; with `--json`, an error is `{"error": {"code", "message"}}` on standard output. Changed:
+[design.md](design.md#command-line) (Command line, Microphones), [plan.md](plan.md) M2.
+
 ## D-27 — The menu ticks the microphone in use and pins the pinned one
 
 2026-11-27, Claude.

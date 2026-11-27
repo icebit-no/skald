@@ -42,8 +42,8 @@ so give it on every run. `--help` has the rest. Run it once per microphone into 
 
 - `usb`: the USB microphone 15 to 25 cm in front of the mouth, as it is meant to be used.
 - `built-in`: the Mac's own microphone, sitting at it as usual, about 50 cm away.
-- `distance`: the Mac's own microphone about 2 m away, in a normal voice. An external keyboard and screen make
-  this easy; without them, enlarge the terminal's text.
+- `distance`: the Mac's own microphone about 2 m away, in a normal voice. Hold Enter on an external keyboard,
+  and read from an external screen or from the terminal with its text enlarged.
 
 Start reading once «● Tar opp» shows, since the microphone takes a moment to open. Read as you would dictate,
 at a normal pace, in the same quiet room for all three. Then measure the set:

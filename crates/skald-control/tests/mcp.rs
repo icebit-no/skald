@@ -226,7 +226,7 @@ fn every_tool_answers_as_the_command_line_does_while_skald_is_not_running() {
     }
 }
 
-#[cfg(unix)]
+#[cfg(any(unix, windows))]
 #[test]
 fn every_tool_answers_through_the_running_skald() {
     let (folder, paths) = folder();

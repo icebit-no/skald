@@ -1,5 +1,5 @@
 //! The `skald` command line and the local socket it talks to the running Skald over (docs/design.md,
-//! Command line).
+//! Command line): a Unix socket on macOS and Linux, a named pipe on Windows.
 //!
 //! - **The app** binds a [`Server`] at [`Paths::socket`](skald_core::paths::Paths::socket) and serves it
 //!   with its own [`Skald`]. Only the user can open the socket.
@@ -17,16 +17,18 @@ mod cli;
 mod commands;
 pub mod mcp;
 mod offline;
-// Its line encoding serves the socket, which Windows does not have yet.
-#[cfg_attr(not(unix), allow(dead_code))]
 pub mod protocol;
 mod skald;
 mod skill;
 #[cfg(unix)]
 mod socket;
+// The same server and client over a named pipe.
+#[cfg(windows)]
+#[path = "windows.rs"]
+mod socket;
 
 pub use cli::{run, run_with};
 pub use protocol::{Error, ErrorCode, Request};
 pub use skald::{Machine, Microphones, Model, Skald, Transcribed};
-#[cfg(unix)]
+#[cfg(any(unix, windows))]
 pub use socket::{BindError, Client, Server, Serving};

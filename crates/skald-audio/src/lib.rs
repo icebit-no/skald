@@ -2,6 +2,7 @@
 //! readings for the meter.
 
 mod capture;
+pub mod filter;
 mod level;
 mod microphone;
 mod platform;

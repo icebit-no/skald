@@ -22,7 +22,8 @@ own words.
   While a hands-free take runs, the hold key starts nothing and other keys cancel nothing, so the user can type
   and use shortcuts; the chord itself never reaches the app in front.
 - A take is capped at 120 seconds. On macOS the system sound Tink plays when a take arms and Pop as its text is
-  inserted; the sounds can be turned off.
+  inserted; on Linux the freedesktop sound theme's «audio-volume-change» and «complete» play, through pw-play
+  or paplay, where they are installed. The sounds can be turned off.
 
 ## Overlay
 

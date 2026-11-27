@@ -55,7 +55,8 @@ by a script from a pinned source with SHA-256 checks, not committed.
 - [x] Insert by clipboard and ⌘V after the key is released; put the previous clipboard back unless the user
       chose to copy the text.
 - [x] Vocabulary prompt and corrections from a TOML configuration; history of the five latest texts.
-- [ ] Runs from a terminal and can replace diktafon for daily use.
+- [ ] Runs from a terminal and can replace diktafon for daily use: built in #18; ticked when Thomas's real test
+      (#22) passes.
 
 ## M2 The app on macOS
 

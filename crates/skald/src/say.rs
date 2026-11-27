@@ -451,13 +451,21 @@ fn write_fetch(f: &mut fmt::Formatter<'_>, pinned: &Model, path: &std::path::Pat
     };
     write!(
         f,
-        "Last ned {} ({}) og legg den der:\n  curl -L --create-dirs -o '{}' {}\nEller gi en annen fil med \
-         --model.",
+        "Last ned {} ({}) og legg den der:\n  {}\nEller gi en annen fil med --model.",
         pinned.name,
         gigabytes(file.size),
-        path.display(),
-        file.url
+        fetch_command(path, &file.url),
     )
+}
+
+/// curl with the path quoted for the system's shell. On Windows it is `curl.exe`, which PowerShell's own
+/// `curl` would otherwise stand in for, and the path takes double quotes, the only ones cmd.exe reads.
+fn fetch_command(path: &std::path::Path, url: &str) -> String {
+    if cfg!(windows) {
+        format!("curl.exe -L --create-dirs -o \"{}\" {url}", path.display())
+    } else {
+        format!("curl -L --create-dirs -o '{}' {url}", path.display())
+    }
 }
 
 /// Decimal gigabytes with one decimal and a decimal comma: «3,1 GB».
@@ -706,11 +714,8 @@ mod tests {
         let path = PathBuf::from(
             "/Users/a/Library/Application Support/Skald/models/nb-whisper-large/ggml-model.bin",
         );
-        let fetch = format!(
-            "curl -L --create-dirs -o '{}' {}",
-            path.display(),
-            pinned.file().unwrap().url
-        );
+        let fetch = fetch_command(&path, &pinned.file().unwrap().url);
+        assert!(fetch.contains(&path.display().to_string()), "{fetch}");
         let shown = Exit::ModelMissing {
             path: path.clone(),
             pinned: Some(pinned),

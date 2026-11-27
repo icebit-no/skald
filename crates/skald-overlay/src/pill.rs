@@ -676,23 +676,23 @@ mod tests {
         assert!(pill.is_hidden());
     }
 
+    /// A take carved from 3 s that `end` ends at 3.5 s shows `shown` for 2 s, then leaves.
+    fn ends_with_a_message(end: fn(&mut Pill, Duration), shown: &Look) {
+        let mut pill = recorded(2);
+        pill.release(ms(3000));
+        end(&mut pill, ms(3500));
+        pill.advance(ms(3700));
+        assert_eq!(only(&pill.scene(ms(3700), Motion::Full)), shown);
+        pill.advance(ms(5499));
+        assert!(!pill.is_hidden(), "{shown:?} stands 2 s");
+        pill.advance(ms(5500) + FADE);
+        assert!(pill.is_hidden());
+    }
+
     #[test]
     fn a_text_not_inserted_or_a_failed_transcription_shows_two_seconds_and_leaves() {
-        let ends: [(fn(&mut Pill, Duration), Look<'static>); 2] = [
-            (Pill::not_inserted, Look::NotInserted),
-            (Pill::transcription_failed, Look::TranscriptionFailed),
-        ];
-        for (end, shown) in ends {
-            let mut pill = recorded(2);
-            pill.release(ms(3000));
-            end(&mut pill, ms(3500));
-            pill.advance(ms(3700));
-            assert_eq!(only(&pill.scene(ms(3700), Motion::Full)), &shown);
-            pill.advance(ms(5499));
-            assert!(!pill.is_hidden(), "{shown:?} stands 2 s");
-            pill.advance(ms(5500) + FADE);
-            assert!(pill.is_hidden());
-        }
+        ends_with_a_message(Pill::not_inserted, &Look::NotInserted);
+        ends_with_a_message(Pill::transcription_failed, &Look::TranscriptionFailed);
     }
 
     #[test]

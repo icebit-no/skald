@@ -1,0 +1,27 @@
+name: notices
+
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['**.md', 'docs/**']
+  pull_request:
+    paths-ignore: ['**.md', 'docs/**']
+
+permissions:
+  contents: read
+
+jobs:
+  notices:
+    # THIRD-PARTY-NOTICES is written from Cargo.lock, the packages it names and the files the script credits by
+    # hand; this fails when a change to any of them leaves the file out of date. GitHub's own runner, as in
+    # rust.yml: the repository is public, so a pull request from a fork never reaches a machine of ours.
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    concurrency:
+      group: notices-${{ github.head_ref || github.ref }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # rustup installs the toolchain rust-toolchain.toml pins on the first cargo call; cargo metadata then
+      # downloads the packages each platform's build takes, without building them.
+      - run: python3 scripts/notices/notices.py --check

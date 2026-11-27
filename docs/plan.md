@@ -128,6 +128,8 @@ Design: [Audio in](design.md#audio-in).
 
 Design: [Site](design.md#site).
 
+- [x] `THIRD-PARTY-NOTICES` written from Cargo.lock by `scripts/notices/` and checked in CI, and carried in the
+      macOS bundle (D-50); a README that says how to build and run Skald from source.
 - [ ] Release pipeline after Ferric's: notarize on the Mac runner, cask to `icebit-no/homebrew-tap`, manifest
       to `icebit-no/scoop-bucket`, AUR.
 - [ ] `icebit-no/skald-site`: Astro, an nginx image, app-sync and Caddy on svalbard, at skald.icebit.app.

@@ -5,6 +5,33 @@ decision, and that pull request also edits the page where the rule lives ([desig
 [plan.md](plan.md)). Those pages say what holds; this one says when and why it came to hold. A later decision
 that undoes one adds an entry of its own, and the earlier entry gets one line naming it.
 
+## D-34 — The first-run window is a view over the app's download, permissions and test
+
+2026-11-27, Claude.
+
+`skald-firstrun` draws the three steps of First run as the settings window draws its tabs (D-33): gpui-kit's
+headless button and progress bar, the same colours in light and dark mode, the system's UI font. It is a view
+over a model the app hands it, and each request goes back as an action. It does no file or network work: the
+app runs the download through skald-models (D-26), asks the system for the permissions and runs the test take.
+The model takes skald-models' status, events and errors as they are, so the app passes them on, and turns each
+error into words the user can act on. The colours are a copy of the settings window's until the two share
+them.
+
+The speed is what arrived over the last five seconds, shown once a second has passed, so a stall shows soon
+and a burst does not swing the time left. A retry starts the measure over, since the wait before it says
+nothing about the connection. A file of the pinned size that was never checked offers «Kontroller filen», and
+a stopped download goes on from what it kept with «Fortsett».
+
+The user moves between the steps freely, and on while the model downloads, so the permissions are granted in
+the minutes a 3.1 GB file takes. «Ferdig» waits until Skald can take dictation. The test is offered, not
+required, since someone setting Skald up again knows it works. macOS says whether the microphone was refused
+or never asked for, but not for Accessibility, so the app reports Accessibility as not asked until it has
+asked once and as refused after that, which turns «Gi tilgang» into «Åpne Systeminnstillinger». The window asks
+the app to read the permissions again whenever it comes to the front, as it does when the user comes back
+from System Settings. The test take's text is shown in the window and not inserted: the window has no text
+field to insert into, and the step is there to show what Skald heard. Changed:
+[design.md](design.md#first-run), [plan.md](plan.md) M2.
+
 ## D-33 — The settings window draws gpui-kit's headless controls and sends each change to the app
 
 2026-11-27, Claude; the light colours, the type, what «Bytt» keeps and the settings' names settled by the lead

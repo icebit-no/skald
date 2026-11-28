@@ -77,8 +77,8 @@ pub enum Access {
     Restricted,
 }
 
-/// How the window reads the permissions, which it does when it opens and each time it comes to the
-/// front, as when the user comes back from the system's settings. The app passes in the system's own
+/// How the window reads the permissions, which it does when it opens, each time it comes to the front,
+/// and each second while one is missing, so it sees a grant made in the system's settings. The app passes in the system's own
 /// checks; asking never shows a prompt.
 pub struct PermissionChecks {
     pub microphone: Box<dyn Fn() -> Access>,
@@ -118,6 +118,13 @@ impl Permissions {
     pub fn granted(&self, platform: Platform) -> bool {
         self.microphone == Access::Granted
             && (!platform.asks_for_accessibility() || self.accessibility == Access::Granted)
+    }
+
+    /// Whether a permission is granted here that was not in `before`.
+    pub fn newly_granted(&self, before: &Permissions) -> bool {
+        let turned = |now: Access, then: Access| now == Access::Granted && then != Access::Granted;
+        turned(self.microphone, before.microphone)
+            || turned(self.accessibility, before.accessibility)
     }
 
     /// macOS says only whether Accessibility is granted, not whether the user was ever asked. Until the
@@ -229,6 +236,32 @@ mod tests {
 
         model.download = Download::Stopped { received: 10 };
         assert!(!model.ready(&GRANTED));
+    }
+
+    #[test]
+    fn a_permission_turning_granted_is_told_apart_from_one_granted_all_along() {
+        let missing = Permissions {
+            microphone: Access::NotAsked,
+            accessibility: Access::Denied,
+        };
+        assert!(!missing.newly_granted(&missing));
+        assert!(!GRANTED.newly_granted(&GRANTED));
+        assert!(GRANTED.newly_granted(&missing));
+        let microphone = Permissions {
+            microphone: Access::Granted,
+            ..missing
+        };
+        assert!(microphone.newly_granted(&missing));
+        assert!(GRANTED.newly_granted(&microphone), "then Accessibility");
+        assert!(
+            !missing.newly_granted(&GRANTED),
+            "a permission taken away is no grant"
+        );
+        let refused = Permissions {
+            microphone: Access::Denied,
+            ..missing
+        };
+        assert!(!refused.newly_granted(&missing), "a refusal is no grant");
     }
 
     #[test]

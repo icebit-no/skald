@@ -84,11 +84,10 @@ impl SettingsWindow {
     pub fn show(&mut self, model: &SettingsModel, tab: Option<Tab>, cx: &mut App) {
         if let Some((handle, view)) = &self.open {
             let raised = handle
-                .update(cx, |_, window, _| window.activate_window())
+                .update(cx, |_, window, cx| skald_ui::bring_to_front(window, cx))
                 .is_ok();
             if raised && let Some(view) = view.upgrade() {
                 view.update(cx, |view, cx| view.show(model.clone(), tab, cx));
-                cx.activate(true);
                 return;
             }
         }
@@ -114,9 +113,9 @@ impl SettingsWindow {
         });
         match opened {
             Ok((handle, view)) => {
-                self.open = Some((handle, view.downgrade()));
                 // Skald runs without a Dock icon, so its window comes forward only when asked.
-                cx.activate(true);
+                let _ = handle.update(cx, |_, window, cx| skald_ui::bring_to_front(window, cx));
+                self.open = Some((handle, view.downgrade()));
             }
             Err(error) => eprintln!("skald-settings: the window did not open: {error}"),
         }

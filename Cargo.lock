@@ -5680,6 +5680,8 @@ name = "skald-ui"
 version = "0.1.0"
 dependencies = [
  "gpui-kit",
+ "objc2-app-kit 0.3.2",
+ "raw-window-handle",
 ]
 
 [[package]]

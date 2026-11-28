@@ -191,8 +191,12 @@ system can still ask and «Åpne Systeminnstillinger» once it has refused, and 
 comes back to the front and each second while one is missing. Skald has no Dock icon and is not in the app
 switcher, so the window comes back to the front by itself when a permission is granted and when the system's
 microphone prompt is answered. On macOS the step says that macOS may ask once whether Skald may read the clipboard
-(Insertion). The test take is inserted into a field in the window, «Teksten settes inn her»; when it does
-not arrive there, the window shows «Skald hørte:» and the text. «Hopp over» leaves the test out and becomes
+(Insertion). A Skald started from a terminal, not as Skald.app, is listed under Tilgjengelighet and Mikrofon
+as that terminal, since macOS asks on behalf of the process it holds responsible; the step then says so and
+names the program to turn on, «Skald er startet fra Herdr Core, så macOS viser Herdr Core, ikke Skald, under
+Tilgjengelighet og Mikrofon. Slå på Herdr Core der.», or «terminalprogrammet» when its name is not found.
+The test take is inserted into a field in the window, «Teksten settes inn her»; when it does not arrive there,
+the window shows «Skald hørte:» and the text. «Hopp over» leaves the test out and becomes
 «Ferdig» once a take was heard; both wait until the model is checked and the permissions are granted.
 
 On Windows and Linux the model computes on the GPU through Vulkan, on NVIDIA, AMD and Intel alike. A machine

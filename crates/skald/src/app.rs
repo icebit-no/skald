@@ -35,6 +35,7 @@ use crate::events::{Ending, Event, MicrophoneList};
 use crate::files::{self, ConfigFile};
 use crate::login;
 use crate::models::ModelFiles;
+use crate::permissions;
 use crate::pipeline::{Report, Worker, WorkerEvent, WorkerHandle};
 use crate::say::{Exit, Line, Printer, report_lines};
 use crate::shell;
@@ -207,6 +208,7 @@ fn first_run(options: &Options, paths: &Paths) -> Result<Option<FirstRun>, Exit>
     Ok(needed.then(|| {
         let mut first_run = FirstRunModel::new(card, status);
         first_run.hold_key = config.hold_key.clone();
+        first_run.listed_as = permissions::listed_as();
         // Asking loads the backends, which the model would load anyway; a Mac always has Metal.
         first_run.no_vulkan = computes_on_vulkan() && !skald_engine::gpu_available();
         FirstRun {

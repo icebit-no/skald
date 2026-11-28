@@ -3,7 +3,7 @@
 //! prompt and no settings pane.
 
 use skald_audio::MicrophoneAccess;
-use skald_firstrun::{Access, Permission, PermissionChecks};
+use skald_firstrun::{Access, ListedAs, Permission, PermissionChecks};
 
 pub(crate) fn checks() -> PermissionChecks {
     PermissionChecks {
@@ -27,3 +27,8 @@ pub(crate) fn request(_permission: Permission, answered: impl Fn() + Send + Sync
 }
 
 pub(crate) fn open_settings(_permission: Permission) {}
+
+/// Only macOS lists the permissions under the program Skald was started from.
+pub(crate) fn listed_as() -> ListedAs {
+    ListedAs::Skald
+}

@@ -151,11 +151,16 @@ pub(crate) enum Start {
     FirstRun(FirstRun),
 }
 
-/// The first run, for a model or permission found missing.
+/// The first run, for a model or permission found missing, or for the test after Skald started again.
 pub(crate) struct FirstRun {
     pub(crate) model: FirstRunModel,
     /// The configured model, which the window downloads.
     pub(crate) model_id: &'static str,
+    /// Whether this process had Accessibility when it started; without it, it starts again before it
+    /// listens for the key (D-60).
+    pub(crate) accessibility_at_start: bool,
+    /// The window runs its test as it opens.
+    pub(crate) run_test: bool,
 }
 
 /// Starts the screen on this thread. With nothing missing the loop starts first, and the screen appears
@@ -186,7 +191,8 @@ fn run_app(options: Options) -> Result<(), Exit> {
 }
 
 /// The first-run window's model when the configured model or a permission is missing (docs/design.md,
-/// First run). A model given with `--model` is the developer's to have in place.
+/// First run), or when Skald started again to run the first run's test. A model given with `--model` is
+/// the developer's to have in place.
 fn first_run(options: &Options, paths: &Paths) -> Result<Option<FirstRun>, Exit> {
     if options.model.is_some() {
         return Ok(None);
@@ -199,11 +205,9 @@ fn first_run(options: &Options, paths: &Paths) -> Result<Option<FirstRun>, Exit>
     else {
         return Ok(None);
     };
-    let needed = needs_first_run(
-        status,
-        skald_audio::microphone_access(),
-        skald_input::accessibility_granted(),
-    );
+    let accessibility = skald_input::accessibility_granted();
+    let needed = options.first_run_test
+        || needs_first_run(status, skald_audio::microphone_access(), accessibility);
     Ok(needed.then(|| {
         let mut first_run = FirstRunModel::new(card, status);
         first_run.hold_key = config.hold_key.clone();
@@ -212,6 +216,8 @@ fn first_run(options: &Options, paths: &Paths) -> Result<Option<FirstRun>, Exit>
         FirstRun {
             model: first_run,
             model_id: model.id,
+            accessibility_at_start: accessibility,
+            run_test: options.first_run_test,
         }
     }))
 }
@@ -731,6 +737,7 @@ mod tests {
 
         std::fs::write(paths.config_file(), "hold_key = \"right-control\"\n").unwrap();
         let first = first_run(&Options::default(), &paths).unwrap().unwrap();
+        assert!(!first.run_test);
         assert_eq!(first.model_id, "nb-whisper-large");
         assert_eq!(first.model.model.name, "NB-Whisper Large");
         assert_eq!(
@@ -738,6 +745,12 @@ mod tests {
             skald_core::config::HoldKey::RightControl
         );
         assert_eq!(first.model.download, skald_firstrun::Download::NotStarted);
+
+        let test = Options {
+            first_run_test: true,
+            ..Options::default()
+        };
+        assert!(first_run(&test, &paths).unwrap().unwrap().run_test);
 
         std::fs::write(paths.config_file(), "sounds = \"ja\"\n").unwrap();
         assert!(matches!(

@@ -25,6 +25,8 @@ pub struct SettingsModel {
     pub version: String,
     /// What the loaded model computes on, shown in Om; `None` until a model has loaded.
     pub compute: Option<Compute>,
+    /// The window waits for the key the user presses to choose the hold key.
+    pub capturing_hold_key: bool,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -16,6 +16,7 @@ mod control;
 mod dictation;
 mod events;
 mod files;
+mod keys;
 #[cfg(target_os = "linux")]
 mod linux;
 #[cfg(target_os = "macos")]

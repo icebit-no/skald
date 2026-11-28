@@ -11,6 +11,9 @@ pub enum Action {
     /// already there before fetching anything.
     DownloadModel(String),
     StopDownload(String),
+    /// Wait for the key the user presses to choose the hold key, which comes back as
+    /// [`Change::HoldKey`]; `false` stops waiting.
+    CaptureHoldKey(bool),
     /// A word corrected in a history entry. The entry is the one that ended at `unix_ms` with the text
     /// `before`, so a take that arrives meanwhile is never the one changed; `History::replace` takes the
     /// three as they are.

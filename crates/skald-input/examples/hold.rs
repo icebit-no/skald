@@ -67,6 +67,7 @@ mod listen {
             match event {
                 ListenerEvent::Ready => println!("{at}  listening"),
                 ListenerEvent::Seen(seen) => println!("{at}  seen: {seen:?}"),
+                ListenerEvent::Captured(key) => println!("{at}  captured: {key:?}"),
                 ListenerEvent::Unavailable(reason) => {
                     println!("{at}  not listening: {reason}");
                     if reason == skald_input::Unavailable::NoAccessibility {

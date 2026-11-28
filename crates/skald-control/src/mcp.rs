@@ -531,7 +531,7 @@ impl Param {
             Kind::SettingKey => {
                 let values: Vec<String> = SettingKey::ALL
                     .iter()
-                    .map(|key| format!("{} ({})", key.name(), key.accepted().join(", ")))
+                    .map(|key| format!("{} ({})", key.name(), key.shown().join(", ")))
                     .collect();
                 json!({
                     "type": "string",

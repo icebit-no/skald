@@ -8,7 +8,9 @@ use super::controls::{
 };
 use super::view::SettingsView;
 use crate::action::Change;
-use crate::general::{General, MicrophoneRow, ModelRow};
+use crate::general::{
+    Choosing, General, HoldKeyField, KEYS_TAKEN, MicrophoneRow, ModelRow, PRESS_A_KEY,
+};
 use skald_ui::Palette;
 
 const MICROPHONE_HELP: &str = "Skald bruker den første som er koblet til. Bluetooth-hodesett får \
@@ -17,14 +19,7 @@ const MICROPHONE_HELP: &str = "Skald bruker den første som er koblet til. Bluet
 impl SettingsView {
     pub(super) fn render_general(&mut self, p: &Palette, cx: &mut Context<Self>) -> AnyElement {
         let general = General::of(&self.model);
-        let hold_key = segmented("hold-key", &general.hold_key, p, |index| {
-            self.on_click(cx, move |view, _, cx| {
-                let change = General::of(&view.model)
-                    .hold_key
-                    .choose(index, Change::HoldKey);
-                view.change(change, cx);
-            })
-        });
+        let hold_key = self.hold_key_field(&general.hold_key, p, cx);
         let language = segmented("language", &general.language, p, |index| {
             self.on_click(cx, move |view, _, cx| {
                 let change = General::of(&view.model)
@@ -41,7 +36,6 @@ impl SettingsView {
                 view.change(change, cx);
             })
         });
-        let unknown_key = general.hold_key.unknown.clone();
         let unknown_theme = general.overlay_theme.unknown.clone();
 
         let microphones: Vec<AnyElement> = general
@@ -115,14 +109,7 @@ impl SettingsView {
                 "Tasten du holder inne for å snakke",
                 None,
                 p,
-                [hold_key.into_any_element()]
-                    .into_iter()
-                    .chain(unknown_key.map(|key| {
-                        note(
-                            &format!("Satt til «{key}», som denne versjonen ikke kjenner."),
-                            p,
-                        )
-                    })),
+                hold_key,
             ))
             .child(section(
                 "Skriftspråk",
@@ -174,6 +161,100 @@ impl SettingsView {
             ))
             .child(div().flex().flex_col().children(switches))
             .into_any_element()
+    }
+
+    /// The key set in a box, with «Velg tast …» to press another in its place, or on Linux the lines that
+    /// bind it; then what to know about it.
+    fn hold_key_field(
+        &self,
+        field: &HoldKeyField,
+        p: &Palette,
+        cx: &mut Context<Self>,
+    ) -> Vec<AnyElement> {
+        let waiting = field.choosing == Choosing::Pressed { waiting: true };
+        let shown = div()
+            .flex()
+            .items_center()
+            .min_w(px(180.0))
+            .h(px(28.0))
+            .px(px(10.0))
+            .rounded(px(6.0))
+            .bg(p.raised)
+            .border_1()
+            .border_color(if waiting { p.gold } else { p.line })
+            .text_color(if waiting { p.quiet } else { p.text })
+            .font_weight(if waiting {
+                FontWeight::NORMAL
+            } else {
+                FontWeight::MEDIUM
+            })
+            .child(if waiting {
+                PRESS_A_KEY.to_owned()
+            } else {
+                field.label.clone()
+            });
+        let mut row = div().flex().items_center().gap(px(8.0)).child(shown);
+        if let Some(action) = field.button() {
+            let label = if waiting { "Avbryt" } else { "Velg tast …" };
+            let on_click = self.on_click(cx, move |view, _, cx| view.send(action.clone(), cx));
+            row = row.child(
+                button("choose-hold-key", label, Kind::Secondary, p)
+                    .on_click(move |event, window, cx| on_click(event, window, cx)),
+            );
+        }
+        let mut elements = vec![row.into_any_element()];
+        if waiting {
+            elements.push(note(KEYS_TAKEN, p));
+        }
+        if let Choosing::Bound(binding) = &field.choosing {
+            let name = &field.name;
+            match binding {
+                Some(lines) => {
+                    elements.push(note(
+                        &format!(
+                            "Skrivebordet holder tasten. Med disse linjene i Hyprland-oppsettet holder du {name}:"
+                        ),
+                        p,
+                    ));
+                    elements.push(
+                        div()
+                            .flex()
+                            .flex_col()
+                            .px(px(10.0))
+                            .py(px(6.0))
+                            .rounded(px(6.0))
+                            .bg(p.raised)
+                            .border_1()
+                            .border_color(p.line)
+                            .text_size(px(SMALL_SIZE))
+                            .text_color(p.text)
+                            .children(lines.iter().cloned())
+                            .into_any_element(),
+                    );
+                }
+                None => elements.push(note(
+                    &format!("Hyprland kan ikke binde {name} slik. Velg en annen tast."),
+                    p,
+                )),
+            }
+            elements.push(note(
+                "Tasten Skald viser, velger du med skald config set hold_key, med samme tast som i linjene.",
+                p,
+            ));
+        }
+        if let Some(warning) = &field.warning {
+            elements.push(controls::message(warning, p).into_any_element());
+        }
+        if let Some(key) = &field.unknown {
+            elements.push(note(
+                &format!(
+                    "Satt til «{key}», som denne versjonen ikke kjenner, så Skald lytter etter {} i stedet.",
+                    field.name
+                ),
+                p,
+            ));
+        }
+        elements
     }
 
     fn microphone_row(

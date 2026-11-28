@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 use skald_audio::CaptureError;
 use skald_core::Config;
+use skald_core::config::HoldKey;
 use skald_core::state::State;
 
 use skald_input::InsertError;
@@ -49,6 +50,9 @@ pub(crate) enum Event {
     ModelLoaded(skald_engine::Compute),
     /// The settings in use, read at start and again whenever they change.
     Settings(Arc<Config>),
+    /// The key the user pressed to choose the hold key; none when they gave up with Esc, or where the
+    /// desktop holds the key.
+    HoldKeyCaptured(Option<HoldKey>),
     /// The loop has ended and the model is dropped; the process may exit.
     Stopped,
 }

@@ -88,21 +88,50 @@ pub(crate) fn plate(painter: &mut Painter, style: &Style, face: Option<&Face>) {
     }
 }
 
-/// The key held to talk, as the recording hint names it.
+/// The key held to talk, as the recording hint names it: ⌘ drawn on macOS, any other in a short word as
+/// the key is labelled.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub(crate) enum HeldKey {
     Command,
-    Control,
+    Named(&'static str),
 }
+
+const FUNCTION_KEYS: [&str; 19] = [
+    "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12", "F13", "F14", "F15",
+    "F16", "F17", "F18", "F19",
+];
 
 impl HeldKey {
     /// The key the configuration names; one this version does not know is the system's own, as the key
     /// listener takes it.
     pub(crate) fn of(key: &HoldKey) -> Self {
+        let mac = cfg!(target_os = "macos");
         match key {
-            HoldKey::RightCommand => HeldKey::Command,
-            HoldKey::RightControl => HeldKey::Control,
+            HoldKey::RightCommand | HoldKey::LeftCommand if mac => HeldKey::Command,
+            HoldKey::RightCommand | HoldKey::LeftCommand if cfg!(windows) => HeldKey::Named("Win"),
+            HoldKey::RightCommand | HoldKey::LeftCommand => HeldKey::Named("Super"),
+            HoldKey::RightControl | HoldKey::LeftControl => HeldKey::Named("Ctrl"),
+            HoldKey::RightShift | HoldKey::LeftShift => HeldKey::Named("Shift"),
+            HoldKey::RightOption | HoldKey::LeftOption if mac => HeldKey::Named("Option"),
+            HoldKey::RightOption => HeldKey::Named("Alt Gr"),
+            HoldKey::LeftOption => HeldKey::Named("Alt"),
+            HoldKey::Fn => HeldKey::Named("fn"),
+            HoldKey::Function(number) => usize::from(*number)
+                .checked_sub(1)
+                .and_then(|index| FUNCTION_KEYS.get(index))
+                .map_or_else(
+                    || HeldKey::of(&HoldKey::default()),
+                    |name| HeldKey::Named(name),
+                ),
             HoldKey::Unknown(_) => HeldKey::of(&HoldKey::default()),
+        }
+    }
+
+    /// The word the hint names it with; ⌘ is drawn instead.
+    fn word(self) -> &'static str {
+        match self {
+            HeldKey::Command => "⌘",
+            HeldKey::Named(word) => word,
         }
     }
 }
@@ -403,7 +432,7 @@ fn bars_end(
     if keys_drawn(hands_free, key) {
         return f32::INFINITY;
     }
-    worded_hint_left(painter, style, layout, hands_free) - HINT_GAP
+    worded_hint_left(painter, style, layout, hands_free, key) - HINT_GAP
 }
 
 fn live_bars(painter: &mut Painter, style: &Style, layout: &Layout, bars: &[LiveBar], end: f32) {
@@ -547,7 +576,7 @@ const HANDS_FREE_KEYS: &str = if cfg!(windows) {
     "Ctrl+Super+X"
 };
 
-/// At the right end, the key to let go of: «slipp ⌘» with ⌘ drawn, or «slipp Ctrl» in words. In a
+/// At the right end, the key to let go of: «slipp ⌘» with ⌘ drawn, or «slipp Ctrl», «slipp F13» in words. In a
 /// hands-free take the chord that stops it: drawn on macOS, «⌃⌘X stopper»; in words on Windows and Linux,
 /// «Ctrl+Win+X stopper» or «Ctrl+Super+X stopper».
 fn hint(
@@ -562,7 +591,7 @@ fn hint(
         if keys_drawn(hands_free, key) {
             drawn_hint(painter, style, layout, hands_free);
         } else {
-            worded_hint(painter, style, layout, hands_free);
+            worded_hint(painter, style, layout, hands_free, key);
         }
     });
 }
@@ -581,18 +610,25 @@ fn worded_hint_left(
     style: &Style,
     layout: &Layout,
     hands_free: bool,
+    key: HeldKey,
 ) -> f32 {
     let (quiet, keys) = if hands_free {
         ("stopper", HANDS_FREE_KEYS)
     } else {
-        ("slipp", "Ctrl")
+        ("slipp", key.word())
     };
     let quiet = painter.measure(quiet, look(style, FontWeight::NORMAL));
     let keys = painter.measure(keys, look(style, style.strong));
     layout.right - quiet - 5.0 - keys
 }
 
-fn worded_hint(painter: &mut Painter, style: &Style, layout: &Layout, hands_free: bool) {
+fn worded_hint(
+    painter: &mut Painter,
+    style: &Style,
+    layout: &Layout,
+    hands_free: bool,
+    held: HeldKey,
+) {
     let right = layout.right;
     if hands_free {
         let stopper = painter.measure("stopper", look(style, FontWeight::NORMAL));
@@ -615,16 +651,10 @@ fn worded_hint(painter: &mut Painter, style: &Style, layout: &Layout, hands_free
             style.strong,
         );
     } else {
-        let key = painter.measure("Ctrl", look(style, style.strong));
+        let word = held.word();
+        let key = painter.measure(word, look(style, style.strong));
         let slipp = painter.measure("slipp", look(style, FontWeight::NORMAL));
-        words(
-            painter,
-            style,
-            "Ctrl",
-            right - key,
-            style.text,
-            style.strong,
-        );
+        words(painter, style, word, right - key, style.text, style.strong);
         words(
             painter,
             style,
@@ -1017,24 +1047,42 @@ mod tests {
     }
 
     #[test]
-    fn the_hint_draws_command_and_names_control_in_words_whatever_the_system() {
+    fn the_hint_draws_command_and_names_every_other_key_in_words_whatever_the_system() {
         assert!(keys_drawn(false, HeldKey::Command));
-        assert!(!keys_drawn(false, HeldKey::Control));
-        for key in [HeldKey::Command, HeldKey::Control] {
+        assert!(!keys_drawn(false, HeldKey::Named("Ctrl")));
+        for key in [HeldKey::Command, HeldKey::Named("F13")] {
             assert_eq!(keys_drawn(true, key), cfg!(target_os = "macos"), "{key:?}");
         }
     }
 
     #[test]
     fn the_held_key_is_the_configured_one_or_the_systems_own() {
-        assert_eq!(HeldKey::of(&HoldKey::RightCommand), HeldKey::Command);
-        assert_eq!(HeldKey::of(&HoldKey::RightControl), HeldKey::Control);
-        let own = if cfg!(target_os = "macos") {
+        let mac = cfg!(target_os = "macos");
+        let command = if mac {
             HeldKey::Command
+        } else if cfg!(windows) {
+            HeldKey::Named("Win")
         } else {
-            HeldKey::Control
+            HeldKey::Named("Super")
         };
-        assert_eq!(HeldKey::of(&HoldKey::Unknown("right-option".into())), own);
+        assert_eq!(HeldKey::of(&HoldKey::RightCommand), command);
+        assert_eq!(HeldKey::of(&HoldKey::LeftCommand), command);
+        assert_eq!(HeldKey::of(&HoldKey::RightControl), HeldKey::Named("Ctrl"));
+        assert_eq!(HeldKey::of(&HoldKey::LeftShift), HeldKey::Named("Shift"));
+        assert_eq!(
+            HeldKey::of(&HoldKey::RightOption),
+            HeldKey::Named(if mac { "Option" } else { "Alt Gr" })
+        );
+        assert_eq!(
+            HeldKey::of(&HoldKey::LeftOption),
+            HeldKey::Named(if mac { "Option" } else { "Alt" })
+        );
+        assert_eq!(HeldKey::of(&HoldKey::Fn), HeldKey::Named("fn"));
+        assert_eq!(HeldKey::of(&HoldKey::Function(1)), HeldKey::Named("F1"));
+        assert_eq!(HeldKey::of(&HoldKey::Function(19)), HeldKey::Named("F19"));
+        let own = HeldKey::of(&HoldKey::default());
+        assert_eq!(HeldKey::of(&HoldKey::Unknown("right-hyper".into())), own);
+        assert_eq!(HeldKey::of(&HoldKey::Function(20)), own);
     }
 
     #[test]

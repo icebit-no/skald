@@ -61,7 +61,7 @@ with the value as stored: a string, or true or false.
 
 | Key | Values |
 |---|---|
-| `hold_key` | `right-command`, `right-control` |
+| `hold_key` | `right-command`, `right-control`, `right-shift`, `right-option`, `left-command`, `left-control`, `left-shift`, `left-option`, `fn`, `f1–f19` |
 | `language` | `bokmal`, `nynorsk` |
 | `overlay_theme` | `runepinne`, `smidd-jern`, `kjedelig` |
 | `copy_to_clipboard` | `true`, `false` |

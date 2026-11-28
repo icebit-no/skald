@@ -5,8 +5,12 @@ own words.
 
 ## Recording
 
-- Hold right ⌘ (macOS) or right Ctrl (Windows, Linux). The take arms after 200 ms; another key pressed while it
-  is held cancels the take. A mouse click counts as another key, since ⌘-click is a shortcut.
+- Hold right ⌘ (macOS) or right Ctrl (Windows, Linux), or the key chosen in its place (D-61): a modifier alone,
+  by side (⌘, Control, ⇧ or ⌥, the Windows or Super key, Ctrl, Shift or Alt), fn on a Mac, or a function key
+  from F1 to F19. The take arms after 200 ms; another key pressed while it is held cancels the take. A mouse
+  click counts as another key, since ⌘-click is a shortcut. Which side is held comes from the key's own event,
+  never from the hardware's state per key, which names the wrong side on some keyboards. A function key held
+  is kept from the app in front, which would act on it; a release its events miss ends at the cap.
 - On Linux a Wayland desktop gives the keyboard to no program, so the desktop's own key binding holds the key:
   it runs `skald start` as right Ctrl goes down and `skald stop` as it comes up, or reports the key through the
   GlobalShortcuts portal. Skald then knows that key alone, so another key does not cancel the take, and a
@@ -167,12 +171,20 @@ words, since the menu there has no pin, and the menu has no shortcuts and no too
 | Historikk | The five latest texts, «Kopier», correct a word |
 | Om | Version, models and engine with their licences, what the model computes on, source link, «Ingenting sendes fra maskinen» |
 
-The settings are named «Tasten du holder inne for å snakke» (Høyre ⌘ or Høyre Control on macOS, Høyre Ctrl
-elsewhere), «Skriftspråk», «Mikrofoner», «Talemodell», «Overleggets utseende», «Kopier også teksten til
+The settings are named «Tasten du holder inne for å snakke», «Skriftspråk», «Mikrofoner», «Talemodell», «Overleggets utseende», «Kopier også teksten til
 utklippstavlen», «Start Skald ved innlogging» and «Lyd når opptaket starter og slutter»; Ordskatt holds
 «Setningen», «Ord og navn» and «Rettinger». Om says under «Motoren» what the loaded model computes on:
 «Talemodellen regner på skjermkortet med Metal», «… med Vulkan» or «Talemodellen regner på prosessoren». The
 window follows the system's light or dark mode, in its UI font.
+
+«Tasten du holder inne for å snakke» shows the key set by name, «Høyre ⌘» or «F13», with «Velg tast …»: the
+field then shows «Trykk tasten du vil holde inne …», takes the next modifier pressed and let go alone or the
+next function key, and Esc or «Avbryt» leaves the key as it was. It warns, and does not refuse, for right ⌥,
+Alt Gr on a PC: «Høyre ⌥ trengs til @, [ ], { } og | på norsk tastatur.», and for left ⌘, left Control and left
+⇧, which shortcuts and typing use: «Venstre ⇧ brukes når du skriver og i snarveier. Holder du den litt før neste
+tast, starter et opptak som avbrytes når tasten kommer.» On Linux the desktop's key binding holds the key, so
+the field shows the Hyprland lines that bind the key set (packaging/linux) in place of «Velg tast …». The overlay's
+hint, the menu and the first run's test name the key set: ⌘ drawn, any other in words.
 
 ## First run
 
@@ -214,7 +226,7 @@ writes the configuration file directly. Every command takes `--json`.
 | `skald last`, `skald history` | The latest text, or the five latest |
 | `skald fix list\|add\|remove` | Corrections |
 | `skald vocab list\|add\|remove\|sentence` | Ordskatt, with the token count while Skald runs, and the sentence it opens with |
-| `skald config get\|set` | Key, bokmål or nynorsk, the overlay's look, copy to clipboard, start at login, sounds |
+| `skald config get\|set` | Key (`right-command`, `left-option`, `fn`, `f13`, …), bokmål or nynorsk, the overlay's look, copy to clipboard, start at login, sounds |
 | `skald mic list\|use\|order` | Microphones and their order |
 | `skald model list\|use` | Models, and which are downloaded |
 | `skald transcribe <file.wav>` | Transcribe a file, so an agent can try a correction |

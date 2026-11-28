@@ -5,6 +5,29 @@ decision, and that pull request also edits the page where the rule lives ([desig
 [plan.md](plan.md)). Those pages say what holds; this one says when and why it came to hold. A later decision
 that undoes one adds an entry of its own, and the earlier entry gets one line naming it.
 
+## D-61 — The hold key is any modifier alone, fn or a function key, chosen by pressing it
+
+2026-11-28, Claude; Thomas's wish, the keys and the warnings set by the lead's brief.
+
+Right ⌘ suits most Macs, but not every keyboard and hand. The hold key can be a modifier alone, by side (⌘,
+Control, ⇧ and ⌥ on a Mac; the Windows or Super key, Ctrl, Shift and Alt on a PC), fn on a Mac, or a function
+key from F1 to F19. Letters, digits and other keys that type are left out, since holding one would type it.
+The arming rules hold for every key: 200 ms, any other key cancels, the watchdog.
+
+The settings window takes the key by having the user press it: the key listener, which tells the sides apart
+by each event's key code as #64 does, reports the next modifier pressed and let go alone, or the next function
+key, and starts no take meanwhile. The window warns, without refusing, for right ⌥, which Norwegian text needs
+for @, brackets, braces and |, and for left ⌘, left Control and left ⇧, which shortcuts and typing use, so a
+pause on one starts a take that the next key cancels. A function key held is kept from the app in front, as
+the hands-free chord is, since F5 in a browser reloads; a function key has no modifier flag, so its own events
+say whether it is down, and a release they miss ends at the cap.
+
+The configuration keeps the key's words, `right-command` and `right-control` as before and `right-shift`,
+`left-option`, `fn`, `f13` and the rest for the new keys; a name this version does not know is kept as written
+(D-19). On Linux the desktop's key binding holds the key, so the field shows the Hyprland lines for the key set,
+and `skald config set hold_key` names it for the hint and the menu. Changed: [design.md](design.md#recording),
+[design.md](design.md#settings), packaging/linux/README.md, packaging/skills/skald/commands.md.
+
 ## D-59 — A release waits for one approval, and its secrets are in an environment that only `v` tags reach
 
 2026-11-28, Claude; the two environments, the one approval and the tag ruleset set by the lead's brief, in answer

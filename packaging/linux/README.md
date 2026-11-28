@@ -65,6 +65,10 @@ bindrn = CTRL, Control_R, exec, skald stop
 bind = CTRL SUPER, X, exec, skald toggle
 ```
 
+Another key works the same way: the settings window's «Tasten du holder inne for å snakke» shows the two
+lines for the key set, such as `Shift_R` with `SHIFT`, `Super_L` with `SUPER` or `F13` with nothing before the
+comma, and `skald config set hold_key right-shift` makes the hint and the menu name it (D-61).
+
 The release line names CTRL because Hyprland matches the release of a modifier with that modifier still in
 its mask. If the press does not start a take, add the press line once more with `CTRL` before the comma; a
 press or a release that arrives twice counts once.

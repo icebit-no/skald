@@ -11,7 +11,7 @@ use crate::words;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct General {
-    pub hold_key: Choices<HoldKey>,
+    pub hold_key: HoldKeyField,
     pub language: Choices<Language>,
     /// The order first, then connected microphones that are not in it, then a pinned one that is neither.
     pub microphones: Vec<MicrophoneRow>,
@@ -22,6 +22,82 @@ pub struct General {
     pub copy_to_clipboard: bool,
     pub start_at_login: bool,
     pub sounds: bool,
+}
+
+/// «Tasten du holder inne for å snakke»: the key set, and how another is chosen (D-61).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct HoldKeyField {
+    /// The key set as the field shows it: «Høyre ⌘», «F13».
+    pub label: String,
+    /// The same as a sentence names it: «høyre ⌘», «F13».
+    pub name: String,
+    /// What to know before holding the key set: one Norwegian text needs, one shortcuts use.
+    pub warning: Option<String>,
+    /// A key a newer Skald wrote, kept as written; Skald listens for the system's own meanwhile.
+    pub unknown: Option<String>,
+    pub choosing: Choosing,
+}
+
+/// How a hold key is chosen on this system.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Choosing {
+    /// The user presses the key in the field; `waiting` while the field waits for it.
+    Pressed { waiting: bool },
+    /// The desktop's key binding holds the key, as on Linux: the two lines that bind the key set, or none
+    /// for a key the desktop cannot bind that way.
+    Bound(Option<[String; 2]>),
+}
+
+/// What the field shows while it waits for the key.
+pub const PRESS_A_KEY: &str = "Trykk tasten du vil holde inne …";
+
+/// The keys the field takes, under it while it waits.
+pub const KEYS_TAKEN: &str = "En modifikatortast alene, som høyre ⌘, ⇧, ⌥ eller fn, eller en funksjonstast \
+     fra F1 til F19. Esc avbryter.";
+
+impl HoldKeyField {
+    fn of(key: &HoldKey, waiting: bool) -> Self {
+        Self {
+            label: key.label(),
+            name: key.name(),
+            warning: key.warning(),
+            unknown: (!key.is_known()).then(|| String::from(key.clone())),
+            choosing: if cfg!(target_os = "linux") {
+                Choosing::Bound(hyprland_binding(key))
+            } else {
+                Choosing::Pressed { waiting }
+            },
+        }
+    }
+
+    /// What the field's button asks: to wait for a key, or to stop waiting.
+    pub fn button(&self) -> Option<Action> {
+        match self.choosing {
+            Choosing::Pressed { waiting } => Some(Action::CaptureHoldKey(!waiting)),
+            Choosing::Bound(_) => None,
+        }
+    }
+}
+
+/// The Hyprland lines that hold `key` for Skald: `skald start` as it goes down, `skald stop` as it comes up.
+/// A modifier coming up still carries its own kind, so the release line names it. Alt Gr and fn are left
+/// out: a Norwegian layout makes Alt Gr a level shift, and fn never reaches the desktop.
+pub fn hyprland_binding(key: &HoldKey) -> Option<[String; 2]> {
+    let (name, kind) = match key {
+        HoldKey::RightControl => ("Control_R".to_owned(), "CTRL"),
+        HoldKey::LeftControl => ("Control_L".to_owned(), "CTRL"),
+        HoldKey::RightShift => ("Shift_R".to_owned(), "SHIFT"),
+        HoldKey::LeftShift => ("Shift_L".to_owned(), "SHIFT"),
+        HoldKey::LeftOption => ("Alt_L".to_owned(), "ALT"),
+        HoldKey::RightCommand => ("Super_R".to_owned(), "SUPER"),
+        HoldKey::LeftCommand => ("Super_L".to_owned(), "SUPER"),
+        HoldKey::Function(number) => (format!("F{number}"), ""),
+        HoldKey::RightOption | HoldKey::Fn | HoldKey::Unknown(_) => return None,
+    };
+    Some([
+        format!("bindn = , {name}, exec, skald start"),
+        format!("bindrn = {kind}, {name}, exec, skald stop"),
+    ])
 }
 
 /// One setting's options, as a row of buttons.
@@ -132,7 +208,7 @@ impl General {
     pub fn of(model: &SettingsModel) -> Self {
         let config = &model.config;
         Self {
-            hold_key: hold_keys(&config.hold_key),
+            hold_key: HoldKeyField::of(&config.hold_key, model.capturing_hold_key),
             language: Choices {
                 options: [(Language::Bokmal, "Bokmål"), (Language::Nynorsk, "Nynorsk")]
                     .into_iter()
@@ -210,33 +286,6 @@ impl General {
     pub fn choose_model(&self, index: usize) -> Option<Change> {
         let row = self.models.get(index)?;
         (row.selectable && !row.selected).then(|| Change::Model(row.id.clone()))
-    }
-}
-
-fn hold_keys(current: &HoldKey) -> Choices<HoldKey> {
-    let options: &[(HoldKey, &'static str)] = if cfg!(target_os = "macos") {
-        &[
-            (HoldKey::RightCommand, "Høyre ⌘"),
-            (HoldKey::RightControl, "Høyre Control"),
-        ]
-    } else {
-        &[(HoldKey::RightControl, "Høyre Ctrl")]
-    };
-    let unknown = match current {
-        HoldKey::Unknown(name) => Some(name.clone()),
-        known if options.iter().all(|(key, _)| key != known) => Some(String::from(known.clone())),
-        _ => None,
-    };
-    Choices {
-        options: options
-            .iter()
-            .map(|(value, label)| Choice {
-                value: value.clone(),
-                label,
-                selected: value == current,
-            })
-            .collect(),
-        unknown,
     }
 }
 
@@ -505,24 +554,90 @@ mod tests {
     }
 
     #[test]
-    fn the_hold_keys_are_the_platforms_and_an_unknown_one_is_named() {
+    fn the_field_names_the_key_set_and_warns_of_one_text_or_shortcuts_need() {
         let general = General::of(&model(|_| {}));
-        let labels: Vec<&str> = general.hold_key.options.iter().map(|c| c.label).collect();
-        if cfg!(target_os = "macos") {
-            assert_eq!(labels, ["Høyre ⌘", "Høyre Control"]);
-            assert!(general.hold_key.options[0].selected);
-        } else {
-            assert_eq!(labels, ["Høyre Ctrl"]);
-        }
-        let general = General::of(&model(|config| {
-            config.hold_key = HoldKey::Unknown("right-option".into());
-        }));
-        assert_eq!(general.hold_key.unknown.as_deref(), Some("right-option"));
-        assert!(general.hold_key.options.iter().all(|c| !c.selected));
-        assert_eq!(
-            general.hold_key.choose(0, Change::HoldKey),
-            Some(Change::HoldKey(general.hold_key.options[0].value.clone()))
+        assert_eq!(general.hold_key.label, HoldKey::default().label());
+        assert_eq!(general.hold_key.warning, None);
+        assert_eq!(general.hold_key.unknown, None);
+
+        let f13 = General::of(&model(|config| config.hold_key = HoldKey::Function(13)));
+        assert_eq!(f13.hold_key.label, "F13");
+        assert_eq!(f13.hold_key.name, "F13");
+
+        let right_option = General::of(&model(|config| config.hold_key = HoldKey::RightOption));
+        assert!(
+            right_option
+                .hold_key
+                .warning
+                .unwrap()
+                .contains("@, [ ], { } og |")
         );
+        let left_shift = General::of(&model(|config| config.hold_key = HoldKey::LeftShift));
+        assert!(left_shift.hold_key.warning.unwrap().contains("snarveier"));
+
+        let unknown = General::of(&model(|config| {
+            config.hold_key = HoldKey::Unknown("right-hyper".into());
+        }));
+        assert_eq!(unknown.hold_key.unknown.as_deref(), Some("right-hyper"));
+        assert_eq!(unknown.hold_key.label, HoldKey::default().label());
+    }
+
+    #[test]
+    fn the_key_is_pressed_in_the_field_except_where_the_desktop_binds_it() {
+        let general = General::of(&model(|_| {}));
+        if cfg!(target_os = "linux") {
+            assert!(matches!(
+                general.hold_key.choosing,
+                Choosing::Bound(Some(_))
+            ));
+            assert_eq!(general.hold_key.button(), None);
+            return;
+        }
+        assert_eq!(
+            general.hold_key.choosing,
+            Choosing::Pressed { waiting: false }
+        );
+        assert_eq!(
+            general.hold_key.button(),
+            Some(Action::CaptureHoldKey(true))
+        );
+        let mut waiting = model(|_| {});
+        waiting.capturing_hold_key = true;
+        let general = General::of(&waiting);
+        assert_eq!(
+            general.hold_key.choosing,
+            Choosing::Pressed { waiting: true }
+        );
+        assert_eq!(
+            general.hold_key.button(),
+            Some(Action::CaptureHoldKey(false)),
+            "the button gives up waiting"
+        );
+    }
+
+    #[test]
+    fn hyprland_binds_the_key_with_its_release_carrying_its_kind() {
+        assert_eq!(
+            hyprland_binding(&HoldKey::RightControl),
+            Some([
+                "bindn = , Control_R, exec, skald start".to_owned(),
+                "bindrn = CTRL, Control_R, exec, skald stop".to_owned(),
+            ]),
+            "the lines in packaging/linux"
+        );
+        assert_eq!(
+            hyprland_binding(&HoldKey::Function(13)),
+            Some([
+                "bindn = , F13, exec, skald start".to_owned(),
+                "bindrn = , F13, exec, skald stop".to_owned(),
+            ])
+        );
+        assert_eq!(
+            hyprland_binding(&HoldKey::LeftCommand).unwrap()[1],
+            "bindrn = SUPER, Super_L, exec, skald stop"
+        );
+        assert_eq!(hyprland_binding(&HoldKey::RightOption), None);
+        assert_eq!(hyprland_binding(&HoldKey::Fn), None);
     }
 
     #[test]

@@ -38,6 +38,7 @@ enum Command {
     HoldKey { down: bool },
     HandsFreeChord,
     HandsFreeEnded,
+    Capture,
 }
 
 /// Takes the hold key from the desktop's key binding until dropped.
@@ -78,6 +79,15 @@ impl HoldListener {
     pub fn hands_free_ended(&self) {
         // Fails only once the thread has stopped, and then there is no take to end.
         let _ = self.commands.send(Command::HandsFreeEnded);
+    }
+
+    /// The desktop's key binding decides the key, so there is none to press here: asking says so at once
+    /// with [`ListenerEvent::Captured`] holding none.
+    pub fn capture(&self, on: bool) {
+        if on {
+            // Fails only once the thread has stopped, and then nothing is captured.
+            let _ = self.commands.send(Command::Capture);
+        }
     }
 }
 
@@ -178,6 +188,7 @@ impl Driver {
                 self.machine.hands_free_released();
             }
             Command::HandsFreeEnded => self.machine.hands_free_ended(),
+            Command::Capture => self.send(ListenerEvent::Captured(None)),
         }
     }
 

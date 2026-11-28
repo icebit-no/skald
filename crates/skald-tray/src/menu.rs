@@ -72,7 +72,7 @@ impl TrayModel {
         }];
         if let Some(hint) = hint(&self.hold_key) {
             menu.push(Entry::Label {
-                title: hint.to_owned(),
+                title: hint,
                 greyed: true,
             });
         }
@@ -167,13 +167,11 @@ fn language_in_text(language: Language) -> &'static str {
     }
 }
 
-/// The greyed line under the heading; none for a key this version cannot name.
-fn hint(key: &HoldKey) -> Option<&'static str> {
-    match key {
-        HoldKey::RightCommand => Some("Hold høyre ⌘ for å snakke"),
-        HoldKey::RightControl => Some("Hold høyre Ctrl for å snakke"),
-        HoldKey::Unknown(_) => None,
-    }
+/// The greyed line under the heading, naming the key held as this system's keyboard labels it; none for
+/// a key this version cannot name.
+fn hint(key: &HoldKey) -> Option<String> {
+    key.is_known()
+        .then(|| format!("Hold {} for å snakke", key.name()))
 }
 
 /// A latest text on one line, cut at [`TEXT_TITLE_CHARS`] with «…».
@@ -241,9 +239,10 @@ mod tests {
     #[test]
     fn a_fresh_model_holds_the_menu_design_md_lists() {
         let menu = mac_model().menu();
+        let hint = format!("Hold {} for å snakke", HoldKey::RightCommand.name());
         let expected = vec![
             label("Skald · bokmål", false),
-            label("Hold høyre ⌘ for å snakke", true),
+            label(&hint, true),
             Entry::Separator,
             Entry::Submenu {
                 title: "Mikrofon".to_owned(),
@@ -303,13 +302,21 @@ mod tests {
             hold_key: HoldKey::RightControl,
             ..TrayModel::default()
         };
-        assert_eq!(
-            control.menu()[1],
-            label("Hold høyre Ctrl for å snakke", true)
-        );
+        let control_hint = if cfg!(target_os = "macos") {
+            "Hold høyre Control for å snakke"
+        } else {
+            "Hold høyre Ctrl for å snakke"
+        };
+        assert_eq!(control.menu()[1], label(control_hint, true));
+
+        let f13 = TrayModel {
+            hold_key: HoldKey::Function(13),
+            ..TrayModel::default()
+        };
+        assert_eq!(f13.menu()[1], label("Hold F13 for å snakke", true));
 
         let unknown = TrayModel {
-            hold_key: HoldKey::Unknown("f13".to_owned()),
+            hold_key: HoldKey::Unknown("f20".to_owned()),
             ..TrayModel::default()
         };
         let menu = unknown.menu();

@@ -80,6 +80,11 @@ impl Example {
                 );
             }
             Action::DownloadModel(id) => self.download(id, cx),
+            Action::CaptureHoldKey(on) => {
+                // The app's key listener would report the key pressed; here the field only shows that
+                // it waits, until «Avbryt».
+                self.model.borrow_mut().capturing_hold_key = on;
+            }
             Action::StopDownload(id) => {
                 self.download.set(self.download.get() + 1);
                 let mut model = self.model.borrow_mut();
@@ -236,5 +241,6 @@ fn sample() -> SettingsModel {
         })),
         version: env!("CARGO_PKG_VERSION").to_owned(),
         compute: Some(Compute::Metal),
+        capturing_hold_key: false,
     }
 }

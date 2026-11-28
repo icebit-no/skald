@@ -315,7 +315,7 @@ mod tests {
     fn the_skills_settings_are_those_config_takes() {
         let commands = FILES[1].text;
         for key in crate::commands::SettingKey::ALL {
-            let row = format!("| `{}` | `{}` |", key.name(), key.accepted().join("`, `"));
+            let row = format!("| `{}` | `{}` |", key.name(), key.shown().join("`, `"));
             assert!(commands.contains(&row), "commands.md lacks the row {row}");
         }
         let rows = commands

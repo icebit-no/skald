@@ -59,6 +59,8 @@ pub(crate) struct Screen {
     recording: bool,
     /// Takes ended and waiting for their text.
     carving: usize,
+    /// The settings window waits for the key the user presses to choose the hold key.
+    capturing_hold_key: bool,
 }
 
 impl Default for Screen {
@@ -72,6 +74,7 @@ impl Default for Screen {
             on_screen: None,
             recording: false,
             carving: 0,
+            capturing_hold_key: false,
         }
     }
 }
@@ -146,6 +149,10 @@ impl Screen {
                 changed.settings = true;
             }
             Event::Settings(config) => return self.set_config(config),
+            Event::HoldKeyCaptured(_) => {
+                self.capturing_hold_key = false;
+                changed.settings = true;
+            }
             Event::Stopped => {}
         }
         changed
@@ -234,7 +241,13 @@ impl Screen {
                 skald_engine::Compute::Vulkan => skald_settings::Compute::Vulkan,
                 skald_engine::Compute::Cpu => skald_settings::Compute::Cpu,
             }),
+            capturing_hold_key: self.capturing_hold_key,
         }
+    }
+
+    /// The settings window starts or stops waiting for the key the user presses to choose the hold key.
+    pub(crate) fn capture_hold_key(&mut self, on: bool) {
+        self.capturing_hold_key = on;
     }
 }
 
@@ -285,6 +298,7 @@ pub(crate) fn test_dictation(event: &Event) -> Option<TestDictation> {
         | Event::Microphones(_)
         | Event::State(_)
         | Event::Settings(_)
+        | Event::HoldKeyCaptured(_)
         | Event::Stopped => return None,
     })
 }

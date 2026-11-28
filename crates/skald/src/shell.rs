@@ -188,6 +188,9 @@ impl Shell {
             self.on_stopped(cx);
             return;
         }
+        if let Event::HoldKeyCaptured(Some(key)) = &event {
+            self.change(&Change::HoldKey(key.clone()), cx);
+        }
         if let Some(window) = &mut self.first_run
             && window.first_run.model.test != TestDictation::NotStarted
             && let Some(test) = screen::test_dictation(&event)
@@ -452,6 +455,11 @@ impl Shell {
                 if let Some((cancel, _)) = self.downloading.get(&id) {
                     cancel.cancel();
                 }
+            }
+            SettingsAction::CaptureHoldKey(on) => {
+                self.screen.capture_hold_key(on);
+                self.launcher.capture(on);
+                self.refresh_settings(cx);
             }
             SettingsAction::CorrectHistory {
                 unix_ms,

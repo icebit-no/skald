@@ -72,6 +72,7 @@ impl HoldKey {
     }
 
     /// The same modifier on the other side; none for fn and a function key.
+    #[cfg(any(target_os = "macos", test))]
     pub(crate) fn twin(self) -> Option<Modifiers> {
         let twin = match self {
             HoldKey::RightCommand => HoldKey::LeftCommand,

@@ -396,6 +396,9 @@ impl Shell {
         if changed.theme {
             self.overlay.set_theme(self.screen.theme(), cx);
         }
+        if changed.hold_key {
+            self.overlay.set_hold_key(self.screen.hold_key(), cx);
+        }
         for pill in changed.pills {
             match pill {
                 Pill::Record { hands_free: false } => self.overlay.record(cx),
@@ -408,6 +411,9 @@ impl Shell {
                 Pill::AdministratorWindow => self.overlay.administrator_window(cx),
                 Pill::TranscriptionFailed => self.overlay.transcription_failed(cx),
                 Pill::NoMicrophone => self.overlay.no_microphone(cx),
+                Pill::MicrophoneNotOpened(microphone) => {
+                    self.overlay.microphone_not_opened(&microphone, cx);
+                }
                 Pill::MicrophoneChanged(microphone) => {
                     self.overlay.microphone_changed(&microphone, cx);
                 }
@@ -496,16 +502,20 @@ impl Shell {
         self.screen.settings(models, self.token_counter())
     }
 
-    /// Counts with the loaded model, asking it once per text. A count asked while a take is being
-    /// transcribed waits for that take.
+    /// Counts with the loaded model's tokenizer, once per text. It answers at once, also while a take is
+    /// transcribed, so the main thread never waits for the pipeline.
     fn token_counter(&self) -> Option<TokenCounter> {
         let worker = self.linked.as_ref()?.worker.clone();
         let counted = Rc::clone(&self.tokens);
         Some(TokenCounter::new(PROMPT_TOKENS, move |text| {
-            *counted
-                .borrow_mut()
-                .entry(text.to_owned())
-                .or_insert_with(|| worker.count_tokens(text).unwrap_or(0))
+            if let Some(&tokens) = counted.borrow().get(text) {
+                return tokens;
+            }
+            let Some(tokens) = worker.count_tokens(text) else {
+                return 0;
+            };
+            counted.borrow_mut().insert(text.to_owned(), tokens);
+            tokens
         }))
     }
 

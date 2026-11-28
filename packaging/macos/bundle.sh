@@ -1,8 +1,9 @@
 #!/bin/sh
 # Builds Skald.app on a Mac from this checkout: the release `skald` as the bundle's executable, which is also the
-# command line (D-25), the Info.plist with the workspace's version, and the icon packed from assets/icon/. Every
-# build is signed with the hardened runtime and the entitlements in skald.entitlements, so the bundle runs here as
-# it runs released. Adapted from Ferric's packaging/macos/bundle.sh (MIT, by the same author).
+# command line (D-25), the Info.plist with the workspace's version, the icon packed from assets/icon/, and the
+# licence with the third-party notices. Every build is signed with the hardened runtime and the entitlements in
+# skald.entitlements, so the bundle runs here as it runs released. Adapted from Ferric's packaging/macos/bundle.sh
+# (MIT, by the same author).
 #
 #   packaging/macos/bundle.sh                 signed ad hoc
 #   packaging/macos/bundle.sh --developer-id  signed with the Developer ID Application identity of the team
@@ -83,6 +84,7 @@ for points in 16 32 128 256 512; do
     cp "$icons/app-icon-$((points * 2)).png" "$iconset/icon_${points}x${points}@2x.png"
 done
 iconutil --convert icns --output "$app/Contents/Resources/AppIcon.icns" "$iconset"
+cp LICENSE THIRD-PARTY-NOTICES "$app/Contents/Resources/"
 
 codesign --force --sign "$sign" --options runtime $timestamp \
     --entitlements "$here/skald.entitlements" "$app"

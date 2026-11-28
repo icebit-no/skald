@@ -251,6 +251,10 @@ impl<M: Microphones> Dictation<M> {
                 self.events.push(Event::NoMicrophone);
             }
             Err(Unopened::Failed { microphone, error }) => {
+                self.events.push(Event::MicrophoneNotOpened {
+                    microphone: microphone.clone(),
+                    error: error.clone(),
+                });
                 self.lines.push(Line::CaptureFailed { microphone, error });
             }
         }
@@ -734,9 +738,13 @@ mod tests {
     }
 
     #[test]
-    fn a_microphone_that_will_not_open_is_named_with_the_reason() {
+    fn a_microphone_that_will_not_open_is_named_with_the_reason_once_armed() {
         let Setup { mut dictation, .. } = setup();
         dictation.microphones.fails_with = Some(CaptureError::Busy);
+        hold(&mut dictation, &[pressed(), HoldEvent::NotArmed]);
+        assert!(dictation.take_lines().is_empty(), "a shortcut says nothing");
+        assert!(dictation.take_events().is_empty());
+
         hold(&mut dictation, &[pressed(), armed(), HoldEvent::Released]);
         assert_eq!(
             dictation.take_lines(),
@@ -745,7 +753,21 @@ mod tests {
                 error: CaptureError::Busy,
             }]
         );
+        assert_eq!(
+            dictation.take_events(),
+            [Event::MicrophoneNotOpened {
+                microphone: "Shure MV7".into(),
+                error: CaptureError::Busy,
+            }]
+        );
         assert!(dictation.take_jobs().is_empty());
+
+        hold(&mut dictation, &[hands_free_started()]);
+        assert!(matches!(
+            dictation.take_events()[..],
+            [Event::MicrophoneNotOpened { .. }]
+        ));
+        assert!(dictation.take_hands_free_ended());
     }
 
     #[test]

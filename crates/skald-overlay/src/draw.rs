@@ -6,6 +6,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use gpui_kit::{FontWeight, RenderImage, Rgba};
+use skald_core::config::HoldKey;
 
 use crate::bars::{LIVE_BARS, LiveBar};
 use crate::futhark::Mark;
@@ -87,7 +88,32 @@ pub(crate) fn plate(painter: &mut Painter, style: &Style, face: Option<&Face>) {
     }
 }
 
-pub(crate) fn states(painter: &mut Painter, scene: &Scene, style: &Style, runes: bool) {
+/// The key held to talk, as the recording hint names it.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum HeldKey {
+    Command,
+    Control,
+}
+
+impl HeldKey {
+    /// The key the configuration names; one this version does not know is the system's own, as the key
+    /// listener takes it.
+    pub(crate) fn of(key: &HoldKey) -> Self {
+        match key {
+            HoldKey::RightCommand => HeldKey::Command,
+            HoldKey::RightControl => HeldKey::Control,
+            HoldKey::Unknown(_) => HeldKey::of(&HoldKey::default()),
+        }
+    }
+}
+
+pub(crate) fn states(
+    painter: &mut Painter,
+    scene: &Scene,
+    style: &Style,
+    runes: bool,
+    key: HeldKey,
+) {
     let layout = Layout::of(style);
     for layer in &scene.layers {
         painter.alpha = layer.alpha;
@@ -99,9 +125,9 @@ pub(crate) fn states(painter: &mut Painter, scene: &Scene, style: &Style, runes:
                 bars,
             } => {
                 head(painter, style, &layout, *elapsed, *hands_free, *pulse, 1.0);
-                let end = bars_end(painter, style, &layout, *hands_free);
+                let end = bars_end(painter, style, &layout, *hands_free, key);
                 live_bars(painter, style, &layout, bars, end);
-                hint(painter, style, &layout, *hands_free, 1.0);
+                hint(painter, style, &layout, *hands_free, key, 1.0);
             }
             Look::Carving {
                 hands_free,
@@ -131,7 +157,7 @@ pub(crate) fn states(painter: &mut Painter, scene: &Scene, style: &Style, runes:
                     *head_alpha,
                 );
                 carve(painter, style, &layout, &carving);
-                hint(painter, style, &layout, *hands_free, 1.0 - label);
+                hint(painter, style, &layout, *hands_free, key, 1.0 - label);
                 rister(painter, style, &layout, *label);
             }
             Look::Inserted { text } => inserted(painter, style, &layout, text),
@@ -176,6 +202,11 @@ impl<'a> Message<'a> {
             Look::AdministratorWindow => fixed("Administratorvindu", " · ligger i Siste tekster"),
             Look::TranscriptionFailed => fixed("Transkriberingen feilet", ""),
             Look::NoMicrophone => fixed("Ingen mikrofon er koblet til", ""),
+            Look::MicrophoneNotOpened { microphone } => Some(Self {
+                first: microphone,
+                first_fixed: false,
+                rest: " · kunne ikke åpnes".to_owned(),
+            }),
             Look::Recording { .. } | Look::Carving { .. } | Look::Inserted { .. } => None,
         }
     }
@@ -360,10 +391,16 @@ fn bar(painter: &mut Painter, ink: &Ink, x: f32, height: f32) {
 /// The room kept between the recording bars and a hint named in words.
 const HINT_GAP: f32 = 8.0;
 
-/// Where the recording bars end so the hint beside them stays clear. macOS's drawn keys fit beside every
-/// bar; a hint named in words can reach further, and the oldest bars give way to it.
-fn bars_end(painter: &mut Painter, style: &Style, layout: &Layout, hands_free: bool) -> f32 {
-    if cfg!(target_os = "macos") {
+/// Where the recording bars end so the hint beside them stays clear. Drawn keys fit beside every bar; a
+/// hint named in words can reach further, and the oldest bars give way to it.
+fn bars_end(
+    painter: &mut Painter,
+    style: &Style,
+    layout: &Layout,
+    hands_free: bool,
+    key: HeldKey,
+) -> f32 {
+    if keys_drawn(hands_free, key) {
         return f32::INFINITY;
     }
     worded_hint_left(painter, style, layout, hands_free) - HINT_GAP
@@ -510,16 +547,33 @@ const HANDS_FREE_KEYS: &str = if cfg!(windows) {
     "Ctrl+Super+X"
 };
 
-/// «slipp ⌘», or «⌃⌘X stopper» in a hands-free take, at the right end. Windows and Linux name their keys
-/// in words: «slipp Ctrl», and «Ctrl+Win+X stopper» or «Ctrl+Super+X stopper».
-fn hint(painter: &mut Painter, style: &Style, layout: &Layout, hands_free: bool, alpha: f32) {
+/// At the right end, the key to let go of: «slipp ⌘» with ⌘ drawn, or «slipp Ctrl» in words. In a
+/// hands-free take the chord that stops it: drawn on macOS, «⌃⌘X stopper»; in words on Windows and Linux,
+/// «Ctrl+Win+X stopper» or «Ctrl+Super+X stopper».
+fn hint(
+    painter: &mut Painter,
+    style: &Style,
+    layout: &Layout,
+    hands_free: bool,
+    key: HeldKey,
+    alpha: f32,
+) {
     faded(painter, alpha, |painter| {
-        if cfg!(target_os = "macos") {
+        if keys_drawn(hands_free, key) {
             drawn_hint(painter, style, layout, hands_free);
         } else {
             worded_hint(painter, style, layout, hands_free);
         }
     });
+}
+
+/// Whether the hint's keys are drawn, as macOS draws them, rather than named in words.
+fn keys_drawn(hands_free: bool, key: HeldKey) -> bool {
+    if hands_free {
+        cfg!(target_os = "macos")
+    } else {
+        key == HeldKey::Command
+    }
 }
 
 fn worded_hint_left(
@@ -963,6 +1017,27 @@ mod tests {
     }
 
     #[test]
+    fn the_hint_draws_command_and_names_control_in_words_whatever_the_system() {
+        assert!(keys_drawn(false, HeldKey::Command));
+        assert!(!keys_drawn(false, HeldKey::Control));
+        for key in [HeldKey::Command, HeldKey::Control] {
+            assert_eq!(keys_drawn(true, key), cfg!(target_os = "macos"), "{key:?}");
+        }
+    }
+
+    #[test]
+    fn the_held_key_is_the_configured_one_or_the_systems_own() {
+        assert_eq!(HeldKey::of(&HoldKey::RightCommand), HeldKey::Command);
+        assert_eq!(HeldKey::of(&HoldKey::RightControl), HeldKey::Control);
+        let own = if cfg!(target_os = "macos") {
+            HeldKey::Command
+        } else {
+            HeldKey::Control
+        };
+        assert_eq!(HeldKey::of(&HoldKey::Unknown("right-option".into())), own);
+    }
+
+    #[test]
     fn a_serpent_stays_on_the_plate() {
         for turned in [false, true] {
             let serpent = serpent(turned);
@@ -1027,6 +1102,12 @@ mod tests {
         assert_eq!(
             read(Look::NoMicrophone),
             ("Ingen mikrofon er koblet til".to_owned(), true)
+        );
+        assert_eq!(
+            read(Look::MicrophoneNotOpened {
+                microphone: "Shure MV7"
+            }),
+            ("Shure MV7 · kunne ikke åpnes".to_owned(), false)
         );
         assert_eq!(Message::of(&Look::Inserted { text: "Hei." }), None);
     }

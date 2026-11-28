@@ -3,17 +3,19 @@
 //! ```sh
 //! cargo run -p skald-overlay --example states
 //! cargo run -p skald-overlay --example states -- --theme kjedelig --still
+//! cargo run -p skald-overlay --example states -- --hold-key right-control
 //! ```
 //!
-//! `--theme runepinne|smidd-jern|kjedelig` shows one theme only, `--still` shows reduced motion. The
-//! frame rate is printed while the pill shows. Ctrl-C ends it.
+//! `--theme runepinne|smidd-jern|kjedelig` shows one theme only, `--still` shows reduced motion, and
+//! `--hold-key right-command|right-control` the hint for that key. The frame rate is printed while the
+//! pill shows. Ctrl-C ends it.
 
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
 use gpui_kit::{ActivationPolicy, App, AsyncApp, QuitMode};
-use skald_core::config::OverlayTheme;
+use skald_core::config::{HoldKey, OverlayTheme};
 use skald_overlay::{Motion, Overlay};
 
 const LONG_TEXT: &str = "Kan du sende meg notatene fra møtet i går, så ser jeg på dem før lunsj.";
@@ -35,6 +37,11 @@ fn main() {
                 OverlayTheme::Kjedelig,
             ],
         };
+    let hold_key = arguments
+        .iter()
+        .position(|argument| argument == "--hold-key")
+        .and_then(|at| arguments.get(at + 1))
+        .map(|name| HoldKey::from(name.clone()));
 
     let application = gpui_kit::application().with_quit_mode(QuitMode::Explicit);
     application.run(move |cx: &mut App| {
@@ -43,6 +50,9 @@ fn main() {
         let overlay = Rc::new(RefCell::new(Overlay::new(&themes[0], cx)));
         if still {
             overlay.borrow_mut().set_motion(Some(Motion::Reduced), cx);
+        }
+        if let Some(key) = &hold_key {
+            overlay.borrow_mut().set_hold_key(key, cx);
         }
         cx.spawn(async move |cx| {
             loop {
@@ -104,6 +114,12 @@ async fn show_every_state(overlay: &Rc<RefCell<Overlay>>, cx: &mut AsyncApp) {
 
     println!("Ingen mikrofon");
     act(cx, &|overlay, cx| overlay.no_microphone(cx));
+    wait(overlay, cx, Duration::from_millis(2600)).await;
+
+    println!("Mikrofon åpnet ikke");
+    act(cx, &|overlay, cx| {
+        overlay.microphone_not_opened(PLUGGED_IN, cx)
+    });
     wait(overlay, cx, Duration::from_millis(2600)).await;
 
     println!("Mikrofon byttet");

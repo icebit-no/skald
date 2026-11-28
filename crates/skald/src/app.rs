@@ -33,6 +33,7 @@ use crate::control::{Control, Settings, computes_on_vulkan};
 use crate::dictation::{Dictation, Microphones, SystemMicrophones, microphone_order};
 use crate::events::{Ending, Event, MicrophoneList};
 use crate::files::{self, ConfigFile};
+use crate::keys;
 use crate::login;
 use crate::models::ModelFiles;
 use crate::permissions;
@@ -96,12 +97,13 @@ pub(crate) struct Ready {
     pub(crate) worker: WorkerHandle,
 }
 
-/// The loop's side of the screen: where its events go, the screen's wish that it stop, and where it says
-/// it is ready.
+/// The loop's side of the screen: where its events go, the screen's wish that it stop, where it says it
+/// is ready, and the screen's asking for the key the user presses to choose the hold key.
 pub(crate) struct Link {
     events: async_channel::Sender<Event>,
     stop: Arc<AtomicBool>,
     ready: async_channel::Sender<Ready>,
+    capture: async_channel::Receiver<bool>,
 }
 
 /// The loop's thread, which returns why the loop stopped.
@@ -113,6 +115,7 @@ pub(crate) struct Launcher {
     options: Options,
     events: async_channel::Sender<Event>,
     stop: Arc<AtomicBool>,
+    capture: (async_channel::Sender<bool>, async_channel::Receiver<bool>),
 }
 
 impl Launcher {
@@ -125,6 +128,7 @@ impl Launcher {
             events: self.events.clone(),
             stop: Arc::clone(&self.stop),
             ready,
+            capture: self.capture.1.clone(),
         };
         let options = self.options.clone();
         let events = self.events.clone();
@@ -143,6 +147,13 @@ impl Launcher {
     /// Asks the running loop to stop; it says so with [`Event::Stopped`].
     pub(crate) fn stop(&self) {
         self.stop.store(true, Ordering::Release);
+    }
+
+    /// Asks the running loop for the next key the user presses to choose the hold key, which it tells
+    /// with [`Event::HoldKeyCaptured`]; `false` stops looking.
+    pub(crate) fn capture(&self, on: bool) {
+        // The channel holds any number, and the launcher keeps its other end.
+        let _ = self.capture.0.try_send(on);
     }
 }
 
@@ -172,6 +183,7 @@ fn run_app(options: Options) -> Result<(), Exit> {
         options,
         events,
         stop: Arc::new(AtomicBool::new(false)),
+        capture: async_channel::unbounded(),
     };
     let start = match first_run {
         Some(first_run) => Start::FirstRun(first_run),
@@ -250,6 +262,14 @@ impl Out {
         self.link
             .as_ref()
             .is_some_and(|link| link.stop.load(Ordering::Acquire))
+    }
+
+    /// What the screen asked of the hold key's capture since it was last asked.
+    fn captures_asked(&self) -> Vec<bool> {
+        self.link
+            .as_ref()
+            .map(|link| std::iter::from_fn(|| link.capture.try_recv().ok()).collect())
+            .unwrap_or_default()
     }
 
     fn ready(&self, ready: Ready) {
@@ -434,6 +454,9 @@ impl Running<'_> {
             if self.dictation.take_hands_free_ended() {
                 self.keys.listener.hands_free_ended();
             }
+            for on in self.out.captures_asked() {
+                self.keys.listener.capture(on);
+            }
             for job in self.dictation.take_jobs() {
                 self.worker.submit(job);
             }
@@ -470,6 +493,10 @@ impl Running<'_> {
                 }
             }
             ListenerEvent::Seen(seen) => self.out.say(Line::Seen(seen)),
+            ListenerEvent::Captured(key) => {
+                self.out
+                    .show(Event::HoldKeyCaptured(key.map(keys::configured)));
+            }
             ListenerEvent::Unavailable(Unavailable::NoAccessibility) => {
                 return Err(Exit::NoAccessibility);
             }
@@ -621,26 +648,18 @@ impl Keys {
                 out.say(Line::Seen(seen));
                 Ok(())
             }
-            Some(ListenerEvent::Hold(_)) | None => Ok(()),
+            Some(ListenerEvent::Hold(_) | ListenerEvent::Captured(_)) | None => Ok(()),
         }
     }
 }
 
-/// The configuration's hold key, or the platform's own, said, for a key this version does not know.
+/// The configuration's hold key, or the platform's own, said, for a key this version or system cannot
+/// listen for.
 fn hold_key(key: &ConfigHoldKey, out: &Out) -> HoldKey {
-    listened_key(key).unwrap_or_else(|name| {
+    keys::listened(key).unwrap_or_else(|name| {
         out.say(Line::UnknownHoldKey(name));
         HoldKey::PLATFORM_DEFAULT
     })
-}
-
-/// The key to listen for, or the name of one this version does not know.
-fn listened_key(key: &ConfigHoldKey) -> Result<HoldKey, String> {
-    match key {
-        ConfigHoldKey::RightCommand => Ok(HoldKey::RightCommand),
-        ConfigHoldKey::RightControl => Ok(HoldKey::RightControl),
-        ConfigHoldKey::Unknown(name) => Err(name.clone()),
-    }
 }
 
 #[cfg(test)]
@@ -655,22 +674,6 @@ mod tests {
             ..Options::default()
         };
         assert!(!shows_screen(&terminal));
-    }
-
-    #[test]
-    fn every_hold_key_the_configuration_knows_is_listened_for() {
-        assert_eq!(
-            listened_key(&ConfigHoldKey::RightCommand),
-            Ok(HoldKey::RightCommand)
-        );
-        assert_eq!(
-            listened_key(&ConfigHoldKey::RightControl),
-            Ok(HoldKey::RightControl)
-        );
-        assert_eq!(
-            listened_key(&ConfigHoldKey::Unknown("right-option".into())),
-            Err("right-option".into())
-        );
     }
 
     fn linked() -> (
@@ -688,6 +691,7 @@ mod tests {
                 events,
                 stop: Arc::clone(&stop),
                 ready,
+                capture: async_channel::unbounded().1,
             }),
         };
         (out, inbox, stop, started)

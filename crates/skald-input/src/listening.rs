@@ -3,6 +3,7 @@
 use std::fmt;
 
 use crate::hold::{HoldEvent, KeySample};
+use crate::hotkey::HoldKey;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ListenerEvent {
@@ -15,6 +16,9 @@ pub enum ListenerEvent {
     /// What the listener saw on the way to a hold, so a log can show where a press that started no take
     /// was lost.
     Seen(Seen),
+    /// The key pressed to choose the hold key, after [`HoldListener::capture`](crate::HoldListener::capture);
+    /// none when Esc gave up, or where the desktop holds the key and there is none to press.
+    Captured(Option<HoldKey>),
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

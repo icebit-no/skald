@@ -10,7 +10,7 @@ use std::time::{Duration, Instant};
 use handy_keys::{KeyEvent, KeyboardListener, Modifiers};
 
 use crate::hold::HoldMachine;
-use crate::hotkey::{HANDS_FREE, HoldKey, KeyChange, classify};
+use crate::hotkey::{Capture, Captured, HANDS_FREE, HoldKey, KeyChange, classify};
 use crate::listening::{ListenerEvent, Seen, Unavailable};
 #[cfg(target_os = "macos")]
 use crate::macos::access::{AccessWatch, accessibility_granted, seen_taps};
@@ -40,6 +40,8 @@ const TAPS_AFTER: Duration = Duration::from_secs(2);
 #[derive(Debug)]
 enum Command {
     HandsFreeEnded,
+    /// Report the next key pressed to choose the hold key, and start no take with it; `false` gives up.
+    Capture(bool),
 }
 
 /// Listens for the hold key and the hands-free chord until dropped.
@@ -70,6 +72,13 @@ impl HoldListener {
         // Fails only once the thread has stopped, and then there is no take to end.
         let _ = self.commands.send(Command::HandsFreeEnded);
     }
+
+    /// Reports the next key the user presses that can be the hold key, as [`ListenerEvent::Captured`], and
+    /// starts no take meanwhile; `false` stops looking.
+    pub fn capture(&self, on: bool) {
+        // Fails only once the thread has stopped, and then nothing is captured.
+        let _ = self.commands.send(Command::Capture(on));
+    }
 }
 
 struct Driver {
@@ -88,6 +97,10 @@ struct Driver {
     heard_a_key: bool,
     /// The modifiers by side as the latest key event had them.
     held: Modifiers,
+    /// The function key the hold key is, down by its latest event.
+    key_down: bool,
+    /// Looking for the key the user presses to choose the hold key.
+    capture: Option<Capture>,
     taps_due: Option<Instant>,
 }
 
@@ -105,6 +118,8 @@ impl Driver {
             reported: None,
             heard_a_key: false,
             held: Modifiers::empty(),
+            key_down: false,
+            capture: None,
             taps_due: None,
         }
     }
@@ -179,6 +194,7 @@ impl Driver {
     fn on_command(&mut self, command: Command) {
         match command {
             Command::HandsFreeEnded => self.machine.hands_free_ended(),
+            Command::Capture(on) => self.capture = on.then(Capture::default),
         }
     }
 
@@ -211,14 +227,19 @@ impl Driver {
             self.report(Unavailable::NoAccessibility);
             return;
         }
-        let chord: HashSet<_> = HANDS_FREE.iter().map(|chord| chord.hotkey()).collect();
-        match KeyboardListener::new_with_blocking(Arc::new(Mutex::new(chord))) {
+        let kept: HashSet<_> = HANDS_FREE
+            .iter()
+            .map(|chord| chord.hotkey())
+            .chain(self.hold_key.kept_from_apps())
+            .collect();
+        match KeyboardListener::new_with_blocking(Arc::new(Mutex::new(kept))) {
             Ok(keyboard) => {
                 self.keyboard = Some(keyboard);
                 self.reported = None;
                 self.heard_a_key = false;
-                // A new tap knows no modifier yet, as handy-keys' new listener does not.
+                // A new tap knows no key held yet, as handy-keys' new listener does not.
                 self.held = Modifiers::empty();
+                self.key_down = false;
                 self.taps_due = Some(Instant::now() + TAPS_AFTER);
                 self.send(ListenerEvent::Ready);
             }
@@ -255,9 +276,22 @@ impl Driver {
                 down: event.is_key_down,
             }));
         }
+        if let Some(capture) = &mut self.capture {
+            if let Some(captured) = capture.on_key_event(event) {
+                self.capture = None;
+                self.send(ListenerEvent::Captured(match captured {
+                    Captured::Key(key) => Some(key),
+                    Captured::GaveUp => None,
+                }));
+            }
+            return;
+        }
         let hold_event = match classify(event, self.hold_key, HANDS_FREE) {
             KeyChange::HoldKey => {
-                let sample = sample(self.hold_key, self.held);
+                if self.hold_key.key().is_some() {
+                    self.key_down = event.is_key_down;
+                }
+                let sample = sample(self.hold_key, self.held, self.key_down);
                 self.send(ListenerEvent::Seen(Seen::HoldKey {
                     down: event.is_key_down,
                     sample,
@@ -280,7 +314,9 @@ impl Driver {
     fn tick_if_due(&mut self) {
         let now = Instant::now();
         if self.machine.next_tick().is_some_and(|due| due <= now)
-            && let Some(event) = self.machine.tick(now, sample(self.hold_key, self.held))
+            && let Some(event) = self
+                .machine
+                .tick(now, sample(self.hold_key, self.held, self.key_down))
         {
             self.send(ListenerEvent::Hold(event));
         }

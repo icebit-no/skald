@@ -24,6 +24,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::TomlError;
 use crate::corrections::Corrections;
+pub use crate::hold_key::HoldKey;
 use crate::silence::Silence;
 use crate::vocabulary::Vocabulary;
 
@@ -85,49 +86,6 @@ impl Config {
     /// Writes every setting, the defaults included, so the file shows what can be set.
     pub fn to_toml(&self) -> Result<String, TomlError> {
         toml::to_string(self).map_err(TomlError::new)
-    }
-}
-
-/// The key held to talk.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(from = "String", into = "String")]
-pub enum HoldKey {
-    /// `right-command`
-    RightCommand,
-    /// `right-control`
-    RightControl,
-    /// A key this version does not know, written by a newer Skald, kept as written.
-    Unknown(String),
-}
-
-impl Default for HoldKey {
-    /// Right ⌘ on macOS; right Ctrl on Windows and Linux, where right Alt is AltGr.
-    fn default() -> Self {
-        if cfg!(target_os = "macos") {
-            Self::RightCommand
-        } else {
-            Self::RightControl
-        }
-    }
-}
-
-impl From<String> for HoldKey {
-    fn from(name: String) -> Self {
-        match name.as_str() {
-            "right-command" => Self::RightCommand,
-            "right-control" => Self::RightControl,
-            _ => Self::Unknown(name),
-        }
-    }
-}
-
-impl From<HoldKey> for String {
-    fn from(key: HoldKey) -> Self {
-        match key {
-            HoldKey::RightCommand => "right-command".to_owned(),
-            HoldKey::RightControl => "right-control".to_owned(),
-            HoldKey::Unknown(name) => name,
-        }
     }
 }
 
@@ -378,13 +336,13 @@ mod tests {
 
     #[test]
     fn an_unknown_hold_key_is_kept_as_written() {
-        let config = Config::from_toml(r#"hold_key = "right-option""#).unwrap();
-        assert_eq!(config.hold_key, HoldKey::Unknown("right-option".into()));
+        let config = Config::from_toml(r#"hold_key = "right-hyper""#).unwrap();
+        assert_eq!(config.hold_key, HoldKey::Unknown("right-hyper".into()));
         assert!(
             config
                 .to_toml()
                 .unwrap()
-                .contains(r#"hold_key = "right-option""#)
+                .contains(r#"hold_key = "right-hyper""#)
         );
     }
 

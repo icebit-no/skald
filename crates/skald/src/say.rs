@@ -540,11 +540,8 @@ pub(crate) fn tray_reason(error: &skald_tray::TrayError) -> String {
     }
 }
 
-pub(crate) fn key_name(key: HoldKey) -> &'static str {
-    match key {
-        HoldKey::RightCommand => "høyre ⌘",
-        HoldKey::RightControl => "høyre Ctrl",
-    }
+pub(crate) fn key_name(key: HoldKey) -> String {
+    crate::keys::name(key)
 }
 
 pub(crate) fn capture_reason(error: &CaptureError) -> String {
@@ -700,13 +697,23 @@ mod tests {
             "Yeti · koblet til, brukes nå"
         );
         assert_eq!(Line::Carving.to_string(), "rister …");
+        #[cfg(target_os = "macos")]
         assert_eq!(
             Line::Ready(HoldKey::RightCommand).to_string(),
             "Klar. Hold høyre ⌘ for å snakke."
         );
         assert_eq!(
-            Line::HoldKeyChanged(HoldKey::RightControl).to_string(),
+            Line::Ready(HoldKey::Function(13)).to_string(),
+            "Klar. Hold F13 for å snakke."
+        );
+        let control = if cfg!(target_os = "macos") {
+            "Hold høyre Control for å snakke."
+        } else {
             "Hold høyre Ctrl for å snakke."
+        };
+        assert_eq!(
+            Line::HoldKeyChanged(HoldKey::RightControl).to_string(),
+            control
         );
         assert!(
             Exit::NoAccessibility

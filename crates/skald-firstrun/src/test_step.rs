@@ -3,6 +3,7 @@
 //! reach the field.
 
 use skald_core::config::HoldKey;
+use skald_core::hold_key::Keyboard;
 
 use crate::action::Action;
 use crate::button::ButtonSpec;
@@ -116,16 +117,15 @@ fn reached(field: &str, text: &str) -> bool {
     !text.is_empty() && field.contains(text)
 }
 
-/// The key as the instruction names it, in the words of the settings window's choice.
-pub fn hold_key_name(key: &HoldKey, platform: Platform) -> &'static str {
-    match (key, platform) {
-        (HoldKey::RightCommand, _) => "høyre ⌘",
-        (HoldKey::RightControl, Platform::MacOs) => "høyre Control",
-        (HoldKey::RightControl, _) => "høyre Ctrl",
-        // A key a newer Skald wrote: the platform's own.
-        (HoldKey::Unknown(_), Platform::MacOs) => "høyre ⌘",
-        (HoldKey::Unknown(_), _) => "høyre Ctrl",
-    }
+/// The key as the instruction names it, as the platform's keyboard labels it; a key a newer Skald wrote
+/// is named as the platform's own, which Skald listens for in its place.
+pub fn hold_key_name(key: &HoldKey, platform: Platform) -> String {
+    let keyboard = match platform {
+        Platform::MacOs => Keyboard::Mac,
+        Platform::Windows => Keyboard::Windows,
+        Platform::Linux => Keyboard::Linux,
+    };
+    key.name_on(keyboard)
 }
 
 #[cfg(test)]
@@ -167,6 +167,15 @@ mod tests {
         );
         model.platform = Platform::MacOs;
         assert!(view(&model).instruction.contains("høyre Control"));
+        model.hold_key = HoldKey::Function(13);
+        assert_eq!(
+            view(&model).instruction,
+            "Hold F13 og si \"Hei, dette er en prøve\""
+        );
+        model.hold_key = HoldKey::LeftOption;
+        assert!(view(&model).instruction.contains("venstre ⌥"));
+        model.hold_key = HoldKey::Unknown("right-hyper".into());
+        assert!(view(&model).instruction.contains("høyre ⌘"));
     }
 
     #[test]

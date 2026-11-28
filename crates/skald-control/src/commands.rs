@@ -465,7 +465,7 @@ impl SettingKey {
 
     fn choices(self) -> Choices {
         match self {
-            Self::HoldKey => Choices::Words(&["right-command", "right-control"]),
+            Self::HoldKey => Choices::Words(&skald_core::hold_key::NAMES),
             Self::Language => Choices::Words(&["bokmal", "nynorsk"]),
             Self::OverlayTheme => Choices::Words(&["runepinne", "smidd-jern", "kjedelig"]),
             Self::CopyToClipboard | Self::StartAtLogin | Self::Sounds => Choices::Bool,
@@ -480,9 +480,24 @@ impl SettingKey {
         }
     }
 
+    /// The values it takes as a person reads them, with the function keys as one range: «f1–f19».
+    pub(crate) fn shown(self) -> Vec<&'static str> {
+        let accepted = self.accepted();
+        if self != Self::HoldKey {
+            return accepted.to_vec();
+        }
+        let mut shown: Vec<&str> = accepted
+            .iter()
+            .copied()
+            .filter(|name| !matches!(HoldKey::from((*name).to_owned()), HoldKey::Function(_)))
+            .collect();
+        shown.push("f1–f19");
+        shown
+    }
+
     /// The values it takes, «a, b eller c».
     pub(crate) fn values(self) -> String {
-        either(self.accepted())
+        either(&self.shown())
     }
 
     /// A key as the file writes it, or with hyphens for underscores.
@@ -648,12 +663,14 @@ mod tests {
     fn a_value_only_a_newer_skald_knows_is_refused() {
         let mut config = Config::default();
         let error = SettingKey::HoldKey
-            .set(&mut config, "right-option")
+            .set(&mut config, "right-hyper")
             .unwrap_err();
         assert_eq!(error.code, ErrorCode::Invalid);
         assert_eq!(
             error.message,
-            "«right-option» er ikke en verdi for hold_key. Velg right-command eller right-control."
+            "«right-hyper» er ikke en verdi for hold_key. Velg right-command, right-control, \
+             right-shift, right-option, left-command, left-control, left-shift, left-option, fn eller \
+             f1–f19."
         );
         assert_eq!(config, Config::default());
     }

@@ -14,9 +14,9 @@ use gpui_kit::{
     Render, RenderImage, Rgba, Styled, Window, WindowAppearance, WindowBackgroundAppearance,
     WindowBounds, WindowHandle, WindowKind, WindowOptions, canvas, div, point, px, size,
 };
-use skald_core::config::OverlayTheme;
+use skald_core::config::{HoldKey, OverlayTheme};
 
-use crate::draw::{self, Face};
+use crate::draw::{self, Face, HeldKey};
 use crate::geometry::{ABOVE_BOTTOM, H, SHADOW_ROOM, W};
 use crate::native::{self, PillFrame};
 use crate::paint::Painter;
@@ -33,6 +33,7 @@ pub struct Overlay {
 struct State {
     pill: Pill,
     theme: Theme,
+    key: HeldKey,
     /// Motion asked for by the caller; otherwise the system's setting, read as the pill appears.
     motion_override: Option<Motion>,
     motion: Motion,
@@ -94,6 +95,7 @@ impl Overlay {
         let state = cx.new(|_| State {
             pill: Pill::default(),
             theme: Theme::from(theme),
+            key: HeldKey::of(&HoldKey::default()),
             motion_override: None,
             motion: Motion::Full,
             accent: None,
@@ -116,6 +118,15 @@ impl Overlay {
         if let Some(handle) = self.window {
             let _ = handle.update(cx, |_, window, _| dress(window, theme));
         }
+    }
+
+    /// The key held to talk, which the recording hint names.
+    pub fn set_hold_key(&mut self, key: &HoldKey, cx: &mut App) {
+        let key = HeldKey::of(key);
+        self.state.update(cx, |state, cx| {
+            state.key = key;
+            cx.notify();
+        });
     }
 
     /// Motion regardless of the system's setting, or `None` to follow it.
@@ -319,10 +330,11 @@ impl Render for PillView {
                 state.motion,
                 state.accent,
                 theme,
+                state.key,
                 state.face(theme, scale),
             ))
         });
-        let Some((pill, now, motion, accent, theme, face)) = frame else {
+        let Some((pill, now, motion, accent, theme, key, face)) = frame else {
             window.remove_window();
             return div().into_any_element();
         };
@@ -338,7 +350,7 @@ impl Render for PillView {
             let mut painter = Painter::new(window, cx, origin);
             let scene = pill.scene(now, motion);
             draw::plate(&mut painter, &style, face.as_ref());
-            draw::states(&mut painter, &scene, &style, theme.carves_runes());
+            draw::states(&mut painter, &scene, &style, theme.carves_runes(), key);
         };
         div()
             .size_full()

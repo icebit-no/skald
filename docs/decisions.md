@@ -68,8 +68,7 @@ with no microphone at all. Changed: [design.md](design.md#overlay).
 `packaging/linux/tarball.sh` packs the release's Linux build as `skald-VERSION-linux-ARCH.tar.gz`, with its
 SHA-256 beside it: the release `skald`, its desktop entry and icons under the name `app.icebit.skald` (the
 bundle identifier on macOS, D-34, and the windows' app id, D-47), the Hyprland lines as
-`/usr/share/skald/hyprland.conf` to source, the Linux README, the licence, and THIRD-PARTY-NOTICES once it
-exists. Its tree is laid out as under `/usr`, so a package installs it as it is, and it packs to the same
+`/usr/share/skald/hyprland.conf` to source, the Linux README, the licence, and THIRD-PARTY-NOTICES (D-57). Its tree is laid out as under `/usr`, so a package installs it as it is, and it packs to the same
 bytes each time: sorted names, one owner, and `SOURCE_DATE_EPOCH` or the last commit's time on every file. It
 packs a binary built for the checkout's version, or builds one.
 

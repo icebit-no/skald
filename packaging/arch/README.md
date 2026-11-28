@@ -26,8 +26,8 @@ GitHub page, which is what goes to the AUR.
 ## What the package holds and needs
 
 The tarball's tree is installed under `/usr` as it is: `skald`, its desktop entry and icons (the name
-`app.icebit.skald`), the Hyprland lines in `/usr/share/skald/hyprland.conf`, the Linux README, the licence, and
-THIRD-PARTY-NOTICES once it exists.
+`app.icebit.skald`), the Hyprland lines in `/usr/share/skald/hyprland.conf`, the Linux README, and the licence
+with THIRD-PARTY-NOTICES under `/usr/share/licenses/skald-bin/`.
 
 The dependencies are what the binary links (glibc, libgcc, libstdc++, alsa-lib, libxcb, libxkbcommon,
 libxkbcommon-x11, vulkan-icd-loader) or opens as it runs (wayland), the programs it runs (wtype for the paste,

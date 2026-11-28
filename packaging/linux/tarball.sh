@@ -1,7 +1,7 @@
 #!/bin/sh
 # Packs Skald's Linux release tarball from this checkout: the release `skald`, which is also the command line
-# (D-25), its desktop entry and icons, the Hyprland lines, the README, the licence and THIRD-PARTY-NOTICES once
-# it exists. The tree inside is laid out as under /usr, so a package installs it as it is (packaging/arch).
+# (D-25), its desktop entry and icons, the Hyprland lines, the README, the licence and THIRD-PARTY-NOTICES. The
+# tree inside is laid out as under /usr, so a package installs it as it is (packaging/arch).
 #
 #   packaging/linux/tarball.sh           builds skald in release mode first
 #   packaging/linux/tarball.sh BINARY    packs BINARY, built for this checkout's version
@@ -49,9 +49,7 @@ done
 install -Dm644 packaging/linux/hyprland.conf "$stage/usr/share/skald/hyprland.conf"
 install -Dm644 packaging/linux/README.md "$stage/usr/share/doc/skald/README.md"
 install -Dm644 LICENSE "$stage/usr/share/licenses/skald/LICENSE"
-if [ -f THIRD-PARTY-NOTICES ]; then
-    install -Dm644 THIRD-PARTY-NOTICES "$stage/usr/share/licenses/skald/THIRD-PARTY-NOTICES"
-fi
+install -Dm644 THIRD-PARTY-NOTICES "$stage/usr/share/licenses/skald/THIRD-PARTY-NOTICES"
 
 # The same tree packs to the same bytes: sorted names, one owner, and SOURCE_DATE_EPOCH or the last commit's
 # time on every file.

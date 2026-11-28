@@ -100,7 +100,7 @@ mod listen {
                     }
                     if insert {
                         std::thread::sleep(wait);
-                        match inserter.insert(TEST_TEXT, &options) {
+                        match inserter.insert(TEST_TEXT, &options, || {}) {
                             Ok(outcome) => println!("          inserted: {outcome:?}"),
                             Err(error) => println!("          not inserted: {error}"),
                         }

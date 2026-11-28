@@ -16,7 +16,14 @@ impl Inserter {
         Self::default()
     }
 
-    pub fn insert(&mut self, text: &str, options: &InsertOptions) -> Result<Inserted, InsertError> {
-        insert_with(&mut self.desktop, text, options)
+    /// `pasted` is called once the paste keystroke is sent, before the wait to put the previous clipboard
+    /// back.
+    pub fn insert(
+        &mut self,
+        text: &str,
+        options: &InsertOptions,
+        pasted: impl FnOnce(),
+    ) -> Result<Inserted, InsertError> {
+        insert_with(&mut self.desktop, text, options, pasted)
     }
 }

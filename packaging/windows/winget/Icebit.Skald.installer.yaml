@@ -1,0 +1,22 @@
+# yaml-language-server: $schema=https://aka.ms/winget-manifest.installer.1.28.0.schema.json
+
+PackageIdentifier: Icebit.Skald
+PackageVersion: {{version}}
+MinimumOSVersion: 10.0.17763.0
+InstallerType: zip
+NestedInstallerType: portable
+NestedInstallerFiles:
+- RelativeFilePath: skald.exe
+# skald.exe loads the DLLs beside it, which a command alias in winget's Links folder would not find, so the
+# install folder goes on PATH instead.
+ArchiveBinariesDependOnPath: true
+Dependencies:
+  PackageDependencies:
+  - PackageIdentifier: Microsoft.VCRedist.2015+.x64
+ReleaseDate: {{release_date}}
+Installers:
+- Architecture: x64
+  InstallerUrl: {{url}}
+  InstallerSha256: {{sha256_uppercase}}
+ManifestType: installer
+ManifestVersion: 1.28.0

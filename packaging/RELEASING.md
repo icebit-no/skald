@@ -1,29 +1,31 @@
 # Releasing Skald
 
 How a release is cut, and what has to be in place before the first one. The pipeline is
-[.github/workflows/release.yml](../.github/workflows/release.yml); why it is built this way is D-58 in
+[.github/workflows/release.yml](../.github/workflows/release.yml); why it is built this way is D-58 and D-59 in
 [decisions.md](../docs/decisions.md). Everything in this file is done by Thomas: creating the repositories, the
-keys, the secrets and the tags.
+keys, the secrets and the tags, and approving each release.
 
 ## What a release does
 
 An annotated tag `vX.Y.Z` pushed to GitHub starts the workflow:
 
-1. **version** requires the tag to be `v` and the workspace's version in `Cargo.toml`, takes the release notes from
-   the tag's annotation, and requires the five Mac secrets below, with a certificate that is team `Q4LJS2JYGD`'s
-   Developer ID Application certificate and in date. A release that cannot finish stops here, before any build.
-2. **macos**, **windows** and **linux** build at once on GitHub's runners, with no secret: `packaging/macos/bundle.sh`
+1. **approval** waits until Thomas approves the release ([below](#approving-a-release)). Nothing runs before he
+   does.
+2. **version** requires the tag to be `v` and the workspace's version in `Cargo.toml`, and takes the release notes
+   from the tag's annotation. A release with the wrong tag stops here, before any build.
+3. **macos**, **windows** and **linux** build at once on GitHub's runners, with no secret: `packaging/macos/bundle.sh`
    (signed ad hoc), `packaging/windows/package.ps1` and `manifests.ps1`, and `packaging/linux/tarball.sh` with
    skald-bin built, installed and run on Arch by `packaging/arch/container.sh`.
-3. **macos-sign** signs the bundle with the Developer ID in a keychain of its own (`packaging/macos/sign.sh`),
-   notarizes, staples and packs it (`notarize.sh`), runs the signed `skald`, and writes the cask
-   (`cask.sh`), which Homebrew lints. It never runs cargo.
-4. **release** writes `SHA256SUMS`, creates the GitHub release as a draft with the files below and the notes,
+4. **macos-sign** requires the five Mac secrets below, with a certificate that is team `Q4LJS2JYGD`'s Developer
+   ID Application certificate and in date. Then it signs the bundle with the Developer ID in a keychain of its own
+   (`packaging/macos/sign.sh`), and notarizes, staples and packs it (`notarize.sh`). It never runs cargo.
+   **macos-cask** runs the signed `skald` from the zip and writes the cask (`cask.sh`), which Homebrew lints.
+5. **release** writes `SHA256SUMS`, creates the GitHub release as a draft with the files below and the notes,
    publishes it, and downloads every file back to compare it with what the run made.
-5. **publish** commits the cask to `icebit-no/homebrew-tap` as `Casks/skald.rb`, the Scoop manifest to
+6. **publish** commits the cask to `icebit-no/homebrew-tap` as `Casks/skald.rb`, the Scoop manifest to
    `icebit-no/scoop-bucket` as `bucket/skald.json`, and pushes `PKGBUILD` and `.SRCINFO` to the AUR's
    `skald-bin`. Each target whose key is not set is skipped with a notice, and the others go on.
-6. The winget manifests are the run's artifact `winget`, for a pull request to winget-pkgs by hand (below).
+7. The winget manifests are the run's artifact `winget`, for a pull request to winget-pkgs by hand (below).
 
 | Release file | Is |
 |---|---|
@@ -37,14 +39,59 @@ A tag with a pre-release part, as `v0.2.0-rc.1`, becomes a GitHub pre-release an
 A version older than one already released, a fix on an older line, is not marked as the latest release and goes
 to none of them either, so they keep the newer one.
 
+## Who can start a release, and who can read the secrets
+
+The secrets can sign an app as icebit and push to the tap, the bucket and the AUR. Skald's repository is public
+and takes pull requests, so three settings on GitHub keep the secrets away from everything except a release that
+Thomas has approved.
+
+**The tag ruleset «Release tags».** Only an admin of the repository can create, move or delete a tag that starts
+with `v`, and Thomas is the only admin. A `v` tag is what starts a release, so nobody else can start one or move
+a released tag to other code. The ruleset is under Settings → Rules → Rulesets.
+
+**The environment `release`.** A GitHub environment is a named set of rules, and of secrets if it has any, that a
+job in a workflow can name. A job that names one waits until the rules are met. `release` has Thomas as its
+required reviewer and admits only runs started by a `v` tag. It holds no secret. The job **approval** names it,
+so every release waits for Thomas to approve it once, before anything is built.
+
+**The environment `release-keys`.** It holds all eight secrets below. It admits only runs started by a `v` tag,
+so a run on a branch or a pull request, even one that changes the workflow, cannot read them; and since they are
+not repository secrets, a workflow that does not name `release-keys` gets nothing. It has no reviewer, so
+**macos-sign** and **publish**, the jobs that read the secrets, do not ask Thomas a second time.
+
+Both environments are under Settings → Environments. A dry run uses neither of them.
+
+## Approving a release
+
+After `git push origin vX.Y.Z`:
+
+1. The run starts at once and stops at **approval**, which shows as *Waiting*. GitHub notifies Thomas that a
+   deployment is waiting for his review.
+2. Open the run: the repository's **Actions** tab, the workflow **release** on the left, then the newest run, which
+   shows the tag under its title. A banner above the jobs says the run is waiting for review.
+3. Click **Review deployments**, tick `release`, write a comment if you like, and click **Approve and deploy**.
+4. The rest of the run goes on without asking again.
+
+**Reject** instead stops the run before anything is built or published. A run that nobody approves fails after
+30 days. «Re-run failed jobs» does not ask again, since **approval** has already passed; «Re-run all jobs» asks
+again.
+
+The same approval from a terminal, with the run's id from `gh run list -R icebit-no/skald -w release`:
+
+```sh
+gh api -X POST repos/icebit-no/skald/actions/runs/RUN_ID/pending_deployments \
+  -F "environment_ids[]=$(gh api repos/icebit-no/skald/environments/release -q .id)" \
+  -f state=approved -f comment='Release'
+```
+
 ## The dry run
 
 A dry run builds and packs everything a release would, rehearses the Mac signing with a self-signed identity made
 on the runner and thrown away, and keeps what a release would publish as the run's artifacts: `release` (the
 files above), `macos` (the zip and `homebrew/skald.rb`), `windows` (the zip and `manifests/scoop/skald.json`),
-`winget`, `linux` (the tarball and `aur/`) and `notes`. It reads no secret, signs nothing with the Developer ID and
-publishes nothing. It runs on every pull request that changes the packaging or the workflow, and by hand on any
-branch:
+`winget`, `linux` (the tarball and `aur/`) and `notes`. It uses no environment, asks for no approval, reads no
+secret, signs nothing with the Developer ID and publishes nothing. It runs on every pull request that changes the
+packaging or the workflow, and by hand on any branch:
 
 ```sh
 gh workflow run release.yml -R icebit-no/skald --ref main
@@ -52,8 +99,9 @@ gh workflow run release.yml -R icebit-no/skald --ref main
 
 ## The secrets
 
-All are secrets of `icebit-no/skald`. GitHub never gives one back, so each is kept in Thomas's 1Password (account
-`my.1password.com`, vault `icebit`) and set from there.
+All are secrets of the environment `release-keys` on `icebit-no/skald`, never of the repository: a repository
+secret can be read by a workflow run on any branch. GitHub never gives a secret back, so each is kept in Thomas's
+1Password (account `my.1password.com`, vault `icebit`) and set from there.
 
 | Secret | Holds | Comes from | Needed for |
 |---|---|---|---|
@@ -70,6 +118,15 @@ The five Apple secrets are the ones Ferric's release reads, under the same names
 belong to the team, and every Skald release has to be signed by that team (D-34). The workflow warns from 30 days
 before the certificate expires and stops once it has; a renewed one is set the same way.
 
+The names of the secrets that are set, without their values:
+
+```sh
+gh secret list --env release-keys -R icebit-no/skald
+```
+
+A secret set on the repository by mistake is deleted with `gh secret delete NAME -R icebit-no/skald` and set
+again with `--env release-keys`.
+
 ### Setting the Apple secrets
 
 Each command pipes the value from 1Password straight into `gh secret set`, so no secret touches a file or the
@@ -85,12 +142,12 @@ fields:
 
 ```sh
 # The .p12 file, kept as a Document, in base64
-OP_ACCOUNT=my.1password.com op document get 'CERT' --vault icebit | base64 | gh secret set -R icebit-no/skald DEVELOPER_ID_P12_BASE64
-OP_ACCOUNT=my.1password.com op read -n 'op://icebit/CERT/CERT_PASSWORD_FIELD' | gh secret set -R icebit-no/skald DEVELOPER_ID_P12_PASSWORD
+OP_ACCOUNT=my.1password.com op document get 'CERT' --vault icebit | base64 | gh secret set DEVELOPER_ID_P12_BASE64 --env release-keys -R icebit-no/skald
+OP_ACCOUNT=my.1password.com op read -n 'op://icebit/CERT/CERT_PASSWORD_FIELD' | gh secret set DEVELOPER_ID_P12_PASSWORD --env release-keys -R icebit-no/skald
 # The .p8 file, kept as a Document, and the key's id and issuer
-OP_ACCOUNT=my.1password.com op document get 'KEY' --vault icebit | gh secret set -R icebit-no/skald APPLE_API_KEY_P8
-OP_ACCOUNT=my.1password.com op read -n 'op://icebit/KEY/KEY_ID_FIELD' | gh secret set -R icebit-no/skald APPLE_API_KEY_ID
-OP_ACCOUNT=my.1password.com op read -n 'op://icebit/KEY/ISSUER_FIELD' | gh secret set -R icebit-no/skald APPLE_API_ISSUER_ID
+OP_ACCOUNT=my.1password.com op document get 'KEY' --vault icebit | gh secret set APPLE_API_KEY_P8 --env release-keys -R icebit-no/skald
+OP_ACCOUNT=my.1password.com op read -n 'op://icebit/KEY/KEY_ID_FIELD' | gh secret set APPLE_API_KEY_ID --env release-keys -R icebit-no/skald
+OP_ACCOUNT=my.1password.com op read -n 'op://icebit/KEY/ISSUER_FIELD' | gh secret set APPLE_API_ISSUER_ID --env release-keys -R icebit-no/skald
 ```
 
 Where an item keeps the base64 text in a field rather than the `.p12` file, `op read -n 'op://icebit/CERT/FIELD'`
@@ -125,9 +182,9 @@ My Account → SSH Public Key on aur.archlinux.org, on a line of its own beside 
 The private halves, in OpenSSH's format:
 
 ```sh
-OP_ACCOUNT=my.1password.com op read 'op://icebit/Skald - homebrew-tap key/private key?ssh-format=openssh' | gh secret set -R icebit-no/skald HOMEBREW_TAP_DEPLOY_KEY
-OP_ACCOUNT=my.1password.com op read 'op://icebit/Skald - scoop-bucket key/private key?ssh-format=openssh' | gh secret set -R icebit-no/skald SCOOP_BUCKET_DEPLOY_KEY
-OP_ACCOUNT=my.1password.com op read 'op://icebit/Skald - aur key/private key?ssh-format=openssh' | gh secret set -R icebit-no/skald AUR_SSH_KEY
+OP_ACCOUNT=my.1password.com op read 'op://icebit/Skald - homebrew-tap key/private key?ssh-format=openssh' | gh secret set HOMEBREW_TAP_DEPLOY_KEY --env release-keys -R icebit-no/skald
+OP_ACCOUNT=my.1password.com op read 'op://icebit/Skald - scoop-bucket key/private key?ssh-format=openssh' | gh secret set SCOOP_BUCKET_DEPLOY_KEY --env release-keys -R icebit-no/skald
+OP_ACCOUNT=my.1password.com op read 'op://icebit/Skald - aur key/private key?ssh-format=openssh' | gh secret set AUR_SSH_KEY --env release-keys -R icebit-no/skald
 ```
 
 ## Before the first release
@@ -143,10 +200,45 @@ OP_ACCOUNT=my.1password.com op read 'op://icebit/Skald - aur key/private key?ssh
    Homebrew loads casks only from a tap its user trusts, so users install with `brew tap icebit-no/tap`,
    `brew trust icebit-no/tap` and `brew install --cask icebit-no/tap/skald`; with Scoop,
    `scoop bucket add icebit https://github.com/icebit-no/scoop-bucket` and `scoop install icebit/skald`.
-2. An AUR account to maintain `skald-bin`, with the AUR key's public half. The name was free on 2026-11-28; the
-   workflow's first push creates the package, with that account as its maintainer.
-3. The secrets above. Without the five Apple ones no release runs; without a key its target is skipped.
-4. A dry run of main, as above.
+2. A rule in Cloudflare Email Routing that forwards `skald@icebit.no` to Thomas. skald-bin's PKGBUILD names it as
+   the package's maintainer, so Arch users who write about the package reach him there.
+3. An AUR account to maintain `skald-bin`, with the AUR key's public half; `skald@icebit.no` can be its email
+   address. The name was free on 2026-11-28; the workflow's first push creates the package, with that account as
+   its maintainer.
+4. The secrets above, in `release-keys`. Without the five Apple ones no release runs; without a key its target is
+   skipped.
+5. A dry run of main, as above.
+6. A pre-release, as below, to try the approval, the secrets, the signing and the notarization before a version
+   goes to users.
+
+## A first pre-release
+
+A pre-release runs everything a release does up to the GitHub release, which it marks as a pre-release. It goes
+to no tap, bucket or AUR, so no user's install changes. `v0.1.0-rc.1` is the first:
+
+1. On a branch from main, set the version under `[workspace.package]` in `Cargo.toml` to `0.1.0-rc.1`, run
+   `cargo build` so `Cargo.lock` follows, and open a pull request.
+2. Before merging, try the version on the branch with a dry run, since a change to `Cargo.toml` alone does not
+   start one:
+
+   ```sh
+   gh workflow run release.yml -R icebit-no/skald --ref BRANCH
+   ```
+
+3. Merge it, then tag main's commit and push the tag:
+
+   ```sh
+   git switch main && git pull --ff-only
+   git tag -a v0.1.0-rc.1 -m 'Skald 0.1.0-rc.1' -m 'A pre-release to try the release pipeline.'
+   git push origin v0.1.0-rc.1
+   ```
+
+4. Approve it, as above, and watch it with `gh run watch -R icebit-no/skald`.
+5. Check the pre-release on https://github.com/icebit-no/skald/releases: the five files are there, and for the Mac
+   zip, downloaded and unpacked, `spctl -a -vv Skald.app` says `accepted` and `source=Notarized Developer ID`.
+
+A pre-release may stay on the releases page. If you delete it, delete the release only and keep the tag, since a
+tag is never used twice. Then set the version to `0.1.0` and release it as below.
 
 ## Cutting a release
 
@@ -162,12 +254,14 @@ OP_ACCOUNT=my.1password.com op read 'op://icebit/Skald - aur key/private key?ssh
    git push origin v0.1.0
    ```
 
-4. Watch the run: `gh run watch -R icebit-no/skald` and pick the release run.
-5. Send the winget manifests (below).
+4. Approve the release ([above](#approving-a-release)).
+5. Watch the run: `gh run watch -R icebit-no/skald` and pick the release run.
+6. Send the winget manifests (below).
 
-A tag is never moved or used twice. A job that failed is run again with «Re-run failed jobs»: the release step
-takes up a draft it left, and compares the files of a release already published with the run's. A failure that
-needs a change to the repository is fixed on main and released as the next patch version.
+A tag is never moved or used twice; the ruleset refuses both to everyone but an admin. A job that failed is run again with «Re-run
+failed jobs»: the release step takes up a draft it left, and compares the files of a release already published
+with the run's. A failure that needs a change to the repository is fixed on main and released as the next patch
+version.
 
 ## winget
 

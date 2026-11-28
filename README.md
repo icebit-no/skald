@@ -56,7 +56,8 @@ Vulkan driver runs the model on the CPU. Hold right Ctrl to talk.
 For Wayland compositors, Hyprland first. On Arch and Omarchy:
 
 ```sh
-sudo pacman -S --needed base-devel cmake alsa-lib wayland libxkbcommon-x11 libx11 fontconfig wtype
+sudo pacman -S --needed base-devel cmake alsa-lib wayland libxkbcommon-x11 libx11 fontconfig wtype \
+  vulkan-headers vulkan-icd-loader spirv-headers shaderc
 git clone https://github.com/icebit-no/skald
 cd skald
 cargo build --release
@@ -64,7 +65,8 @@ target/release/skald
 ```
 
 Other distributions need the same libraries; the Debian and Ubuntu names are in
-[linux.yml](.github/workflows/linux.yml). Wayland gives the keyboard to no program, so Skald hears the key
+[linux.yml](.github/workflows/linux.yml). The model computes on the GPU through its Vulkan driver, or on the
+CPU without one. Wayland gives the keyboard to no program, so Skald hears the key
 through the desktop's key bindings: add the lines in [packaging/linux](packaging/linux/README.md), which also
 says how to start Skald at login. Hold right Ctrl to talk.
 

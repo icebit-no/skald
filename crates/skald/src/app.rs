@@ -1,7 +1,7 @@
-//! Skald on macOS and Linux: the hold key, the microphones and the model joined into one loop. The app runs
-//! the loop on a thread of its own and the screen (`shell`: the overlay, the menu bar item, the settings
-//! window) on the main thread, which GPUI owns; with `--terminal` the loop runs on the main thread alone.
-//! Either way each line a user reads is printed as it happens.
+//! Skald on macOS, Windows and Linux: the hold key, the microphones and the model joined into one loop. The
+//! app runs the loop on a thread of its own and the screen (`shell`: the overlay, the menu bar item, the
+//! settings window) on the main thread, which GPUI owns; with `--terminal` the loop runs on the main thread
+//! alone. Either way each line a user reads is printed as it happens.
 //!
 //! Start-up checks what can stop Skald before the model takes seconds to load: the files, Accessibility,
 //! then the microphone permission. When the app finds the model or a permission missing, it opens the
@@ -29,13 +29,13 @@ use skald_input::{HoldKey, HoldListener, Inserter, ListenerEvent, Unavailable};
 use skald_models::Status;
 
 use crate::cli::Options;
-use crate::control::{Control, Settings};
+use crate::control::{Control, Settings, computes_on_vulkan};
 use crate::dictation::{Dictation, Microphones, SystemMicrophones, microphone_order};
 use crate::events::{Ending, Event, MicrophoneList};
 use crate::files::{self, ConfigFile};
 use crate::login;
 use crate::models::ModelFiles;
-use crate::pipeline::{Worker, WorkerEvent, WorkerHandle};
+use crate::pipeline::{Report, Worker, WorkerEvent, WorkerHandle};
 use crate::say::{Exit, Line, Printer, report_lines};
 use crate::shell;
 use crate::signals;
@@ -57,16 +57,19 @@ const MICROPHONES_EVERY: Duration = Duration::from_secs(3);
 const FIRST_KEY_EVENT_WITHIN: Duration = Duration::from_secs(2);
 
 pub(crate) fn run(options: Options) -> Result<(), Exit> {
-    // Windows has no screen for Skald yet, so there it runs in the terminal, as with --terminal.
-    let result = if options.terminal || cfg!(windows) {
-        dictate(options, None)
-    } else {
+    let result = if shows_screen(&options) {
         run_app(options)
+    } else {
+        dictate(options, None)
     };
     if let Err(exit) = &result {
         open_settings_for(exit);
     }
     result
+}
+
+fn shows_screen(options: &Options) -> bool {
+    !options.terminal
 }
 
 /// Opens the pane of System Settings a missing permission is granted in, which saves the user looking for
@@ -204,8 +207,8 @@ fn first_run(options: &Options, paths: &Paths) -> Result<Option<FirstRun>, Exit>
     Ok(needed.then(|| {
         let mut first_run = FirstRunModel::new(card, status);
         first_run.hold_key = config.hold_key.clone();
-        // Asking loads the backends, which the model would load anyway; only Windows decides at run time.
-        first_run.no_vulkan = cfg!(windows) && !skald_engine::gpu_available();
+        // Asking loads the backends, which the model would load anyway; a Mac always has Metal.
+        first_run.no_vulkan = computes_on_vulkan() && !skald_engine::gpu_available();
         FirstRun {
             model: first_run,
             model_id: model.id,
@@ -346,6 +349,7 @@ fn dictate(options: Options, link: Option<Link>) -> Result<(), Exit> {
         start_at_login: config.start_at_login,
         listed: None,
         next_listing: Instant::now(),
+        ended_at_paste: None,
         out,
     };
     running.list_microphones();
@@ -393,6 +397,9 @@ struct Running<'w> {
     /// The microphones last shown on the screen.
     listed: Option<MicrophoneList>,
     next_listing: Instant,
+    /// The take the screen was shown the end of as its text was pasted, so its report does not end it
+    /// again.
+    ended_at_paste: Option<u64>,
     out: Out,
 }
 
@@ -428,7 +435,8 @@ impl Running<'_> {
             for job in self.dictation.take_jobs() {
                 self.worker.submit(job);
             }
-            for event in self.worker_events.try_iter() {
+            let worker_events: Vec<WorkerEvent> = self.worker_events.try_iter().collect();
+            for event in worker_events {
                 self.on_worker_event(event)?;
             }
             if self.settings.take_written() || Instant::now() >= next_config_look {
@@ -466,26 +474,32 @@ impl Running<'_> {
         Ok(())
     }
 
-    fn on_worker_event(&self, event: WorkerEvent) -> Result<(), Exit> {
+    fn on_worker_event(&mut self, event: WorkerEvent) -> Result<(), Exit> {
         match event {
             WorkerEvent::Loaded { device, took } => {
                 let compute = skald_engine::Compute::of_device(&device);
                 self.out.say(Line::ModelLoaded { device, took });
-                if cfg!(windows) && !skald_engine::gpu_available() {
+                if computes_on_vulkan() && !skald_engine::gpu_available() {
                     self.out.say(Line::NoVulkan);
                 }
                 self.out.say(Line::Ready(self.keys.key));
                 self.out.show(Event::ModelLoaded(compute));
             }
             WorkerEvent::LoadFailed(reason) => return Err(Exit::ModelLoad(reason)),
+            WorkerEvent::Pasted { take, text } => {
+                self.ended_at_paste = Some(take);
+                self.out.show(Event::Ended {
+                    take,
+                    ending: Ending::Inserted(text),
+                });
+            }
             WorkerEvent::Done(report) => {
                 for line in report_lines(&report) {
                     self.out.say(line);
                 }
-                self.out.show(Event::Ended {
-                    take: report.take,
-                    ending: Ending::of(&report),
-                });
+                if let Some(ended) = ended(&report, self.ended_at_paste) {
+                    self.out.show(ended);
+                }
                 self.out.show(Event::State(report.state));
             }
             WorkerEvent::HistoryCorrected(corrected) => {
@@ -543,6 +557,15 @@ impl Running<'_> {
             self.out.show(Event::Microphones(list));
         }
     }
+}
+
+/// The end of a take for the screen once its report is in, unless the screen was shown it as the text was
+/// pasted.
+fn ended(report: &Report, ended_at_paste: Option<u64>) -> Option<Event> {
+    (ended_at_paste != Some(report.take)).then(|| Event::Ended {
+        take: report.take,
+        ending: Ending::of(report),
+    })
 }
 
 /// The hold-key listener, and whether it last said it could not listen.
@@ -608,6 +631,16 @@ fn listened_key(key: &ConfigHoldKey) -> Result<HoldKey, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn skald_runs_with_its_screen_on_every_system_unless_asked_for_the_terminal() {
+        assert!(shows_screen(&Options::default()));
+        let terminal = Options {
+            terminal: true,
+            ..Options::default()
+        };
+        assert!(!shows_screen(&terminal));
+    }
 
     #[test]
     fn every_hold_key_the_configuration_knows_is_listened_for() {
@@ -722,5 +755,48 @@ mod tests {
         assert!(!out.has_screen());
         out.show(Event::ModelLoaded(skald_engine::Compute::Cpu));
         assert!(!out.stop_asked());
+    }
+
+    #[test]
+    fn a_take_shown_ended_as_its_text_was_pasted_is_not_ended_again_by_its_report() {
+        use crate::pipeline::{Outcome, Timings};
+        use skald_core::silence_gate::Reason;
+        use skald_input::Inserted;
+
+        let report = |take, outcome| Report {
+            take,
+            microphone: "Yeti".into(),
+            outcome,
+            timings: Timings::default(),
+            state_error: None,
+            state: State::default(),
+        };
+        let inserted = report(
+            4,
+            Outcome::Inserted {
+                text: "Hei.".into(),
+                inserted: Inserted::PreviousRestored,
+                complete: true,
+            },
+        );
+        assert_eq!(ended(&inserted, Some(4)), None);
+        assert_eq!(
+            ended(&inserted, Some(3)),
+            Some(Event::Ended {
+                take: 4,
+                ending: Ending::Inserted("Hei.".into())
+            }),
+            "a report of a take whose paste the screen never heard of"
+        );
+        let silent = report(5, Outcome::HeardNothing(Reason::TooLittleSpeech));
+        assert_eq!(
+            ended(&silent, Some(4)),
+            Some(Event::Ended {
+                take: 5,
+                ending: Ending::HeardNothing {
+                    microphone: "Yeti".into()
+                }
+            })
+        );
     }
 }

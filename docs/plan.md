@@ -122,14 +122,15 @@ Design: [Audio in](design.md#audio-in).
 - [ ] Overlay as a layer-shell surface, insertion with wtype, icon through StatusNotifierItem (Waybar):
       insertion built in #33, the overlay in #35, the icon in #36; ticked once Thomas has tried them on
       Omarchy.
-- [ ] Vulkan build; AUR package `skald-bin`.
+- [ ] Vulkan build; AUR package `skald-bin`. The Vulkan build is built in #41; the AUR package waits for M6's
+      release pipeline.
 
 ## M6 Release and site
 
 Design: [Site](design.md#site).
 
 - [x] `THIRD-PARTY-NOTICES` written from Cargo.lock by `scripts/notices/` and checked in CI, and carried in the
-      macOS bundle (D-50); a README that says how to build and run Skald from source.
+      macOS bundle (D-51); a README that says how to build and run Skald from source.
 - [ ] Release pipeline after Ferric's: notarize on the Mac runner, cask to `icebit-no/homebrew-tap`, manifest
       to `icebit-no/scoop-bucket`, AUR.
 - [ ] `icebit-no/skald-site`: Astro, an nginx image, app-sync and Caddy on svalbard, at skald.icebit.app.

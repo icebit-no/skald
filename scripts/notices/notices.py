@@ -626,20 +626,21 @@ def engine(groups):
         ),
         ("miniz", "MIT", TRANSCRIBE / "src/third_party/miniz/LICENSE", [], PLATFORM_NAMES),
         # As in LunarG's Vulkan SDK 1.4.350.0, which windows.yml builds against: vulkan_core.h is Apache 2.0,
-        # vulkan.hpp Apache 2.0 or MIT, spirv.hpp MIT.
+        # vulkan.hpp Apache 2.0 or MIT, spirv.hpp MIT. A Linux build takes the distribution's copies of the same
+        # headers.
         (
             "Vulkan-Headers, with Vulkan-Hpp, in ggml's Vulkan backend",
             "Apache-2.0",
             None,
             ["Copyright 2015-2026 The Khronos Group Inc."],
-            ("Windows",),
+            ("Windows", "Linux"),
         ),
         (
             "SPIRV-Headers, in ggml's Vulkan backend",
             "MIT",
             None,
             ["Copyright 2014-2024 The Khronos Group Inc."],
-            ("Windows",),
+            ("Windows", "Linux"),
         ),
     )
     for name, licence, path, copyright, platforms in entries:
@@ -738,8 +739,8 @@ def render():
         "transcribe-cpp-sys crate with two patches of Skald's (third_party/transcribe-cpp-sys/SKALD.md). "
         "transcribe.cpp computes with ggml (https://github.com/ggml-org/ggml), takes its FFT from whisper.cpp "
         "(https://github.com/ggml-org/whisper.cpp) and its Unicode tables and pretokenizer from llama.cpp "
-        "(https://github.com/ggml-org/llama.cpp), and carries miniz. On Windows ggml's backends are "
-        "modules beside skald.exe, and the Vulkan one is compiled with the Khronos Group's headers."
+        "(https://github.com/ggml-org/llama.cpp), and carries miniz. On Windows and Linux ggml's Vulkan backend "
+        "is compiled with the Khronos Group's headers; on Windows ggml's backends are modules beside skald.exe."
     )
     groups = Groups()
     engine(groups)

@@ -63,6 +63,7 @@ pub(crate) enum Line {
     PreviousUnreadable,
     PreviousMarkedPrivate,
     CopiedMeanwhile,
+    PreviousNotRestored,
     NotInserted {
         text: String,
         error: InsertError,
@@ -194,6 +195,9 @@ impl fmt::Display for Line {
             Line::CopiedMeanwhile => {
                 f.write_str("Noe ble kopiert i mellomtiden, og det får ligge på utklippstavlen.")
             }
+            Line::PreviousNotRestored => {
+                f.write_str("Det som lå på utklippstavlen før, kunne ikke legges tilbake.")
+            }
             Line::NotInserted { text, error } => {
                 write!(f, "Ikke satt inn fordi {}: {text}", insert_reason(error))
             }
@@ -267,6 +271,7 @@ pub(crate) fn report_lines(report: &Report) -> Vec<Line> {
                 Inserted::PreviousUnreadable => lines.push(Line::PreviousUnreadable),
                 Inserted::PreviousMarkedPrivate => lines.push(Line::PreviousMarkedPrivate),
                 Inserted::CopiedMeanwhile => lines.push(Line::CopiedMeanwhile),
+                Inserted::PreviousNotRestored => lines.push(Line::PreviousNotRestored),
                 Inserted::Nothing | Inserted::PreviousRestored | Inserted::TextKept => {}
             }
         }
@@ -676,6 +681,13 @@ mod tests {
             complete: true,
         }));
         assert_eq!(lines.len(), 2);
+        let lines = report_lines(&report(Outcome::Inserted {
+            text: "Hei.".into(),
+            inserted: Inserted::PreviousNotRestored,
+            complete: true,
+        }));
+        assert_eq!(lines[1], Line::PreviousNotRestored);
+        assert!(!lines[1].is_verbose(), "the user's clipboard is gone");
     }
 
     #[test]

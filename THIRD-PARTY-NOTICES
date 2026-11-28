@@ -56,8 +56,9 @@ Skald transcribes with transcribe.cpp by handy-computer
 transcribe-cpp-sys crate with two patches of Skald's (third_party/transcribe-cpp-sys/SKALD.md).
 transcribe.cpp computes with ggml (https://github.com/ggml-org/ggml), takes its FFT from whisper.cpp
 (https://github.com/ggml-org/whisper.cpp) and its Unicode tables and pretokenizer from llama.cpp
-(https://github.com/ggml-org/llama.cpp), and carries miniz. On Windows ggml's backends are modules
-beside skald.exe, and the Vulkan one is compiled with the Khronos Group's headers.
+(https://github.com/ggml-org/llama.cpp), and carries miniz. On Windows and Linux ggml's Vulkan
+backend is compiled with the Khronos Group's headers; on Windows ggml's backends are modules beside
+skald.exe.
 
 ----------------------------------------------------------------------------------------------------
 MIT License: 7 parts
@@ -70,7 +71,7 @@ MIT License: 7 parts
   miniz
       Copyright 2013-2014 RAD Game Tools and Valve Software
       Copyright 2010-2014 Rich Geldreich and Tenacious Software LLC
-  SPIRV-Headers, in ggml's Vulkan backend [Windows]
+  SPIRV-Headers, in ggml's Vulkan backend [Windows, Linux]
       Copyright 2014-2024 The Khronos Group Inc.
   transcribe.cpp
       Copyright (c) 2026 The transcribe.cpp authors
@@ -85,7 +86,7 @@ The text of the MIT License is in section 5.
 Apache License 2.0: 1 part
 ----------------------------------------------------------------------------------------------------
 
-  Vulkan-Headers, with Vulkan-Hpp, in ggml's Vulkan backend [Windows]
+  Vulkan-Headers, with Vulkan-Hpp, in ggml's Vulkan backend [Windows, Linux]
       Copyright 2015-2026 The Khronos Group Inc.
 
 The text of the Apache License 2.0 is in section 5.

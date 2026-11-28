@@ -5,15 +5,15 @@ decision, and that pull request also edits the page where the rule lives ([desig
 [plan.md](plan.md)). Those pages say what holds; this one says when and why it came to hold. A later decision
 that undoes one adds an entry of its own, and the earlier entry gets one line naming it.
 
-## D-50 — THIRD-PARTY-NOTICES is written from Cargo.lock and checked in CI
+## D-51 — THIRD-PARTY-NOTICES is written from Cargo.lock and checked in CI
 
 2026-11-28, Claude; a script of Python's standard library, checked in CI, set by the lead's brief.
 
 `THIRD-PARTY-NOTICES` credits what Skald's program carries and what it downloads: the National Library's models,
 with the attribution their cards give and the note that Skald downloads them and does not redistribute them;
 transcribe.cpp with ggml, the code it takes from whisper.cpp and llama.cpp, miniz, the code ggml carries from
-llamafile and YaRN, and on Windows the Khronos Group's Vulkan and SPIR-V headers its Vulkan backend is compiled
-with; Silero VAD; Alegreya Sans with the font licence; and every Rust crate compiled into `skald` for
+llamafile and YaRN, and on Windows and Linux the Khronos Group's Vulkan and SPIR-V headers its Vulkan backend is
+compiled with; Silero VAD; Alegreya Sans with the font licence; and every Rust crate compiled into `skald` for
 `aarch64-apple-darwin`, `x86_64-pc-windows-msvc` and `x86_64-unknown-linux-gnu`. Those are the normal
 dependencies of `skald` that `cargo metadata` resolves for each target. Build dependencies, procedural macros and
 test-only crates run while Skald is built and are not part of the program, so they are left out.
@@ -28,6 +28,25 @@ Public-domain dedications are listed without a text. The script fails on a crate
 licence, on a licence it can take no text for, on a model in `skald-models`' registry or a font or model file in
 the repository it does not credit, and on a copyright line copied by hand that its source no longer has. The
 macOS bundle carries `LICENSE` and the notices in `Contents/Resources`. Changed: [plan.md](plan.md) M6.
+
+## D-50 — On Linux transcribe.cpp's Vulkan backend is linked in
+
+2026-11-27, Claude.
+
+skald-engine builds transcribe.cpp with its Vulkan backend on Linux too, for NVIDIA, AMD and Intel GPUs alike,
+but linked into the binary rather than loaded as a module as on Windows (D-43). What the modules guard
+against on Windows is a machine without the Vulkan loader, where Windows would not start a binary that
+links it; on Linux the loader is a package of its own (`vulkan-icd-loader` on Arch), which Skald's package
+depends on. A machine with the loader and no Vulkan driver, or a driver that fails, still starts: ggml's
+Vulkan backend catches the failure as it registers, steps aside, and the CPU computes. Linked in, Skald on
+Linux stays one binary, with no rpath and no modules to ship beside it. lavapipe, Mesa's Vulkan on the
+processor, counts as no GPU, since it is a CPU that speaks Vulkan.
+
+When the model loads on the CPU for want of Vulkan, Skald says so on Linux as on Windows (design.md, First
+run): the first-run window's «Talemodell» step, the line printed as the model loads, and `skald transcribe`. CI builds against Ubuntu's Vulkan headers and
+glslc, and has no GPU, so its tests compute on the CPU. Evidence: in a container, the engine's tests and
+Skald with NB-Whisper loaded pass with lavapipe and with no Vulkan driver at all, and the binary links
+`libvulkan.so.1`. Changed: [design.md](design.md#first-run), [plan.md](plan.md) M5.
 
 ## D-49 — Skald runs its screen on Windows; the overlay lets clicks through as a layered window
 

@@ -69,13 +69,25 @@ impl Transcribe for Engine {
 }
 
 pub(crate) trait Insert {
-    fn insert(&mut self, text: &str, options: &InsertOptions) -> Result<Inserted, InsertError>;
+    /// `pasted` is called once the paste keystroke is sent, before the wait to put the previous clipboard
+    /// back.
+    fn insert(
+        &mut self,
+        text: &str,
+        options: &InsertOptions,
+        pasted: impl FnOnce(),
+    ) -> Result<Inserted, InsertError>;
 }
 
 #[cfg(any(target_os = "macos", target_os = "linux", windows))]
 impl Insert for skald_input::Inserter {
-    fn insert(&mut self, text: &str, options: &InsertOptions) -> Result<Inserted, InsertError> {
-        skald_input::Inserter::insert(self, text, options)
+    fn insert(
+        &mut self,
+        text: &str,
+        options: &InsertOptions,
+        pasted: impl FnOnce(),
+    ) -> Result<Inserted, InsertError> {
+        skald_input::Inserter::insert(self, text, options, pasted)
     }
 }
 
@@ -160,7 +172,9 @@ impl<T: Transcribe, I: Insert> Pipeline<T, I> {
 
     /// Transcribes and inserts one take. A take with text updates the history and the correction counts
     /// and writes them to the state file, even when the insertion failed, so the text is not lost.
-    pub(crate) fn process(&mut self, job: Job) -> Report {
+    /// `pasted` is called with the text as soon as it is pasted, a second before the previous clipboard
+    /// is back and the take is done.
+    pub(crate) fn process(&mut self, job: Job, pasted: impl FnOnce(&str)) -> Report {
         let Job {
             take: number,
             recording,
@@ -227,7 +241,7 @@ impl<T: Transcribe, I: Insert> Pipeline<T, I> {
                 keep_text_on_clipboard: config.copy_to_clipboard,
                 ..InsertOptions::default()
             };
-            report.outcome = match self.inserter.insert(&text, &options) {
+            report.outcome = match self.inserter.insert(&text, &options, || pasted(&text)) {
                 Ok(inserted) => Outcome::Inserted {
                     text: text.clone(),
                     inserted,
@@ -304,8 +318,16 @@ impl<T: Transcribe, I> Pipeline<T, I> {
 
 #[derive(Debug)]
 pub(crate) enum WorkerEvent {
-    Loaded { device: String, took: Duration },
+    Loaded {
+        device: String,
+        took: Duration,
+    },
     LoadFailed(String),
+    /// The take's text was pasted; its report follows once the previous clipboard is back.
+    Pasted {
+        take: u64,
+        text: String,
+    },
     Done(Box<Report>),
     HistoryCorrected(Corrected),
 }
@@ -374,7 +396,13 @@ impl Worker {
                 for work in inbox {
                     match work {
                         Work::Take(job) => {
-                            let report = Box::new(pipeline.process(job));
+                            let take = job.take;
+                            let report = Box::new(pipeline.process(job, |text| {
+                                let _ = events.send(WorkerEvent::Pasted {
+                                    take,
+                                    text: text.to_owned(),
+                                });
+                            }));
                             let _ = events.send(WorkerEvent::Done(report));
                         }
                         Work::CountTokens { text, answer } => {
@@ -603,11 +631,19 @@ pub(crate) mod tests {
     }
 
     impl Insert for FakeInserter {
-        fn insert(&mut self, text: &str, options: &InsertOptions) -> Result<Inserted, InsertError> {
+        fn insert(
+            &mut self,
+            text: &str,
+            options: &InsertOptions,
+            pasted: impl FnOnce(),
+        ) -> Result<Inserted, InsertError> {
             self.calls
                 .lock()
                 .unwrap()
                 .push((text.to_owned(), options.keep_text_on_clipboard));
+            if self.result.is_ok() {
+                pasted();
+            }
             self.result.clone()
         }
     }
@@ -658,7 +694,7 @@ pub(crate) mod tests {
             state_file.clone(),
         );
 
-        let report = pipeline.process(job(config()));
+        let report = pipeline.process(job(config()), |_| {});
 
         assert_eq!(
             report.outcome,
@@ -701,6 +737,41 @@ pub(crate) mod tests {
     }
 
     #[test]
+    fn only_a_text_pasted_is_reported_as_pasted_and_with_its_corrections() {
+        let scratch = Scratch::new("pipeline-pasted");
+        let model = FakeModel::new([
+            Ok(heard("Vi mercha den.")),
+            Ok(silent(Reason::TooLittleSpeech)),
+            Err(skald_engine::Error::Transcribe {
+                reason: "out of memory".into(),
+            }),
+        ]);
+        let mut pipeline = Pipeline::new(
+            model,
+            FakeInserter::answering(Ok(Inserted::PreviousRestored)),
+            quiet(),
+            State::default(),
+            scratch.0.join("state.toml"),
+        );
+        let mut pasted = Vec::new();
+        for _ in 0..3 {
+            pipeline.process(job(config()), |text| pasted.push(text.to_owned()));
+        }
+        assert_eq!(pasted, ["Vi merget den."]);
+
+        let model = FakeModel::new([Ok(heard("Vi mercha den."))]);
+        let mut refused = Pipeline::new(
+            model,
+            FakeInserter::answering(Err(InsertError::KeysHeld)),
+            quiet(),
+            State::default(),
+            scratch.0.join("state.toml"),
+        );
+        let report = refused.process(job(config()), |_| panic!("nothing was pasted"));
+        assert!(matches!(report.outcome, Outcome::NotInserted { .. }));
+    }
+
+    #[test]
     fn pop_plays_as_text_is_inserted_and_only_with_sounds_on() {
         let scratch = Scratch::new("pipeline-pop");
         let state_file = scratch.0.join("state.toml");
@@ -718,13 +789,13 @@ pub(crate) mod tests {
             State::default(),
             state_file,
         );
-        pipeline.process(job(config()));
-        pipeline.process(job(config()));
+        pipeline.process(job(config()), |_| {});
+        pipeline.process(job(config()), |_| {});
         assert_eq!(played.sounds(), [Sound::Inserted], "not for silence");
 
         let mut quiet = config();
         quiet.sounds = false;
-        pipeline.process(job(quiet));
+        pipeline.process(job(quiet), |_| {});
         assert_eq!(played.sounds(), [Sound::Inserted]);
     }
 
@@ -748,7 +819,7 @@ pub(crate) mod tests {
                 State::default(),
                 state_file.clone(),
             );
-            let report = pipeline.process(job(config()));
+            let report = pipeline.process(job(config()), |_| {});
             assert_eq!(report.outcome, Outcome::HeardNothing(reason));
             assert_eq!(report.microphone, "Shure MV7");
             assert!(calls.lock().unwrap().is_empty());
@@ -771,7 +842,7 @@ pub(crate) mod tests {
         );
         let mut config = config();
         config.copy_to_clipboard = true;
-        pipeline.process(job(config));
+        pipeline.process(job(config), |_| {});
         assert_eq!(*calls.lock().unwrap(), [("Hei.".to_owned(), true)]);
     }
 
@@ -788,7 +859,7 @@ pub(crate) mod tests {
             State::default(),
             state_file.clone(),
         );
-        let report = pipeline.process(job(config()));
+        let report = pipeline.process(job(config()), |_| {});
         assert_eq!(
             report.outcome,
             Outcome::NotInserted {
@@ -822,7 +893,7 @@ pub(crate) mod tests {
             State::default(),
             state_file.clone(),
         );
-        let report = pipeline.process(job(config));
+        let report = pipeline.process(job(config), |_| {});
         assert_eq!(report.outcome, Outcome::HeardNothing(Reason::NoWords));
         assert!(calls.lock().unwrap().is_empty(), "«.» is not inserted");
         let state = files::read_state(&state_file).unwrap();
@@ -844,7 +915,7 @@ pub(crate) mod tests {
             State::default(),
             scratch.0.join("state.toml"),
         );
-        let report = pipeline.process(job(config()));
+        let report = pipeline.process(job(config()), |_| {});
         assert!(matches!(
             report.outcome,
             Outcome::Inserted {
@@ -872,11 +943,11 @@ pub(crate) mod tests {
             scratch.0.join("state.toml"),
         );
         assert_eq!(
-            pipeline.process(job(config())).outcome,
+            pipeline.process(job(config()), |_| {}).outcome,
             Outcome::Failed("transcription failed: out of memory".into())
         );
         assert!(matches!(
-            pipeline.process(job(config())).outcome,
+            pipeline.process(job(config()), |_| {}).outcome,
             Outcome::Inserted { .. }
         ));
     }
@@ -894,7 +965,7 @@ pub(crate) mod tests {
             State::default(),
             state_file.clone(),
         );
-        pipeline.process(job(config()));
+        pipeline.process(job(config()), |_| {});
         assert_eq!(
             files::read_state(&state_file).unwrap().counts.get("mercha"),
             1
@@ -902,7 +973,7 @@ pub(crate) mod tests {
 
         let mut without = config();
         without.corrections.remove("mercha");
-        pipeline.process(job(without));
+        pipeline.process(job(without), |_| {});
         let state = files::read_state(&state_file).unwrap();
         assert_eq!(state.counts.get("mercha"), 0);
         assert_eq!(state.history.entries().len(), 2);
@@ -923,7 +994,7 @@ pub(crate) mod tests {
             State::default(),
             state_file.clone(),
         );
-        let report = pipeline.process(job(config()));
+        let report = pipeline.process(job(config()), |_| {});
         assert!(matches!(report.outcome, Outcome::Inserted { .. }));
         let error = report.state_error.unwrap();
         assert!(
@@ -956,14 +1027,71 @@ pub(crate) mod tests {
         assert!(matches!(&events[0], WorkerEvent::Loaded { device, .. } if device == "FAKE0"));
         assert!(matches!(
             &events[1],
-            WorkerEvent::Done(report) if matches!(report.outcome, Outcome::Inserted { .. })
+            WorkerEvent::Pasted { take: 7, text } if text == "Hei."
         ));
         assert!(matches!(
             &events[2],
+            WorkerEvent::Done(report) if matches!(report.outcome, Outcome::Inserted { .. })
+        ));
+        assert!(matches!(
+            &events[3],
             WorkerEvent::Done(report)
                 if report.outcome == Outcome::HeardNothing(Reason::TooLittleSpeech)
         ));
-        assert_eq!(events.len(), 3);
+        assert_eq!(events.len(), 4);
+    }
+
+    #[test]
+    fn the_worker_says_the_text_is_pasted_before_the_previous_clipboard_is_back() {
+        let scratch = Scratch::new("worker-pasted");
+        let (restore, restored) = mpsc::channel::<()>();
+        let inserter = SlowRestore { restored };
+        let (events, received) = mpsc::channel();
+        let worker = Worker::spawn(
+            move || Ok(FakeModel::new([Ok(heard("Hei."))])),
+            inserter,
+            quiet(),
+            State::default(),
+            scratch.0.join("state.toml"),
+            events,
+        )
+        .unwrap();
+        worker.submit(job(config()));
+
+        let within = Duration::from_secs(5);
+        assert!(matches!(
+            received.recv_timeout(within),
+            Ok(WorkerEvent::Loaded { .. })
+        ));
+        assert!(matches!(
+            received.recv_timeout(within),
+            Ok(WorkerEvent::Pasted { take: 7, text }) if text == "Hei."
+        ));
+        assert!(received.try_recv().is_err(), "the take is not done yet");
+        restore.send(()).unwrap();
+        assert!(matches!(
+            received.recv_timeout(within),
+            Ok(WorkerEvent::Done(report)) if matches!(report.outcome, Outcome::Inserted { .. })
+        ));
+        worker.finish();
+    }
+
+    /// Pastes at once and puts the previous clipboard back when the test says so.
+    struct SlowRestore {
+        restored: mpsc::Receiver<()>,
+    }
+
+    impl Insert for SlowRestore {
+        fn insert(
+            &mut self,
+            _text: &str,
+            _options: &InsertOptions,
+            pasted: impl FnOnce(),
+        ) -> Result<Inserted, InsertError> {
+            pasted();
+            let _ = self.restored.recv();
+            Ok(Inserted::PreviousRestored)
+        }
     }
 
     #[test]
@@ -1054,8 +1182,8 @@ pub(crate) mod tests {
         worker.finish();
 
         let events: Vec<WorkerEvent> = received.try_iter().collect();
-        assert_eq!(events.len(), 3, "{events:?}");
-        let WorkerEvent::HistoryCorrected(corrected) = &events[2] else {
+        assert_eq!(events.len(), 4, "{events:?}");
+        let WorkerEvent::HistoryCorrected(corrected) = &events[3] else {
             panic!("{events:?}");
         };
         assert_eq!(corrected.error, None);

@@ -26,14 +26,16 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       # The system libraries the crates link: ALSA for cpal; Wayland, xkbcommon, X11's xcb and fontconfig
-      # for GPUI. The runner already has the C++ compiler and cmake that transcribe.cpp's CPU build takes.
+      # for GPUI; the Vulkan and SPIR-V headers, the Vulkan loader and glslc for its shaders, for
+      # transcribe.cpp's Vulkan backend. The runner already has the C++ compiler and cmake. It has no GPU, so the tests compute on
+      # the CPU.
       # Insertion is tried on a headless sway, which has the data-control and virtual-keyboard protocols,
       # with wl-clipboard and wev to look at what Skald does and wtype to send its Ctrl+V.
       - run: >-
           sudo apt-get update &&
           sudo apt-get install -y --no-install-recommends
           libasound2-dev libfontconfig-dev libwayland-dev libxkbcommon-x11-dev libx11-xcb-dev
-          sway wl-clipboard wtype wev
+          libvulkan-dev spirv-headers glslc sway wl-clipboard wtype wev
       # rustup installs the toolchain rust-toolchain.toml pins on the first cargo call.
       - run: cargo clippy --workspace --all-targets --locked
       - run: cargo test --workspace --locked

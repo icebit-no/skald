@@ -10,8 +10,9 @@ pub const CLIPBOARD_NOTE: &str = "macOS kan spørre én gang om Skald får lese 
      den bare for å legge tilbake det som lå der, etter at teksten er satt inn. Svarer du nei, blir \
      teksten liggende på utklippstavlen.";
 
-/// The window reads the permissions afresh each time it comes to the front.
-pub const COME_BACK_NOTE: &str = "Når du har slått på Skald i Systeminnstillinger, kan du komme tilbake hit. Skald ser endringen selv.";
+/// The window comes back to the front by itself once a permission is granted.
+pub const COME_BACK_NOTE: &str =
+    "Når du har slått på Skald i Systeminnstillinger, kommer dette vinduet fram igjen av seg selv.";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PermissionRow {

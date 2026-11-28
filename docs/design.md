@@ -188,7 +188,9 @@ first one not done. The user may go on while the model downloads. The model show
 credit, then «Last ned», the progress with speed and time left and «Avbryt», «Fortsett» after a stop, and a
 plain reason with «Prøv igjen» after an error. Each permission shows its state, with «Gi tilgang» while the
 system can still ask and «Åpne Systeminnstillinger» once it has refused, and is read again when the window
-comes back to the front. On macOS the step says that macOS may ask once whether Skald may read the clipboard
+comes back to the front and each second while one is missing. Skald has no Dock icon and is not in the app
+switcher, so the window comes back to the front by itself when a permission is granted and when the system's
+microphone prompt is answered. On macOS the step says that macOS may ask once whether Skald may read the clipboard
 (Insertion). The test take is inserted into a field in the window, «Teksten settes inn her»; when it does
 not arrive there, the window shows «Skald hørte:» and the text. «Hopp over» leaves the test out and becomes
 «Ferdig» once a take was heard; both wait until the model is checked and the permissions are granted.

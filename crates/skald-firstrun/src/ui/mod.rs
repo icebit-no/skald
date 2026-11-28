@@ -61,9 +61,8 @@ impl FirstRunWindow {
     pub fn show(&mut self, model: &FirstRunModel, cx: &mut App) {
         if self.update_view(model, cx) {
             if let Some((handle, _)) = &self.open {
-                let _ = handle.update(cx, |_, window, _| window.activate_window());
+                let _ = handle.update(cx, |_, window, cx| skald_ui::bring_to_front(window, cx));
             }
-            cx.activate(true);
             return;
         }
         let options = WindowOptions {
@@ -90,12 +89,14 @@ impl FirstRunWindow {
         });
         match opened {
             Ok(handle) => {
-                let view = handle.update(cx, |_, _, cx| cx.entity().downgrade()).ok();
-                if let Some(view) = view {
+                let view = handle.update(cx, |_, window, cx| {
+                    // Skald runs without a Dock icon, so its window comes forward only when asked.
+                    skald_ui::bring_to_front(window, cx);
+                    cx.entity().downgrade()
+                });
+                if let Ok(view) = view {
                     self.open = Some((handle.into(), view));
                 }
-                // Skald runs without a Dock icon, so its window comes forward only when asked.
-                cx.activate(true);
             }
             Err(error) => eprintln!("skald-firstrun: the window did not open: {error}"),
         }
@@ -106,12 +107,13 @@ impl FirstRunWindow {
         self.update_view(model, cx);
     }
 
-    /// Reads the permissions again now, as when the system's prompt was answered while the window kept
-    /// the front.
-    pub fn check_permissions(&mut self, cx: &mut App) {
+    /// The system's prompt for a permission was answered: the window reads the permissions again and
+    /// comes back to the front, which the prompt took, whatever the answer was.
+    pub fn prompt_answered(&mut self, cx: &mut App) {
         if let Some((handle, view)) = self.window() {
             let _ = handle.update(cx, |_, window, cx| {
-                view.update(cx, |view, cx| view.check_permissions(window, cx))
+                view.update(cx, |view, cx| view.check_permissions(window, cx));
+                skald_ui::bring_to_front(window, cx);
             });
         }
     }

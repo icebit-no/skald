@@ -224,11 +224,10 @@ impl Example {
         });
     }
 
-    /// The system's prompt was answered while the window kept the front, so it reads the permissions
-    /// only when told to.
+    /// The pretended prompt was answered, as the app hears of the microphone's real one.
     fn check_permissions(&self, cx: &mut App) {
         if let Some(window) = self.window.borrow_mut().as_mut() {
-            window.check_permissions(cx);
+            window.prompt_answered(cx);
         }
     }
 

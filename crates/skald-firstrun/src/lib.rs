@@ -5,9 +5,10 @@
 //! back to the app as an [`Action`]. It touches no file and no network: the app runs the download, asks
 //! the system for the permissions, opens its settings and runs the test take, and hands the window the
 //! model again whenever any of it moves on. The permissions the window reads itself, through the
-//! [`PermissionChecks`] the app passes in, when it opens and each time it comes to the front. What each
-//! step shows is decided in [`download`], [`permissions`], [`test_step`] and [`steps`], as data with no
-//! window in it, so it is tested without a screen. The window draws them with GPUI in skald-ui's colours,
+//! [`PermissionChecks`] the app passes in, when it opens, each time it comes to the front, and each second
+//! while one is missing; when one is granted, it comes back to the front by itself. What each step shows
+//! is decided in [`download`], [`permissions`], [`test_step`] and [`steps`], as data with no window in
+//! it, so it is tested without a screen. The window draws them with GPUI in skald-ui's colours,
 //! following the system's light or dark mode.
 //!
 //! # Wiring it into the app

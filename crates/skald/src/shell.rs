@@ -205,7 +205,7 @@ impl Shell {
             Message::Download(download) => self.on_download(download, cx),
             Message::Answered => {
                 if let Some(window) = &mut self.first_run {
-                    window.window.check_permissions(cx);
+                    window.window.prompt_answered(cx);
                 }
             }
         }

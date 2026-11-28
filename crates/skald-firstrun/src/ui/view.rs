@@ -1,13 +1,14 @@
 //! The window's one view: the step bar, the step shown, and the buttons that move between steps.
 
 use std::rc::Rc;
+use std::time::Duration;
 
 use gpui_kit::base::Button;
 use gpui_kit::base::input::{InputEvent, InputState};
 use gpui_kit::prelude::*;
 use gpui_kit::{
     AnyElement, ClickEvent, Context, Div, Entity, FocusHandle, FontWeight, Render, Subscription,
-    Window, div, px,
+    Task, Window, div, px,
 };
 use skald_ui::Palette;
 
@@ -23,6 +24,10 @@ use crate::test_step::{FIELD_PLACEHOLDER, TestView};
 
 pub(super) const KEY_CONTEXT: &str = "SkaldFirstRun";
 
+/// How often the permissions are read while one is missing. A grant is made in System Settings or the
+/// system's prompt, which keep the front, so the window would not see it until it came back to the front.
+const PERMISSIONS_EVERY: Duration = Duration::from_secs(1);
+
 pub(crate) struct FirstRunView {
     model: FirstRunModel,
     step: Step,
@@ -36,6 +41,7 @@ pub(crate) struct FirstRunView {
     styled_dark: Option<bool>,
     focus: FocusHandle,
     _subscriptions: Vec<Subscription>,
+    _watching_permissions: Task<()>,
 }
 
 impl FirstRunView {
@@ -71,6 +77,18 @@ impl FirstRunView {
         let focus = cx.focus_handle();
         window.focus(&focus, cx);
 
+        let watching_permissions = cx.spawn_in(window, async move |view, cx| {
+            loop {
+                cx.background_executor().timer(PERMISSIONS_EVERY).await;
+                let watched = view.update_in(cx, |view, window, cx| {
+                    view.watch_permissions(window, cx);
+                });
+                if watched.is_err() {
+                    break;
+                }
+            }
+        });
+
         let permissions = checks.read(model.platform, false);
         let mut view = Self {
             step: Step::first_open(&model, &permissions),
@@ -83,6 +101,7 @@ impl FirstRunView {
             styled_dark: None,
             focus,
             _subscriptions: subscriptions,
+            _watching_permissions: watching_permissions,
         };
         view.focus_field_for_test(window, cx);
         view
@@ -109,14 +128,32 @@ impl FirstRunView {
         cx.notify();
     }
 
-    pub(super) fn check_permissions(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    /// Reads the permissions again; true when one is granted that was not before.
+    pub(super) fn check_permissions(
+        &mut self,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> bool {
         let permissions = self
             .checks
             .read(self.model.platform, self.asked_for_accessibility);
+        let newly_granted = permissions.newly_granted(&self.permissions);
         if permissions != self.permissions {
             self.permissions = permissions;
             self.focus_field_for_test(window, cx);
             cx.notify();
+        }
+        newly_granted
+    }
+
+    /// While a permission is missing, reads them again, and brings the window back to the front once one
+    /// is granted, from behind System Settings or wherever the system's prompt left it.
+    fn watch_permissions(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        if self.permissions.granted(self.model.platform) {
+            return;
+        }
+        if self.check_permissions(window, cx) {
+            skald_ui::bring_to_front(window, cx);
         }
     }
 

@@ -42,7 +42,7 @@ The colours named below are the two Viking themes'; Kjedelig uses the system's a
 
 | State | What it shows |
 |---|---|
-| Opptak | A glowing ember-red dot, the elapsed time, the last 2.4 s as 40 bars (3 pt wide, 6 pt apart) scrolling smoothly at 60 fps, and «slipp ⌘» («slipp Ctrl» on Windows and Linux) |
+| Opptak | A glowing ember-red dot, the elapsed time, the last 2.4 s as 40 bars (3 pt wide, 6 pt apart) scrolling smoothly at 60 fps, and the hold key to let go of: «slipp ⌘» for right ⌘, «slipp Ctrl» for right Control, on every system |
 | Rister | On release the bars fold into the whole take; a gold chisel line moves across it, and behind it the bars, now 8 pt apart so each holds one rune, become runes: the dictated text transliterated to the Younger Futhark. «rister …» |
 | Satt inn | A gold tick and the start of the text, in plain type, for about 1.5 s |
 | Hørte ingenting | «Hørte ingenting · lyttet på <mikrofon>» |

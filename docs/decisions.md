@@ -5,7 +5,7 @@ decision, and that pull request also edits the page where the rule lives ([desig
 [plan.md](plan.md)). Those pages say what holds; this one says when and why it came to hold. A later decision
 that undoes one adds an entry of its own, and the earlier entry gets one line naming it.
 
-## D-52 — THIRD-PARTY-NOTICES is written from Cargo.lock and checked in CI
+## D-56 — THIRD-PARTY-NOTICES is written from Cargo.lock and checked in CI
 
 2026-11-28, Claude; a script of Python's standard library, checked in CI, set by the lead's brief.
 
@@ -29,6 +29,18 @@ licence, on a licence it can take no text for, on a model in `skald-models`' reg
 the repository it does not credit, and on a copyright line copied by hand that its source no longer has. The
 macOS bundle carries `LICENSE` and the notices in `Contents/Resources`, and the Windows zip as `.txt` files
 (D-51). Changed: [plan.md](plan.md) M6.
+
+## D-55 — The overlay's recording hint names the hold key in use
+
+2026-11-28, Claude; the words settled by the lead.
+
+The pill's hint while a take records names the key the user holds, as the menu, the first-run window and the
+terminal already do: «slipp ⌘» with ⌘ drawn for right ⌘, and «slipp Ctrl» in words for right Control, on
+macOS as on Windows and Linux. Before, macOS always said «slipp ⌘», so with right Control chosen in Generelt
+the pill named a key the user was not holding. The settings window and the first-run window call macOS's key
+«Control»; the pill says «Ctrl», as Windows and Linux do, since it has room for few letters. A key written by
+a newer Skald is hinted as the system's own, the key the listener then takes. The hands-free hint is the
+chord and does not change. Changed: [design.md](design.md#overlay).
 
 ## D-51 — Windows ships as one zip with the DLLs beside skald.exe; Scoop and winget install it portable
 

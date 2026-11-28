@@ -8,6 +8,8 @@ use windows_sys::Win32::UI::Input::KeyboardAndMouse::{
     VK_RMENU, VK_RSHIFT, VK_RWIN, VK_V,
 };
 
+use handy_keys::Modifiers;
+
 use crate::hold::KeySample;
 use crate::hotkey::HoldKey;
 
@@ -18,7 +20,8 @@ const WINDOWS: [VIRTUAL_KEY; 2] = [VK_LWIN, VK_RWIN];
 
 /// The keyboard's own state, as the system keeps it whatever the hook was told. AltGr holds left Ctrl
 /// down beside right Alt, so it counts as another modifier while right Ctrl is held.
-pub(crate) fn sample(hold_key: HoldKey) -> KeySample {
+/// Windows keeps each side's state apart, so the modifiers the key events had are not needed.
+pub(crate) fn sample(hold_key: HoldKey, _held: Modifiers) -> KeySample {
     let (hold, twin, others) = match hold_key {
         HoldKey::RightControl => (VK_RCONTROL, VK_LCONTROL, [SHIFT, ALT, WINDOWS]),
         // The Windows key stands where ⌘ does.

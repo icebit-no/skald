@@ -23,6 +23,14 @@ impl HoldKey {
             HoldKey::RightControl => Modifiers::CTRL_RIGHT,
         }
     }
+
+    /// The same modifier on the left.
+    pub(crate) fn twin(self) -> Modifiers {
+        match self {
+            HoldKey::RightCommand => Modifiers::CMD_LEFT,
+            HoldKey::RightControl => Modifiers::CTRL_LEFT,
+        }
+    }
 }
 
 /// A key pressed with modifiers, either side of each.
@@ -60,8 +68,9 @@ pub(crate) const HANDS_FREE: Option<Chord> = if cfg!(any(target_os = "macos", wi
 /// What a key event means for a hold.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum KeyChange {
-    /// The hold key went down or up. Which one is read from the operating system, because the press flag
-    /// handy-keys reports for a modifier can be inverted after a missed event.
+    /// The hold key went down or up. Which one is read from the operating system's modifier flags with
+    /// the side the events give, because the press flag handy-keys reports for a modifier can be inverted
+    /// after a missed event.
     HoldKey,
     /// The hands-free chord went down, or its key repeats while held.
     HandsFreePressed,

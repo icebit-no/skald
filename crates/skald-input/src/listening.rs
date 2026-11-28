@@ -22,8 +22,8 @@ pub enum Seen {
     /// The first key event since the listener started listening: the key's or modifier's name, and
     /// whether it went down.
     FirstKey { key: String, down: bool },
-    /// An event said the hold key went down or up; `sample` is what the keyboard hardware said then,
-    /// which decides it.
+    /// An event said the hold key went down or up; `sample` is the hold key and the other modifiers as
+    /// read then, from the hardware's modifier flags and the side the events give, which decides it.
     HoldKey { down: bool, sample: KeySample },
     /// The system's record of this process's event taps, a moment after the listener started listening,
     /// and whether the system lets this process listen to the keyboard.

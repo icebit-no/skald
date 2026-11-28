@@ -11,10 +11,12 @@ use std::ptr::NonNull;
 use objc2::rc::Retained;
 use objc2_core_foundation::CFMachPort;
 use objc2_core_graphics::{
-    CGEvent, CGEventTapLocation, CGEventTapOptions, CGEventTapPlacement, CGEventTapProxy,
-    CGEventType,
+    CGEvent, CGEventTapInformation, CGEventTapLocation, CGEventTapOptions, CGEventTapPlacement,
+    CGEventTapProxy, CGEventType, CGGetEventTapList, CGPreflightListenEventAccess,
 };
 use objc2_foundation::{NSDictionary, NSNumber, NSString};
+
+use crate::listening::{Seen, Tap};
 
 /// tccd posts this Darwin notification after any privacy permission changes.
 const TCC_ACCESS_CHANGED: &CStr = c"com.apple.tcc.access.changed";
@@ -106,6 +108,33 @@ fn active_tap_allowed() -> bool {
     tap.inspect(|tap| CFMachPort::invalidate(tap)).is_some()
 }
 
+/// This process's event taps as the window server records them, and whether it lets this process listen
+/// to the keyboard.
+pub(crate) fn seen_taps() -> Option<Seen> {
+    let mut count = 0;
+    // SAFETY: a null list asks only for the count, written to a valid pointer.
+    unsafe { CGGetEventTapList(0, std::ptr::null_mut(), &mut count) };
+    // SAFETY: the record holds numbers, a bool and enums of plain integers, for which zero is valid.
+    let mut list: Vec<CGEventTapInformation> = vec![unsafe { std::mem::zeroed() }; count as usize];
+    // SAFETY: room for `count` records, and the count written back is at most that.
+    unsafe { CGGetEventTapList(count, list.as_mut_ptr(), &mut count) };
+    list.truncate(count as usize);
+    let me = std::process::id() as i32;
+    let taps = list
+        .iter()
+        .filter(|tap| tap.tappingProcess == me)
+        .map(|tap| Tap {
+            enabled: tap.enabled,
+            listen_only: tap.options == CGEventTapOptions::ListenOnly,
+            max_latency_us: tap.maxUsecLatency as u32,
+        })
+        .collect();
+    Some(Seen::Taps {
+        taps,
+        keyboard_allowed: CGPreflightListenEventAccess(),
+    })
+}
+
 /// Asks the system for Accessibility: macOS shows its prompt, which lists Skald under Privacy & Security ›
 /// Accessibility and offers to open it there. It shows the prompt once per app; after that, and when the
 /// permission is granted, it shows nothing. Returns whether the permission is granted now, as the system's
@@ -137,6 +166,12 @@ mod tests {
             assert!(!granted);
         }
         assert_eq!(accessibility_granted(), granted);
+    }
+
+    #[test]
+    fn the_system_s_list_of_taps_is_read() {
+        // Another test may hold a tap of this process meanwhile, so the list's length says nothing.
+        assert!(matches!(seen_taps(), Some(Seen::Taps { .. })));
     }
 
     #[test]

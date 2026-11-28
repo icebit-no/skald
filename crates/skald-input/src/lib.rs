@@ -45,7 +45,7 @@ pub use linux::insert::Inserter;
 pub use linux::listener::{HoldListener, press_hold_key, toggle_hands_free};
 #[cfg(any(target_os = "macos", windows))]
 pub use listener::HoldListener;
-pub use listening::{ListenerEvent, PressRefused, Unavailable};
+pub use listening::{ListenerEvent, PressRefused, Seen, Tap, Unavailable};
 #[cfg(target_os = "macos")]
 pub use macos::access::{
     accessibility_granted, open_accessibility_settings, request_accessibility,

@@ -15,6 +15,11 @@ impl AccessWatch {
     }
 }
 
+/// Windows keeps no list of keyboard hooks to report.
+pub(crate) fn seen_taps() -> Option<crate::listening::Seen> {
+    None
+}
+
 pub fn accessibility_granted() -> bool {
     true
 }

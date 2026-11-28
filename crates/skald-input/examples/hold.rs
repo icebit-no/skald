@@ -66,6 +66,7 @@ mod listen {
             let at = format!("{:>7.2} s", start.elapsed().as_secs_f64());
             match event {
                 ListenerEvent::Ready => println!("{at}  listening"),
+                ListenerEvent::Seen(seen) => println!("{at}  seen: {seen:?}"),
                 ListenerEvent::Unavailable(reason) => {
                     println!("{at}  not listening: {reason}");
                     if reason == skald_input::Unavailable::NoAccessibility {

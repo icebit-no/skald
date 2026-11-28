@@ -11,13 +11,13 @@ use handy_keys::{KeyEvent, KeyboardListener};
 
 use crate::hold::HoldMachine;
 use crate::hotkey::{HANDS_FREE, HoldKey, KeyChange, classify};
-use crate::listening::{ListenerEvent, Unavailable};
+use crate::listening::{ListenerEvent, Seen, Unavailable};
 #[cfg(target_os = "macos")]
-use crate::macos::access::{AccessWatch, accessibility_granted};
+use crate::macos::access::{AccessWatch, accessibility_granted, seen_taps};
 #[cfg(target_os = "macos")]
 use crate::macos::keyboard::sample;
 #[cfg(windows)]
-use crate::windows::access::{AccessWatch, accessibility_granted};
+use crate::windows::access::{AccessWatch, accessibility_granted, seen_taps};
 #[cfg(windows)]
 use crate::windows::keyboard::sample;
 
@@ -31,6 +31,10 @@ const RECHECK_AFTER: Duration = Duration::from_millis(500);
 
 /// How often starting is tried again while the listener cannot run.
 const RETRY_EVERY: Duration = Duration::from_secs(5);
+
+/// How long after it starts listening the listener reports the system's record of its taps, so the
+/// record shows whether the tap stayed enabled and how long events waited on it.
+const TAPS_AFTER: Duration = Duration::from_secs(2);
 
 /// What the app tells the listener's thread.
 #[derive(Debug)]
@@ -80,6 +84,9 @@ struct Driver {
     retry_at: Instant,
     /// The unavailability last reported, so each is reported once.
     reported: Option<Unavailable>,
+    /// A key event has arrived since the listener started listening.
+    heard_a_key: bool,
+    taps_due: Option<Instant>,
 }
 
 impl Driver {
@@ -94,6 +101,8 @@ impl Driver {
             access_checks: Vec::new(),
             retry_at: Instant::now(),
             reported: None,
+            heard_a_key: false,
+            taps_due: None,
         }
     }
 
@@ -113,6 +122,12 @@ impl Driver {
                 }
             } else if check_due || now >= self.retry_at {
                 self.try_start();
+            }
+            if self.taps_due.is_some_and(|due| due <= now) {
+                self.taps_due = None;
+                if let Some(seen) = seen_taps() {
+                    self.send(ListenerEvent::Seen(seen));
+                }
             }
 
             let timeout = self.next_wake(now).saturating_duration_since(now);
@@ -178,6 +193,9 @@ impl Driver {
         if let Some(check) = self.access_checks.first() {
             wake = wake.min(*check);
         }
+        if let Some(taps) = self.taps_due {
+            wake = wake.min(taps);
+        }
         if self.keyboard.is_none() {
             wake = wake.min(self.retry_at);
         }
@@ -195,6 +213,8 @@ impl Driver {
             Ok(keyboard) => {
                 self.keyboard = Some(keyboard);
                 self.reported = None;
+                self.heard_a_key = false;
+                self.taps_due = Some(Instant::now() + TAPS_AFTER);
                 self.send(ListenerEvent::Ready);
             }
             Err(handy_keys::Error::AccessibilityNotGranted) => {
@@ -223,8 +243,21 @@ impl Driver {
 
     fn on_key_event(&mut self, event: &KeyEvent) {
         let now = Instant::now();
+        if !std::mem::replace(&mut self.heard_a_key, true) {
+            self.send(ListenerEvent::Seen(Seen::FirstKey {
+                key: key_name(event),
+                down: event.is_key_down,
+            }));
+        }
         let hold_event = match classify(event, self.hold_key, HANDS_FREE) {
-            KeyChange::HoldKey => self.machine.hold_key_changed(now, sample(self.hold_key)),
+            KeyChange::HoldKey => {
+                let sample = sample(self.hold_key);
+                self.send(ListenerEvent::Seen(Seen::HoldKey {
+                    down: event.is_key_down,
+                    sample,
+                }));
+                self.machine.hold_key_changed(now, sample)
+            }
             KeyChange::HandsFreePressed => self.machine.hands_free_pressed(now),
             KeyChange::HandsFreeReleased => {
                 self.machine.hands_free_released();
@@ -250,5 +283,14 @@ impl Driver {
     /// A send fails only once the listener is dropped, which the command channel reports too.
     fn send(&self, event: ListenerEvent) {
         let _ = self.events.send(event);
+    }
+}
+
+/// The key or modifier an event is about, as handy-keys names it; a modifier's name says its side.
+fn key_name(event: &KeyEvent) -> String {
+    match (event.changed_modifier, event.key) {
+        (Some(modifier), _) => format!("{modifier:?}"),
+        (None, Some(key)) => key.to_string(),
+        (None, None) => "?".to_owned(),
     }
 }

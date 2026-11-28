@@ -186,6 +186,11 @@ impl Overlay {
         self.drive(cx, |pill, now| pill.no_microphone(now));
     }
 
+    /// A take armed on a microphone that could not be opened: «<mikrofon> · kunne ikke åpnes».
+    pub fn microphone_not_opened(&mut self, microphone: &str, cx: &mut App) {
+        self.drive(cx, |pill, now| pill.microphone_not_opened(microphone, now));
+    }
+
     /// The active microphone changed: Mikrofon byttet, once, after the take on screen if there is one.
     pub fn microphone_changed(&mut self, microphone: &str, cx: &mut App) {
         self.drive(cx, |pill, now| pill.microphone_changed(microphone, now));

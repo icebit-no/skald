@@ -202,6 +202,11 @@ impl<'a> Message<'a> {
             Look::AdministratorWindow => fixed("Administratorvindu", " · ligger i Siste tekster"),
             Look::TranscriptionFailed => fixed("Transkriberingen feilet", ""),
             Look::NoMicrophone => fixed("Ingen mikrofon er koblet til", ""),
+            Look::MicrophoneNotOpened { microphone } => Some(Self {
+                first: microphone,
+                first_fixed: false,
+                rest: " · kunne ikke åpnes".to_owned(),
+            }),
             Look::Recording { .. } | Look::Carving { .. } | Look::Inserted { .. } => None,
         }
     }
@@ -1097,6 +1102,12 @@ mod tests {
         assert_eq!(
             read(Look::NoMicrophone),
             ("Ingen mikrofon er koblet til".to_owned(), true)
+        );
+        assert_eq!(
+            read(Look::MicrophoneNotOpened {
+                microphone: "Shure MV7"
+            }),
+            ("Shure MV7 · kunne ikke åpnes".to_owned(), false)
         );
         assert_eq!(Message::of(&Look::Inserted { text: "Hei." }), None);
     }

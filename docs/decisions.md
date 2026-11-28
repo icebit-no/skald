@@ -94,6 +94,30 @@ Scoop starts Skald from its `current` folder and winget from one folder per pack
 the path. The user's own key needs no administrator rights; a scheduled task or a shortcut in the Startup folder
 would do the same with more to keep. It replaces D-45's stand-in.
 
+## D-52 — The Linux release is a tarball laid out as under /usr; skald-bin installs it on Arch
+
+2026-11-28, the lead (what the tarball holds and the package's dependencies), Claude (the rest).
+
+`packaging/linux/tarball.sh` packs the release's Linux build as `skald-VERSION-linux-ARCH.tar.gz`, with its
+SHA-256 beside it: the release `skald`, its desktop entry and icons under the name `app.icebit.skald` (the
+bundle identifier on macOS, D-34, and the windows' app id, D-47), the Hyprland lines as
+`/usr/share/skald/hyprland.conf` to source, the Linux README, the licence, and THIRD-PARTY-NOTICES (D-57). Its tree is laid out as under `/usr`, so a package installs it as it is, and it packs to the same
+bytes each time: sorted names, one owner, and `SOURCE_DATE_EPOCH` or the last commit's time on every file. It
+packs a binary built for the checkout's version, or builds one.
+
+The AUR package `skald-bin` is rendered from `packaging/arch/PKGBUILD.in` by `packaging/arch/aur.sh` for a
+tarball, with its version and SHA-256, so the package never names a checksum it was not given; `--local`
+makes the tarball itself the source, to try the package before anything is published. It depends on what the
+binary links (glibc, libgcc, libstdc++, alsa-lib, libxcb, libxkbcommon, libxkbcommon-x11, the Vulkan loader),
+what it opens as it runs (Wayland's client library), the programs it runs (wtype, and PipeWire for pw-play),
+and the icon theme; a Vulkan driver, pipewire-alsa, the freedesktop sound theme and Hyprland's portal are
+optional. It is for x86_64, which the release runner builds. Publishing the tarball and the package belongs to
+the release pipeline (M6).
+
+Evidence: a tarball packed twice from an x86_64 release build gave the same SHA-256; on Arch Linux, makepkg
+built skald-bin from it, pacman installed it with its dependencies, `skald --version` and `skald --help` ran,
+and namcap found nothing beyond the dependencies it cannot see (Wayland, opened as Skald runs; wtype and
+pw-play, which it runs). Changed: [plan.md](plan.md) M5.
 
 ## D-51 — Windows ships as one zip with the DLLs beside skald.exe; Scoop and winget install it portable
 

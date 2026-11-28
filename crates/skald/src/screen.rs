@@ -7,7 +7,7 @@ use std::path::Path;
 use std::sync::Arc;
 
 use skald_core::Config;
-use skald_core::config::OverlayTheme;
+use skald_core::config::{HoldKey, OverlayTheme};
 use skald_core::state::State;
 use skald_firstrun::TestDictation;
 use skald_models::MODELS;
@@ -40,6 +40,8 @@ pub(crate) struct Changed {
     pub(crate) pills: Vec<Pill>,
     /// The overlay's theme.
     pub(crate) theme: bool,
+    /// The key held to talk, which the overlay's hint names.
+    pub(crate) hold_key: bool,
     /// Anything the settings window shows.
     pub(crate) settings: bool,
 }
@@ -77,6 +79,10 @@ impl Default for Screen {
 impl Screen {
     pub(crate) fn theme(&self) -> &OverlayTheme {
         &self.config.overlay_theme
+    }
+
+    pub(crate) fn hold_key(&self) -> &HoldKey {
+        &self.config.hold_key
     }
 
     pub(crate) fn apply(&mut self, event: Event) -> Changed {
@@ -150,6 +156,7 @@ impl Screen {
         let changed = Changed {
             pills: Vec::new(),
             theme: config.overlay_theme != self.config.overlay_theme,
+            hold_key: config.hold_key != self.config.hold_key,
             settings: config != self.config,
         };
         self.config = config;
@@ -585,11 +592,15 @@ mod tests {
         config.sounds = false;
         let changed = screen.apply(Event::Settings(Arc::new(config.clone())));
         assert!(changed.settings);
-        assert!(!changed.theme);
+        assert!(!changed.theme && !changed.hold_key);
         config.overlay_theme = OverlayTheme::Kjedelig;
         let changed = screen.set_config(Arc::new(config.clone()));
-        assert!(changed.theme && changed.settings);
+        assert!(changed.theme && changed.settings && !changed.hold_key);
         assert_eq!(screen.theme(), &OverlayTheme::Kjedelig);
+        config.hold_key = HoldKey::Unknown("right-option".into());
+        let changed = screen.set_config(Arc::new(config.clone()));
+        assert!(changed.hold_key && changed.settings && !changed.theme);
+        assert_eq!(screen.hold_key(), &HoldKey::Unknown("right-option".into()));
         assert_eq!(
             screen.set_config(Arc::new(config)),
             Changed::default(),

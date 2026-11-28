@@ -41,7 +41,7 @@ to none of them either, so they keep the newer one.
 
 ## Who can start a release, and who can read the secrets
 
-The secrets can sign an app as icebit and push to the tap, the bucket and the AUR. Skald's repository is public
+The secrets can sign any app with team `Q4LJS2JYGD`'s Developer ID and push to the tap, the bucket and the AUR. Skald's repository is public
 and takes pull requests, so three settings on GitHub keep the secrets away from everything except a release that
 Thomas has approved.
 

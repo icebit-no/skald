@@ -457,7 +457,10 @@ impl Running<'_> {
 
     fn on_key_event(&mut self, event: ListenerEvent) -> Result<(), Exit> {
         match event {
-            ListenerEvent::Hold(event) => self.dictation.on_hold(event)?,
+            ListenerEvent::Hold(event) => {
+                self.out.say(Line::Hold(event));
+                self.dictation.on_hold(event)?;
+            }
             ListenerEvent::Ready => {
                 self.out.say(Line::Listening);
                 if std::mem::take(&mut self.keys.unavailable) {

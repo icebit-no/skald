@@ -113,6 +113,8 @@ Design: [Audio in](design.md#audio-in).
 - [ ] Paste with Ctrl+V; windows running as administrator cannot receive it, and Skald says so. Built in
       skald-input (#30); ticked once the app runs on Windows and shows it.
 - [ ] Zip and manifest in `icebit-no/scoop-bucket`, a winget manifest, signing through SignPath Foundation.
+      The zip and the manifests' templates are in `packaging/windows/` (D-51); publishing them is M6's, and
+      signing waits for Thomas's application to SignPath Foundation.
 - [ ] Tested on a real Windows machine with an NVIDIA RTX GPU.
 
 ## M5 Linux (Omarchy and Hyprland)
@@ -130,7 +132,7 @@ Design: [Audio in](design.md#audio-in).
 Design: [Site](design.md#site).
 
 - [x] `THIRD-PARTY-NOTICES` written from Cargo.lock by `scripts/notices/` and checked in CI, and carried in the
-      macOS bundle (D-51); a README that says how to build and run Skald from source.
+      macOS bundle and the Windows zip (D-52); a README that says how to build and run Skald from source.
 - [ ] Release pipeline after Ferric's: notarize on the Mac runner, cask to `icebit-no/homebrew-tap`, manifest
       to `icebit-no/scoop-bucket`, AUR.
 - [ ] `icebit-no/skald-site`: Astro, an nginx image, app-sync and Caddy on svalbard, at skald.icebit.app.

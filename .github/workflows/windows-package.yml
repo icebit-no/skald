@@ -1,0 +1,52 @@
+name: windows-package
+
+# Builds the Windows release zip and fills its Scoop and winget manifests, and keeps them as the run's
+# artifact for two weeks, so the newest main can be tried on a Windows machine without building it. Nothing is
+# published or signed; the release pipeline is M6's.
+on:
+  push:
+    branches: [main]
+    paths-ignore: ['**.md', 'docs/**']
+  pull_request:
+    paths:
+      - 'packaging/windows/**'
+      - 'crates/skald/build.rs'
+      - 'crates/skald/build/**'
+      - '.github/actions/vulkan-sdk/**'
+      - '.github/workflows/windows-package.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  windows-package:
+    runs-on: windows-latest
+    timeout-minutes: 90
+    concurrency:
+      group: windows-package-${{ github.head_ref || github.ref }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+    steps:
+      - run: git config --global core.autocrlf false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/vulkan-sdk
+      # A release build, the zip, and a start of the exe from the unpacked zip.
+      - run: ./packaging/windows/package.ps1
+      - name: Fill the manifests
+        run: |
+          $zip = Get-Item target/package/skald-*-windows-x86_64.zip
+          $version = $zip.BaseName -replace '^skald-(.+)-windows-x86_64$', '$1'
+          $sha256 = (Get-Content "$($zip.FullName).sha256" -Raw).Split(' ')[0]
+          ./packaging/windows/manifests.ps1 -Version $version -Sha256 $sha256
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: skald-windows
+          path: |
+            target/package/*.zip
+            target/package/*.zip.sha256
+            target/package/manifests/
+          retention-days: 14
+          if-no-files-found: error

@@ -3,7 +3,7 @@
 
 use std::fmt;
 use std::fs::{self, File, TryLockError};
-use std::io::ErrorKind;
+use std::io::{ErrorKind, Write};
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
@@ -139,15 +139,25 @@ pub(crate) fn write_state(path: &Path, state: &State) -> Result<(), String> {
     replace(path, &text)
 }
 
-/// Writes `text` to a file beside `path` that then takes its place. The error names the file.
+/// Writes `text` to a file beside `path` that then takes its place. The text is on the disk before it
+/// takes the name, so a crash or a power cut leaves the old file or the new one, never an empty one. The
+/// error names the file.
 fn replace(path: &Path, text: &str) -> Result<(), String> {
     let failed = |error: std::io::Error| format!("{}: {error}", path.display());
     if let Some(dir) = path.parent() {
         fs::create_dir_all(dir).map_err(failed)?;
     }
     let beside = path.with_extension("toml.new");
-    fs::write(&beside, text).map_err(failed)?;
-    fs::rename(&beside, path).map_err(failed)
+    let written = File::create(&beside)
+        .and_then(|mut file| {
+            file.write_all(text.as_bytes())?;
+            file.sync_all()
+        })
+        .and_then(|()| fs::rename(&beside, path));
+    if written.is_err() {
+        let _ = fs::remove_file(&beside);
+    }
+    written.map_err(failed)
 }
 
 /// Held while Skald takes dictation, so a second Skald started by mistake does not paste every take a
@@ -293,6 +303,16 @@ pub(crate) mod tests {
         });
         write_state(&path, &state).unwrap();
         assert_eq!(read_state(&path), Ok(state));
+        assert!(!path.with_extension("toml.new").exists());
+    }
+
+    #[test]
+    fn a_state_that_cannot_take_its_place_leaves_no_file_beside_it() {
+        let scratch = Scratch::new("state-unplaceable");
+        let path = scratch.0.join("state.toml");
+        fs::create_dir_all(path.join("in-the-way")).unwrap();
+        let error = write_state(&path, &State::default()).unwrap_err();
+        assert!(error.starts_with(&path.display().to_string()), "{error}");
         assert!(!path.with_extension("toml.new").exists());
     }
 

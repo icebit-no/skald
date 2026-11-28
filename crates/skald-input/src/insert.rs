@@ -50,6 +50,8 @@ pub enum Inserted {
     PreviousMarkedPrivate,
     /// Something was copied after the text was pasted; that copy is left in place.
     CopiedMeanwhile,
+    /// The text was pasted, and the previous contents could not be written back after it.
+    PreviousNotRestored,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -136,10 +138,13 @@ pub(crate) fn pasted_text(text: &str) -> Option<String> {
     (!text.is_empty()).then(|| format!("{text} "))
 }
 
+/// Pastes the text and puts the previous clipboard back. `pasted` is called once the paste keystroke is
+/// sent, before the wait for the target app to read the clipboard, so the caller can tell the user at once.
 pub(crate) fn insert_with<D: Desktop>(
     desktop: &mut D,
     text: &str,
     options: &InsertOptions,
+    pasted: impl FnOnce(),
 ) -> Result<Inserted, InsertError> {
     let Some(text) = pasted_text(text) else {
         return Ok(Inserted::Nothing);
@@ -172,6 +177,7 @@ pub(crate) fn insert_with<D: Desktop>(
         }
         return Err(InsertError::Paste);
     }
+    pasted();
 
     let snapshot = match after_paste {
         AfterPaste::Restore(snapshot) => snapshot,
@@ -181,10 +187,10 @@ pub(crate) fn insert_with<D: Desktop>(
     if desktop.change_stamp() != stamp {
         return Ok(Inserted::CopiedMeanwhile);
     }
-    desktop
-        .write_snapshot(snapshot)
-        .ok_or(InsertError::Clipboard)?;
-    Ok(Inserted::PreviousRestored)
+    Ok(match desktop.write_snapshot(snapshot) {
+        Some(_) => Inserted::PreviousRestored,
+        None => Inserted::PreviousNotRestored,
+    })
 }
 
 fn wait_for_keys_up<D: Desktop>(desktop: &mut D, within: Duration) -> Result<(), InsertError> {
@@ -221,18 +227,24 @@ mod platform {
             Self::default()
         }
 
+        /// `pasted` is called once the paste keystroke is sent, before the wait to put the previous
+        /// clipboard back.
         pub fn insert(
             &mut self,
             text: &str,
             options: &InsertOptions,
+            pasted: impl FnOnce(),
         ) -> Result<Inserted, InsertError> {
-            insert_with(&mut self.desktop, text, options)
+            insert_with(&mut self.desktop, text, options, pasted)
         }
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::cell::Cell;
+    use std::rc::Rc;
+
     use super::*;
 
     #[derive(Debug, Clone, PartialEq, Eq)]
@@ -254,6 +266,7 @@ mod tests {
         clipboard: Previous<&'static str>,
         stamp: ChangeStamp,
         paste_works: bool,
+        restore_works: bool,
         /// Someone copies something this long after the paste.
         copy_after_paste: Option<Duration>,
         pasted_at: Option<Duration>,
@@ -261,6 +274,12 @@ mod tests {
         /// What the clipboard held each time the paste keystroke was sent.
         clipboard_at_paste: Vec<String>,
         current_text: Option<String>,
+        /// Set by a test's caller when it hears of the paste.
+        paste_heard: Rc<Cell<bool>>,
+        /// Whether the caller had heard of the paste as the keystroke was sent, and as the wait to put the
+        /// previous clipboard back began.
+        heard_at_paste: Option<bool>,
+        heard_at_restore_wait: Option<bool>,
     }
 
     impl FakeDesktop {
@@ -274,11 +293,15 @@ mod tests {
                 clipboard: Previous::Saved("previous"),
                 stamp: 7,
                 paste_works: true,
+                restore_works: true,
                 copy_after_paste: None,
                 pasted_at: None,
                 steps: Vec::new(),
                 clipboard_at_paste: Vec::new(),
                 current_text: None,
+                paste_heard: Rc::default(),
+                heard_at_paste: None,
+                heard_at_restore_wait: None,
             }
         }
 
@@ -326,6 +349,10 @@ mod tests {
         fn write_snapshot(&mut self, snapshot: &'static str) -> Option<ChangeStamp> {
             self.steps.push(Step::WriteSnapshot(snapshot));
             self.stamp += 1;
+            if !self.restore_works {
+                self.current_text = None;
+                return None;
+            }
             self.current_text = Some(snapshot.into());
             Some(self.stamp)
         }
@@ -340,6 +367,7 @@ mod tests {
             self.clipboard_at_paste
                 .push(self.current_text.clone().unwrap_or_default());
             self.pasted_at = Some(self.elapsed);
+            self.heard_at_paste = Some(self.paste_heard.get());
             self.paste_works
         }
 
@@ -348,6 +376,9 @@ mod tests {
         }
 
         fn sleep(&mut self, duration: Duration) {
+            if duration == RESTORE_AFTER {
+                self.heard_at_restore_wait = Some(self.paste_heard.get());
+            }
             self.elapsed += duration;
             self.copy_happened();
         }
@@ -368,6 +399,7 @@ mod tests {
             &mut desktop,
             "Hei, dette er en prøve.",
             &InsertOptions::default(),
+            || {},
         );
 
         assert_eq!(result, Ok(Inserted::PreviousRestored));
@@ -392,7 +424,7 @@ mod tests {
             ..InsertOptions::default()
         };
 
-        let result = insert_with(&mut desktop, "Hei", &options);
+        let result = insert_with(&mut desktop, "Hei", &options, || {});
 
         assert_eq!(result, Ok(Inserted::TextKept));
         assert_eq!(desktop.steps, [written("Hei ", false), Step::SendPaste]);
@@ -404,7 +436,7 @@ mod tests {
         let mut desktop = FakeDesktop::new();
         desktop.modifiers_down_until = Duration::from_millis(730);
 
-        let result = insert_with(&mut desktop, "Hei", &InsertOptions::default());
+        let result = insert_with(&mut desktop, "Hei", &InsertOptions::default(), || {});
 
         assert_eq!(result, Ok(Inserted::PreviousRestored));
         // The fake asserts on every paste that no modifier is down.
@@ -420,7 +452,7 @@ mod tests {
             ..InsertOptions::default()
         };
 
-        let result = insert_with(&mut desktop, "Hei", &options);
+        let result = insert_with(&mut desktop, "Hei", &options, || {});
 
         assert_eq!(result, Err(InsertError::KeysHeld));
         assert_eq!(desktop.steps, []);
@@ -433,7 +465,7 @@ mod tests {
         let mut desktop = FakeDesktop::new();
         desktop.may_send_keys = false;
 
-        let result = insert_with(&mut desktop, "Hei", &InsertOptions::default());
+        let result = insert_with(&mut desktop, "Hei", &InsertOptions::default(), || {});
 
         assert_eq!(result, Err(InsertError::NoAccessibility));
         assert_eq!(desktop.steps, []);
@@ -445,7 +477,7 @@ mod tests {
         desktop.modifiers_down_until = Duration::from_millis(300);
         desktop.front_window_refuses_keys = true;
 
-        let result = insert_with(&mut desktop, "Hei", &InsertOptions::default());
+        let result = insert_with(&mut desktop, "Hei", &InsertOptions::default(), || {});
 
         assert_eq!(result, Err(InsertError::ElevatedWindow));
         assert_eq!(desktop.steps, []);
@@ -457,7 +489,7 @@ mod tests {
         let mut desktop = FakeDesktop::new();
         desktop.copy_after_paste = Some(Duration::from_millis(300));
 
-        let result = insert_with(&mut desktop, "Hei", &InsertOptions::default());
+        let result = insert_with(&mut desktop, "Hei", &InsertOptions::default(), || {});
 
         assert_eq!(result, Ok(Inserted::CopiedMeanwhile));
         assert_eq!(
@@ -472,7 +504,7 @@ mod tests {
         let mut desktop = FakeDesktop::new();
         desktop.clipboard = Previous::Unreadable;
 
-        let result = insert_with(&mut desktop, "Hei", &InsertOptions::default());
+        let result = insert_with(&mut desktop, "Hei", &InsertOptions::default(), || {});
 
         assert_eq!(result, Ok(Inserted::PreviousUnreadable));
         assert_eq!(
@@ -486,7 +518,7 @@ mod tests {
         let mut desktop = FakeDesktop::new();
         desktop.clipboard = Previous::MarkedPrivate;
 
-        let result = insert_with(&mut desktop, "Hei", &InsertOptions::default());
+        let result = insert_with(&mut desktop, "Hei", &InsertOptions::default(), || {});
 
         assert_eq!(result, Ok(Inserted::PreviousMarkedPrivate));
         assert_eq!(
@@ -503,7 +535,7 @@ mod tests {
         desktop.clipboard = Previous::MarkedPrivate;
         desktop.paste_works = false;
 
-        let result = insert_with(&mut desktop, "Hei", &InsertOptions::default());
+        let result = insert_with(&mut desktop, "Hei", &InsertOptions::default(), || {});
 
         assert_eq!(result, Err(InsertError::Paste));
         assert_eq!(
@@ -517,7 +549,7 @@ mod tests {
         let mut desktop = FakeDesktop::new();
         desktop.paste_works = false;
 
-        let result = insert_with(&mut desktop, "Hei", &InsertOptions::default());
+        let result = insert_with(&mut desktop, "Hei", &InsertOptions::default(), || {});
 
         assert_eq!(result, Err(InsertError::Paste));
         assert_eq!(
@@ -533,13 +565,78 @@ mod tests {
     }
 
     #[test]
+    fn the_caller_hears_of_the_paste_before_the_wait_to_put_the_previous_clipboard_back() {
+        let mut desktop = FakeDesktop::new();
+        let heard = Rc::clone(&desktop.paste_heard);
+
+        let result = insert_with(&mut desktop, "Hei", &InsertOptions::default(), || {
+            heard.set(true);
+        });
+
+        assert_eq!(result, Ok(Inserted::PreviousRestored));
+        assert_eq!(desktop.heard_at_paste, Some(false), "not before the paste");
+        assert_eq!(desktop.heard_at_restore_wait, Some(true));
+        assert!(desktop.elapsed >= RESTORE_AFTER);
+    }
+
+    #[test]
+    fn the_caller_hears_of_every_paste_sent_and_of_no_other() {
+        let sent: [fn(&mut FakeDesktop); 4] = [
+            |_| {},
+            |desktop| desktop.clipboard = Previous::Unreadable,
+            |desktop| desktop.clipboard = Previous::MarkedPrivate,
+            |desktop| desktop.restore_works = false,
+        ];
+        for setup in sent {
+            let mut desktop = FakeDesktop::new();
+            setup(&mut desktop);
+            let mut heard = 0;
+            assert!(
+                insert_with(&mut desktop, "Hei", &InsertOptions::default(), || heard +=
+                    1)
+                .is_ok()
+            );
+            assert_eq!(heard, 1);
+        }
+
+        let not_sent: [fn(&mut FakeDesktop); 4] = [
+            |desktop| desktop.may_send_keys = false,
+            |desktop| desktop.front_window_refuses_keys = true,
+            |desktop| desktop.modifiers_down_until = Duration::from_secs(3600),
+            |desktop| desktop.paste_works = false,
+        ];
+        for setup in not_sent {
+            let mut desktop = FakeDesktop::new();
+            setup(&mut desktop);
+            let mut heard = false;
+            assert!(
+                insert_with(&mut desktop, "Hei", &InsertOptions::default(), || heard =
+                    true)
+                .is_err()
+            );
+            assert!(!heard);
+        }
+    }
+
+    #[test]
+    fn a_previous_clipboard_that_cannot_go_back_leaves_the_text_inserted() {
+        let mut desktop = FakeDesktop::new();
+        desktop.restore_works = false;
+
+        let result = insert_with(&mut desktop, "Hei", &InsertOptions::default(), || {});
+
+        assert_eq!(result, Ok(Inserted::PreviousNotRestored));
+        assert_eq!(desktop.clipboard_at_paste, ["Hei "]);
+    }
+
+    #[test]
     fn empty_text_touches_nothing() {
         for text in ["", "   ", "\n"] {
             let mut desktop = FakeDesktop::new();
             desktop.may_send_keys = false;
 
             assert_eq!(
-                insert_with(&mut desktop, text, &InsertOptions::default()),
+                insert_with(&mut desktop, text, &InsertOptions::default(), || {}),
                 Ok(Inserted::Nothing)
             );
             assert_eq!(desktop.steps, []);

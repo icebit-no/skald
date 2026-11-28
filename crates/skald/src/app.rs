@@ -459,12 +459,17 @@ impl Running<'_> {
 
     fn on_key_event(&mut self, event: ListenerEvent) -> Result<(), Exit> {
         match event {
-            ListenerEvent::Hold(event) => self.dictation.on_hold(event)?,
+            ListenerEvent::Hold(event) => {
+                self.out.say(Line::Hold(event));
+                self.dictation.on_hold(event)?;
+            }
             ListenerEvent::Ready => {
+                self.out.say(Line::Listening);
                 if std::mem::take(&mut self.keys.unavailable) {
                     self.out.say(Line::ListenerBack);
                 }
             }
+            ListenerEvent::Seen(seen) => self.out.say(Line::Seen(seen)),
             ListenerEvent::Unavailable(Unavailable::NoAccessibility) => {
                 return Err(Exit::NoAccessibility);
             }
@@ -608,7 +613,15 @@ impl Keys {
                 out.say(Line::ListenerFailed(reason));
                 Ok(())
             }
-            Some(ListenerEvent::Ready | ListenerEvent::Hold(_)) | None => Ok(()),
+            Some(ListenerEvent::Ready) => {
+                out.say(Line::Listening);
+                Ok(())
+            }
+            Some(ListenerEvent::Seen(seen)) => {
+                out.say(Line::Seen(seen));
+                Ok(())
+            }
+            Some(ListenerEvent::Hold(_)) | None => Ok(()),
         }
     }
 }

@@ -22,6 +22,8 @@ objc2-core-foundation = { version = "=0.3.2", default-features = false, features
 ] }
 objc2-core-graphics = { version = "=0.3.2", default-features = false, features = [
     "std",
+    "libc",
+    "CGError",
     "CGEvent",
     "CGEventSource",
     "CGEventTypes",

@@ -9,7 +9,7 @@ use std::time::Duration;
 
 use skald_audio::{CaptureError, TAKE_CAP};
 use skald_core::silence_gate::{HEARD_NOTHING, MIN_SPEECH, Reason};
-use skald_input::{HoldKey, InsertError, Inserted};
+use skald_input::{HoldEvent, HoldKey, InsertError, Inserted, Seen};
 use skald_models::Model;
 
 use crate::files::{ConfigError, LockError};
@@ -78,6 +78,12 @@ pub(crate) enum Line {
     ModelAtRestart,
     ListenerFailed(String),
     ListenerBack,
+    /// The key listener's event tap is in place.
+    Listening,
+    /// What the key listener saw on the way to a hold.
+    Seen(Seen),
+    /// What a hold meant for the take, as the listener reported it.
+    Hold(HoldEvent),
     NoSocket(String),
     LoginItemNeedsApp,
     LoginItemUnsupported,
@@ -108,6 +114,9 @@ impl Line {
                 | Line::CopiedMeanwhile
                 | Line::HeardNothingBecause(_)
                 | Line::Timings(_)
+                | Line::Listening
+                | Line::Seen(_)
+                | Line::Hold(_)
         )
     }
 }
@@ -221,6 +230,21 @@ impl fmt::Display for Line {
                 write!(f, "Får ikke lyttet på tasten ({reason}); prøver igjen.")
             }
             Line::ListenerBack => f.write_str("Lytter på tasten igjen."),
+            Line::Listening => f.write_str("Tastaturlytteren har laget sitt event tap."),
+            Line::Seen(seen) => write_seen(f, seen),
+            Line::Hold(event) => f.write_str(match event {
+                HoldEvent::Pressed { .. } => "Holdetasten er trykket; opptaket starter om den holdes.",
+                HoldEvent::NotArmed => {
+                    "Ikke noe opptak: tasten ble sluppet for tidlig, en annen tast kom til, eller \
+                     maskinvaren sa at tasten var oppe."
+                }
+                HoldEvent::Armed { .. } => "Opptaket starter.",
+                HoldEvent::Released => "Holdetasten er sluppet.",
+                HoldEvent::ReleaseMissed => "Maskinvaren sier at holdetasten er oppe; opptaket slutter.",
+                HoldEvent::Cancelled => "En annen tast avbrøt opptaket.",
+                HoldEvent::HandsFreeStarted { .. } => "Håndfritt opptak starter.",
+                HoldEvent::HandsFreeStopped => "Håndfritt opptak stopper.",
+            }),
             Line::NoSocket(reason) => write!(
                 f,
                 "Kommandolinjen når ikke denne Skald ({reason}); skald-kommandoer skriver rett i filene."
@@ -596,6 +620,60 @@ fn duration(duration: Duration) -> String {
     }
 }
 
+fn write_seen(f: &mut fmt::Formatter<'_>, seen: &Seen) -> fmt::Result {
+    let down = |down: bool| if down { "ned" } else { "opp" };
+    match seen {
+        Seen::FirstKey { key, down: pressed } => {
+            write!(f, "Første tast lytteren fikk: {key} {}.", down(*pressed))
+        }
+        Seen::HoldKey {
+            down: pressed,
+            sample,
+        } => write!(
+            f,
+            "Holdetasten {} ifølge hendelsen; maskinvaren sier holdetasten {}, {}.",
+            down(*pressed),
+            if sample.hold_key_down { "nede" } else { "oppe" },
+            if sample.other_modifiers_down {
+                "og en annen modifikator er nede"
+            } else {
+                "ingen andre modifikatorer"
+            }
+        ),
+        Seen::Taps {
+            taps,
+            keyboard_allowed,
+        } => {
+            let allowed = if *keyboard_allowed {
+                "tillatt"
+            } else {
+                "ikke tillatt"
+            };
+            if taps.is_empty() {
+                return write!(
+                    f,
+                    "Systemet har ingen event tap fra Skald; lytting på tastaturet er {allowed}."
+                );
+            }
+            write!(f, "Systemet har {} event tap fra Skald:", taps.len())?;
+            for tap in taps {
+                write!(
+                    f,
+                    " {}, {}, lengste ventetid {};",
+                    if tap.enabled { "på" } else { "av" },
+                    if tap.listen_only {
+                        "lytter bare"
+                    } else {
+                        "kan holde igjen hendelser"
+                    },
+                    duration(Duration::from_micros(u64::from(tap.max_latency_us)))
+                )?;
+            }
+            write!(f, " lytting på tastaturet er {allowed}.")
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -799,6 +877,61 @@ mod tests {
             Exit::MicrophoneDenied
                 .to_string()
                 .contains("Systeminnstillinger › Personvern og sikkerhet › Mikrofon")
+        );
+    }
+
+    #[test]
+    fn the_listeners_traces_show_in_verbose_and_say_what_the_hardware_said() {
+        use skald_input::{KeySample, Tap};
+
+        let held = Line::Seen(Seen::HoldKey {
+            down: true,
+            sample: KeySample {
+                hold_key_down: false,
+                other_modifiers_down: false,
+            },
+        });
+        assert!(held.is_verbose());
+        assert!(Line::Listening.is_verbose());
+        assert!(Line::Hold(HoldEvent::NotArmed).is_verbose());
+        assert!(
+            Line::Hold(HoldEvent::NotArmed)
+                .to_string()
+                .contains("maskinvaren sa at tasten var oppe")
+        );
+        assert_eq!(
+            held.to_string(),
+            "Holdetasten ned ifølge hendelsen; maskinvaren sier holdetasten oppe, ingen andre \
+             modifikatorer."
+        );
+        assert_eq!(
+            Line::Seen(Seen::FirstKey {
+                key: "CMD_RIGHT".into(),
+                down: true
+            })
+            .to_string(),
+            "Første tast lytteren fikk: CMD_RIGHT ned."
+        );
+        let taps = Line::Seen(Seen::Taps {
+            taps: vec![Tap {
+                enabled: false,
+                listen_only: false,
+                max_latency_us: 12_500,
+            }],
+            keyboard_allowed: true,
+        });
+        assert_eq!(
+            taps.to_string(),
+            "Systemet har 1 event tap fra Skald: av, kan holde igjen hendelser, lengste ventetid \
+             12 ms; lytting på tastaturet er tillatt."
+        );
+        assert_eq!(
+            Line::Seen(Seen::Taps {
+                taps: Vec::new(),
+                keyboard_allowed: false
+            })
+            .to_string(),
+            "Systemet har ingen event tap fra Skald; lytting på tastaturet er ikke tillatt."
         );
     }
 

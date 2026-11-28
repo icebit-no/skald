@@ -396,6 +396,9 @@ impl Shell {
         if changed.theme {
             self.overlay.set_theme(self.screen.theme(), cx);
         }
+        if changed.hold_key {
+            self.overlay.set_hold_key(self.screen.hold_key(), cx);
+        }
         for pill in changed.pills {
             match pill {
                 Pill::Record { hands_free: false } => self.overlay.record(cx),

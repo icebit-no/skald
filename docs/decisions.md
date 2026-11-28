@@ -5,6 +5,38 @@ decision, and that pull request also edits the page where the rule lives ([desig
 [plan.md](plan.md)). Those pages say what holds; this one says when and why it came to hold. A later decision
 that undoes one adds an entry of its own, and the earlier entry gets one line naming it.
 
+## D-51 — Windows ships as one zip with the DLLs beside skald.exe; Scoop and winget install it portable
+
+2026-11-28, Claude; what the zip holds, the manifests and that nothing is published yet set by the lead.
+
+The Windows release is one zip, `skald-<version>-windows-x86_64.zip`: `skald.exe`, the DLLs transcribe.cpp
+builds beside it (transcribe, ggml, the CPU modules and the Vulkan module, D-43), the user's README in bokmål,
+the licence and THIRD-PARTY-NOTICES, at the top of the zip. One zip serves Scoop and winget alike, and a user can
+unpack it anywhere and start Skald there; Skald writes nothing beside itself (the settings in `%APPDATA%`, the
+models and the state in `%LOCALAPPDATA%`). An installer would be a second artifact to sign and keep, for no gain.
+
+`packaging/windows/package.ps1` builds in release mode, packs the zip, checks that the exe unpacked from it
+starts with nothing else to lean on and answers with the workspace's version, and writes the SHA-256 beside it.
+`manifests.ps1` fills the Scoop manifest for `icebit-no/scoop-bucket` (D-14) and the three winget manifests
+(`Icebit.Skald`, schema 1.28.0, locale nb-NO) from the version and the hash. winget installs the zip as a
+portable package with its folder on PATH, since a command alias in winget's Links folder would not find the DLLs
+beside the exe; Scoop's shim starts the exe where it lies, and Scoop adds a Start menu shortcut. Nothing is
+published: the release pipeline (M6) uploads the zip and its hash and opens the pull requests to the bucket and
+to winget-pkgs.
+
+The exe and the DLLs need Microsoft's Visual C++ runtime, which most Windows machines have: winget installs it
+as a dependency, Scoop suggests it, and the README says where to get it. It is not put in the zip, so the zip
+holds only what is built from the repository's sources, as SignPath Foundation asks. Linked in statically, each
+DLL would have a runtime of its own, and memory one DLL allocates and another frees would break.
+
+The exe carries Skald's icon, packed by the binary's build script from the PNG files in `assets/icon` at every
+build, as the macOS bundle's `.icns` is (D-34), so no `.ico` is kept; GPUI's windows take it from the exe. The
+`windows-package` workflow builds the zip for every change to main and keeps it two weeks, so the newest build
+can be tried on Windows without building it; it shares the Vulkan SDK's installation with the test workflow.
+
+Signing through SignPath Foundation (D-14) waits for Thomas's application; `packaging/windows/README.md` lists
+what SignPath asks for. Changed: [plan.md](plan.md) M4.
+
 ## D-50 — On Linux transcribe.cpp's Vulkan backend is linked in
 
 2026-11-27, Claude.
@@ -23,6 +55,7 @@ run): the first-run window's «Talemodell» step, the line printed as the model 
 glslc, and has no GPU, so its tests compute on the CPU. Evidence: in a container, the engine's tests and
 Skald with NB-Whisper loaded pass with lavapipe and with no Vulkan driver at all, and the binary links
 `libvulkan.so.1`. Changed: [design.md](design.md#first-run), [plan.md](plan.md) M5.
+
 
 ## D-49 — Skald runs its screen on Windows; the overlay lets clicks through as a layered window
 

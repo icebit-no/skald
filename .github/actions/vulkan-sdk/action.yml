@@ -1,0 +1,24 @@
+name: Vulkan SDK
+description: >-
+  Installs LunarG's Vulkan SDK on a Windows runner: the headers, the loader's import library and the shader
+  compiler transcribe.cpp's Vulkan backend builds against. The version is the one transcribe.cpp's own Windows
+  build uses, and the installer runs only once its SHA-256 matches.
+runs:
+  using: composite
+  steps:
+    - name: Install the Vulkan SDK
+      shell: pwsh
+      env:
+        VERSION: 1.4.350.0
+        SHA256: 855b27ba05d2d8119c5114c5d4ff870ca38f2c632b11e1bb9923b9b7e6ecfe7b
+      run: |
+        $installer = "$env:RUNNER_TEMP\vulkan_sdk.exe"
+        curl.exe --fail --location --silent --show-error --output $installer "https://sdk.lunarg.com/sdk/download/$env:VERSION/windows/vulkan_sdk.exe"
+        $hash = (Get-FileHash $installer -Algorithm SHA256).Hash.ToLowerInvariant()
+        if ($hash -ne $env:SHA256) { throw "The Vulkan SDK installer's SHA-256 is $hash, not $env:SHA256." }
+        # The installer is a windowed program, which PowerShell would not wait for unless told to.
+        $run = Start-Process -FilePath $installer -ArgumentList '--accept-licenses', '--default-answer', '--confirm-command', 'install' -Wait -PassThru
+        if ($run.ExitCode -ne 0) { throw "The Vulkan SDK installer failed with $($run.ExitCode)." }
+        if (-not (Test-Path "C:\VulkanSDK\$env:VERSION\Bin\glslc.exe")) { throw "The Vulkan SDK has no glslc.exe." }
+        Add-Content $env:GITHUB_ENV "VULKAN_SDK=C:\VulkanSDK\$env:VERSION"
+        Add-Content $env:GITHUB_PATH "C:\VulkanSDK\$env:VERSION\Bin"

@@ -1,16 +1,22 @@
-# The release pipeline. On a tag vX.Y.Z it builds Skald on all three systems with the packaging scripts, signs the
-# Mac bundle with the Developer ID, notarizes and staples it, and creates the GitHub release with the three
-# archives, SHA256SUMS and the tag's annotation as its notes. Then it commits the cask to the Homebrew tap and the
-# manifest to the Scoop bucket and pushes skald-bin to the AUR, each skipped with a notice while its key is not
-# set; the winget manifests are kept as the run's artifact for a pull request to winget-pkgs by hand.
+# The release pipeline. On a tag vX.Y.Z it waits for the release to be approved, builds Skald on all three
+# systems with the packaging scripts, signs the Mac bundle with the Developer ID, notarizes and staples it, and
+# creates the GitHub release with the three archives, SHA256SUMS and the tag's annotation as its notes. Then it
+# commits the cask to the Homebrew tap and the manifest to the Scoop bucket and pushes skald-bin to the AUR, each
+# skipped with a notice while its key is not set; the winget manifests are kept as the run's artifact for a pull
+# request to winget-pkgs by hand.
+#
+# Two GitHub environments guard a release, and both admit only v* tags. The environment release holds no secret;
+# its reviewer approves the run once, before anything is built. The environment release-keys holds every secret
+# this reads and has no reviewer, so the jobs that read a secret ask no one again, and no branch or pull request
+# can reach the secrets.
 #
 # Started by hand, or by a pull request that changes the packaging, it is a dry run: it builds and packs
 # everything, rehearses the Mac signing with a throwaway identity made on the runner, and keeps what a release
-# would publish as the run's artifacts. It reads no secret, signs nothing with the Developer ID and publishes
-# nothing.
+# would publish as the run's artifacts. It uses neither environment, reads no secret, signs nothing with the
+# Developer ID and publishes nothing.
 #
-# packaging/RELEASING.md names every secret this reads and how to cut a release; D-58 says why it is built this
-# way. Adapted from Ferric's release workflow (MIT, by the same author).
+# packaging/RELEASING.md names every secret this reads and how to cut a release; D-58 and D-59 say why it is
+# built this way. Adapted from Ferric's release workflow (MIT, by the same author).
 name: release
 
 on:
@@ -42,10 +48,29 @@ env:
   # Every Mac release is signed by this team, since the microphone and Accessibility grants follow it (D-34).
   APPLE_TEAM_ID: Q4LJS2JYGD
 
+# A dry run skips the approval and a release skips the rehearsal, and GitHub skips every job after a skipped one
+# unless the job's condition says otherwise. So each job after the approval runs when the run is not cancelled
+# and names the jobs it needs to have succeeded.
 jobs:
-  # What the run reads is required before anything is built, so a release that cannot finish stops at the
-  # cheapest point and names every value it wanted.
+  # A release waits here until the environment release's reviewer approves it, once for the whole run. The
+  # environment holds no secret. A dry run skips this job and uses no environment.
+  approval:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    environment: release
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - run: echo "The release of $GITHUB_REF_NAME is approved."
+
+  # The tag, the version and the notes are required before anything is built, so a release that cannot finish
+  # stops at the cheapest point. The Mac's signing secrets are required in macos-sign, the first job that can
+  # read them.
   version:
+    needs: approval
+    # A release goes on once it is approved; a dry run, which skips the approval, goes on without it.
+    if: >-
+      ${{ !cancelled() && (needs.approval.result == 'success' || (needs.approval.result == 'skipped' &&
+      !(github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')))) }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     outputs:
@@ -124,11 +149,48 @@ jobs:
           path: ${{ runner.temp }}/notes.md
           if-no-files-found: error
 
+  # Skald.app built and signed ad hoc by bundle.sh, which checks what it made. No secret reaches this job, which
+  # runs every build script of the dependencies; another job signs the bundle on a machine of its own.
+  macos:
+    needs: version
+    if: ${{ !cancelled() && needs.version.result == 'success' }}
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # rustup installs the toolchain rust-toolchain.toml pins on the first cargo call.
+      - run: packaging/macos/bundle.sh
+
+      # The artifact store keeps no file modes, so the bundle travels as a tarball.
+      - run: tar -C target/release -czf "$RUNNER_TEMP/Skald.app.tar.gz" Skald.app
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: macos-bundle
+          path: ${{ runner.temp }}/Skald.app.tar.gz
+          if-no-files-found: error
+          compression-level: 0
+
+  # Signs with the Developer ID in a keychain of the run's own, notarizes, staples and packs the zip the cask
+  # installs. The environment release-keys gives this job the Mac's secrets on a release and nowhere else; it
+  # never runs cargo or anything the bundle holds, and each secret is in the one step that needs it.
+  macos-sign:
+    needs: [version, macos]
+    if: ${{ !cancelled() && needs.macos.result == 'success' && needs.version.outputs.release == 'true' }}
+    environment: release-keys
+    runs-on: macos-15
+    # Notarization usually answers within minutes, and notarize.sh waits an hour at most.
+    timeout-minutes: 90
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
       # The certificate decides who macOS shows as the developer and which team the grants follow, so one of
       # another team, or one that is not a Developer ID Application certificate, would cost every user their
-      # grants or fail notarization. Asked here, before the builds; sign.sh asks again.
+      # grants or fail notarization. Asked first; sign.sh asks again.
       - name: Require the Mac's signing secrets
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
         env:
           DEVELOPER_ID_P12_BASE64: ${{ secrets.DEVELOPER_ID_P12_BASE64 }}
           DEVELOPER_ID_P12_PASSWORD: ${{ secrets.DEVELOPER_ID_P12_PASSWORD }}
@@ -145,7 +207,7 @@ jobs:
             fi
           done
           if [ -n "$missing" ]; then
-            echo "The release cannot run. These secrets are not set on this repository:$missing"
+            echo "The release cannot run. These secrets are not set in the environment release-keys:$missing"
             echo "packaging/RELEASING.md says what each of them is and how to set it."
             exit 1
           fi
@@ -187,38 +249,56 @@ jobs:
           fi
           echo "The Mac's signing secrets are set, and the certificate is team $APPLE_TEAM_ID's Developer ID Application certificate, in date."
 
-  # Skald.app built and signed ad hoc by bundle.sh, which checks what it made. No secret reaches this job, which
-  # runs every build script of the dependencies; the next job signs the bundle on a machine of its own.
-  macos:
-    needs: version
-    runs-on: macos-15
-    timeout-minutes: 60
-    steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      # rustup installs the toolchain rust-toolchain.toml pins on the first cargo call.
-      - run: packaging/macos/bundle.sh
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: macos-bundle
+          path: ${{ runner.temp }}/bundle
 
-      # The artifact store keeps no file modes, so the bundle travels as a tarball.
-      - run: tar -C target/release -czf "$RUNNER_TEMP/Skald.app.tar.gz" Skald.app
+      - run: tar -C "$RUNNER_TEMP/bundle" -xzf "$RUNNER_TEMP/bundle/Skald.app.tar.gz"
+
+      - name: Sign with the Developer ID
+        env:
+          DEVELOPER_ID_P12_BASE64: ${{ secrets.DEVELOPER_ID_P12_BASE64 }}
+          DEVELOPER_ID_P12_PASSWORD: ${{ secrets.DEVELOPER_ID_P12_PASSWORD }}
+        run: TMPDIR="$RUNNER_TEMP" packaging/macos/sign.sh "$RUNNER_TEMP/bundle/Skald.app"
+
+      # notarize.sh packs the stapled bundle as Skald-VERSION.zip beside it and checks the zip as a user unpacks it.
+      - name: Notarize, staple and pack
+        env:
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
+        run: TMPDIR="$RUNNER_TEMP" packaging/macos/notarize.sh "$RUNNER_TEMP/bundle/Skald.app"
 
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
-          name: macos-bundle
-          path: ${{ runner.temp }}/Skald.app.tar.gz
+          name: macos-signed
+          path: ${{ runner.temp }}/bundle/Skald-${{ needs.version.outputs.version }}.zip
           if-no-files-found: error
           compression-level: 0
 
-  # Signs with the Developer ID in a keychain of the run's own, notarizes, staples and packs the zip the cask
-  # installs, then runs the signed skald in a step that holds no secret. This job never runs cargo, and the
-  # secrets are each in the one step that needs them.
-  macos-sign:
+      # sign.sh deletes its keychain however it ends; a step stopped outright leaves it on the search list.
+      - name: Delete a signing keychain a stopped step left
+        if: always()
+        run: |
+          for keychain in "$RUNNER_TEMP"/skald-sign.*/signing.keychain-db; do
+            [ -e "$keychain" ] || continue
+            security delete-keychain "$keychain" || true
+            echo "deleted $keychain"
+          done
+
+  # A dry run's stand-in for macos-sign. The keychain, the import and codesign run as they do in a release, with
+  # a self-signed identity made here and thrown away, so a tag is not the first time they run on GitHub's Mac. No
+  # secret reaches this job, and it uses no environment.
+  macos-rehearse:
     needs: [version, macos]
+    if: ${{ !cancelled() && needs.macos.result == 'success' && needs.version.outputs.release != 'true' }}
     runs-on: macos-15
-    # Notarization usually answers within minutes, and notarize.sh waits an hour at most.
-    timeout-minutes: 90
+    timeout-minutes: 30
     env:
       VERSION: ${{ needs.version.outputs.version }}
     steps:
@@ -233,8 +313,9 @@ jobs:
 
       - run: tar -C "$RUNNER_TEMP/bundle" -xzf "$RUNNER_TEMP/bundle/Skald.app.tar.gz"
 
-      # Apple's intermediate certificate makes the Developer ID identity valid for codesign. It comes with the
-      # runner's image; a dry run fails here, ahead of a tag, should an image ever come without it.
+      # Apple's intermediate certificate makes the Developer ID identity valid for codesign, and it comes with the
+      # runner's image. A release's sign.sh stops without it; the self-signed identity here does not need it, so
+      # it is required here, and a dry run fails ahead of a tag should an image ever come without it.
       - name: Require Apple's Developer ID intermediate on the runner
         run: |
           if ! security find-certificate -c "Developer ID Certification Authority" > /dev/null 2>&1 &&
@@ -244,27 +325,8 @@ jobs:
           fi
           echo "The runner has Apple's Developer ID Certification Authority."
 
-      - name: Sign with the Developer ID
-        if: needs.version.outputs.release == 'true'
-        env:
-          DEVELOPER_ID_P12_BASE64: ${{ secrets.DEVELOPER_ID_P12_BASE64 }}
-          DEVELOPER_ID_P12_PASSWORD: ${{ secrets.DEVELOPER_ID_P12_PASSWORD }}
-        run: TMPDIR="$RUNNER_TEMP" packaging/macos/sign.sh "$RUNNER_TEMP/bundle/Skald.app"
-
-      # notarize.sh packs the stapled bundle as Skald-VERSION.zip beside it and checks the zip as a user unpacks it.
-      - name: Notarize, staple and pack
-        if: needs.version.outputs.release == 'true'
-        env:
-          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
-          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
-          APPLE_API_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
-        run: TMPDIR="$RUNNER_TEMP" packaging/macos/notarize.sh "$RUNNER_TEMP/bundle/Skald.app"
-
-      # The keychain, the import and codesign run as they do in a release, with a self-signed identity made here
-      # and thrown away, so a tag is not the first time they run on GitHub's Mac. The macOS system's own openssl
-      # writes the PKCS#12 cipher the security tool reads.
+      # The macOS system's own openssl writes the PKCS#12 cipher the security tool reads.
       - name: Rehearse the signing with a throwaway identity
-        if: needs.version.outputs.release != 'true'
         run: |
           set -euo pipefail
           rehearsal="$RUNNER_TEMP/rehearsal"
@@ -280,13 +342,50 @@ jobs:
           rm -rf "$rehearsal"
           ditto -c -k --keepParent "$RUNNER_TEMP/bundle/Skald.app" "$RUNNER_TEMP/bundle/Skald-$VERSION.zip"
 
-      # The signed binary has to start, with the hardened runtime and nothing of this job's environment.
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: macos-signed
+          path: ${{ runner.temp }}/bundle/Skald-${{ needs.version.outputs.version }}.zip
+          if-no-files-found: error
+          compression-level: 0
+
+      # sign.sh deletes its keychain however it ends; a step stopped outright leaves it on the search list.
+      - name: Delete a signing keychain a stopped step left
+        if: always()
+        run: |
+          for keychain in "$RUNNER_TEMP"/skald-sign.*/signing.keychain-db; do
+            [ -e "$keychain" ] || continue
+            security delete-keychain "$keychain" || true
+            echo "deleted $keychain"
+          done
+
+  # The signed zip as a user gets it: the skald in it has to start, and the cask is written from it and linted by
+  # Homebrew. It takes the zip from macos-sign on a release and from macos-rehearse on a dry run. No secret
+  # reaches this job.
+  macos-cask:
+    needs: [version, macos-sign, macos-rehearse]
+    if: ${{ !cancelled() && (needs.macos-sign.result == 'success' || needs.macos-rehearse.result == 'success') }}
+    runs-on: macos-15
+    timeout-minutes: 30
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: macos-signed
+          path: ${{ runner.temp }}/out
+
+      # The signed binary has to start, with the hardened runtime and none of this job's environment variables.
       - name: Run the signed skald
         run: |
           set -euo pipefail
           check="$RUNNER_TEMP/check"
           mkdir "$check"
-          ditto -x -k "$RUNNER_TEMP/bundle/Skald-$VERSION.zip" "$check"
+          ditto -x -k "$RUNNER_TEMP/out/Skald-$VERSION.zip" "$check"
           codesign --verify --strict --deep "$check/Skald.app"
           said=$(env -i HOME="$check/home" PATH=/usr/bin:/bin "$check/Skald.app/Contents/MacOS/skald" --version)
           if [ "$said" != "skald $VERSION" ]; then
@@ -297,11 +396,7 @@ jobs:
           rm -rf "$check"
 
       - name: Write the cask
-        run: |
-          set -euo pipefail
-          mkdir -p "$RUNNER_TEMP/out"
-          mv "$RUNNER_TEMP/bundle/Skald-$VERSION.zip" "$RUNNER_TEMP/out/"
-          packaging/macos/cask.sh "$RUNNER_TEMP/out/Skald-$VERSION.zip" "$RUNNER_TEMP/out/homebrew"
+        run: packaging/macos/cask.sh "$RUNNER_TEMP/out/Skald-$VERSION.zip" "$RUNNER_TEMP/out/homebrew"
 
       # Homebrew lints a cask only from a tap, so the cask is put in one made here, trusted as a user trusts
       # icebit-no/homebrew-tap, and removed again.
@@ -333,20 +428,11 @@ jobs:
           if-no-files-found: error
           compression-level: 0
 
-      # sign.sh deletes its keychain however it ends; a step stopped outright leaves it on the search list.
-      - name: Delete a signing keychain a stopped step left
-        if: always()
-        run: |
-          for keychain in "$RUNNER_TEMP"/skald-sign.*/signing.keychain-db; do
-            [ -e "$keychain" ] || continue
-            security delete-keychain "$keychain" || true
-            echo "deleted $keychain"
-          done
-
   # The Windows zip and its Scoop and winget manifests, as the windows-package workflow builds them. No secret
   # reaches this job, and nothing signs the zip until SignPath Foundation does (packaging/windows/README.md).
   windows:
     needs: version
+    if: ${{ !cancelled() && needs.version.result == 'success' }}
     runs-on: windows-latest
     timeout-minutes: 90
     env:
@@ -391,6 +477,7 @@ jobs:
   # the AUR. No secret reaches this job.
   linux:
     needs: version
+    if: ${{ !cancelled() && needs.version.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -436,7 +523,10 @@ jobs:
   # SHA256SUMS, made as a draft and published once every file is on it. A dry run keeps the same files as its
   # artifact release.
   release:
-    needs: [version, macos-sign, windows, linux]
+    needs: [version, macos-cask, windows, linux]
+    if: >-
+      ${{ !cancelled() && needs.macos-cask.result == 'success' && needs.windows.result == 'success' &&
+      needs.linux.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 20
     permissions:
@@ -556,11 +646,15 @@ jobs:
           echo "The winget manifests are the run's artifact winget; packaging/RELEASING.md says how to send them to winget-pkgs." >> "$GITHUB_STEP_SUMMARY"
 
   # The cask, the Scoop manifest and skald-bin, each committed with a key of its own that reaches that one
-  # repository. Without its key a target is skipped with a notice, so the first release need not wait on all three.
+  # repository. The keys are secrets of the environment release-keys. Without its key a target is skipped with a
+  # notice, so the first release need not wait on all three.
   publish:
     needs: [version, release]
-    if: needs.version.outputs.release == 'true' && needs.release.outputs.newest == 'true'
+    if: >-
+      ${{ !cancelled() && needs.release.result == 'success' && needs.version.outputs.release == 'true' &&
+      needs.release.outputs.newest == 'true' }}
     name: publish (${{ matrix.target }})
+    environment: release-keys
     runs-on: ubuntu-latest
     timeout-minutes: 10
     strategy:
@@ -619,7 +713,7 @@ jobs:
         run: |
           set -euo pipefail
           if [ -z "${KEY:-}" ]; then
-            skipped="$SECRET is not set, so Skald $VERSION goes to no $TARGET. The run's artifact ${{ matrix.artifact }} holds what would have gone there; packaging/RELEASING.md says how to make the key."
+            skipped="$SECRET is not set in the environment release-keys, so Skald $VERSION goes to no $TARGET. The run's artifact ${{ matrix.artifact }} holds what would have gone there; packaging/RELEASING.md says how to make the key."
             echo "::notice title=$TARGET::$skipped"
             echo "$skipped" >> "$GITHUB_STEP_SUMMARY"
             exit 0

@@ -5,6 +5,35 @@ decision, and that pull request also edits the page where the rule lives ([desig
 [plan.md](plan.md)). Those pages say what holds; this one says when and why it came to hold. A later decision
 that undoes one adds an entry of its own, and the earlier entry gets one line naming it.
 
+## D-59 — A release waits for one approval, and its secrets are in an environment that only `v` tags reach
+
+2026-11-28, Claude; the two environments, the one approval and the tag ruleset set by the lead's brief, in answer
+to the questions on #58; the maintainer's address set by Thomas.
+
+Skald's repository is public and takes pull requests. A repository secret can be read by a workflow run on any
+branch, and a pull request can change the workflow, so the release's secrets are not repository secrets. They
+are secrets of the GitHub environment `release-keys`, which admits only runs started by a `v*` tag and has no
+reviewer. The tag ruleset «Release tags» lets only the repository's admins create, move or delete a `v*` tag. A
+secret is therefore read only by a run that an admin started from a tag. `macos-sign` and `publish`, the jobs
+that read secrets, name `release-keys`.
+
+Every release waits for Thomas's approval once, before anything is built. The job `approval` names the
+environment `release`, which has him as its required reviewer, admits only `v*` tags and holds no secret, and
+every other job of a release comes after it. The approval is kept apart from the secrets. A reviewer on
+`release-keys` would ask once for every job that names it: `macos-sign` and each of the three `publish` jobs.
+
+A dry run names neither environment. GitHub's documentation does not say what an empty environment name does,
+so the dry run does not get past the approval through an expression that names `release` on a tag and nothing
+otherwise. Instead `approval` is a job of its own that a dry run skips. For the same reason the dry run's
+rehearsal of the signing is a job of its own, `macos-rehearse`, beside `macos-sign`, and `macos-cask` runs the
+signed `skald` and writes the cask from whichever of the two ran. GitHub skips every job after a skipped one
+unless the job's condition says otherwise, so each job names the jobs it needs to have succeeded. The Mac's
+secrets are required in `macos-sign`, the first job that can read them. A release that lacks one stops after the
+builds, before anything is signed or published.
+
+skald-bin's PKGBUILD names `icebit <skald@icebit.no>` as its maintainer, an address that Cloudflare Email Routing
+forwards to Thomas. Changed: [plan.md](plan.md) M6; the steps for Thomas are in `packaging/RELEASING.md`.
+
 ## D-58 — A tag releases to GitHub, the tap, the bucket and the AUR; the Mac bundle is signed apart from its build
 
 2026-11-28, Claude; GitHub's own runners, the secrets from 1Password and winget by hand set by the lead's brief.
@@ -36,6 +65,8 @@ A dry run, by hand or on a pull request that changes the packaging, builds and p
 signing with a self-signed identity made on the runner, and keeps the files as artifacts, so the pipeline is tried
 before a tag. Adapted from Ferric's release workflow (MIT, by the same author). Changed: [plan.md](plan.md) M6;
 the steps for Thomas are in `packaging/RELEASING.md`.
+
+D-59 puts one approval before every release and keeps the secrets in an environment that only `v` tags reach.
 
 ## D-57 — THIRD-PARTY-NOTICES is written from Cargo.lock and checked in CI
 

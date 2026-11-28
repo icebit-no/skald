@@ -1,4 +1,4 @@
-# Maintainer: icebit <https://github.com/icebit-no>
+# Maintainer: icebit <skald@icebit.no>
 # Rendered by packaging/arch/aur.sh from Skald's repository; edit PKGBUILD.in there.
 
 pkgname=skald-bin

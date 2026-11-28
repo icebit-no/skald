@@ -25,6 +25,7 @@ impl HoldKey {
     }
 
     /// The same modifier on the left.
+    #[cfg(target_os = "macos")]
     pub(crate) fn twin(self) -> Modifiers {
         match self {
             HoldKey::RightCommand => Modifiers::CMD_LEFT,

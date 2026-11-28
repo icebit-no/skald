@@ -42,7 +42,7 @@ The colours named below are the two Viking themes'; Kjedelig uses the system's a
 
 | State | What it shows |
 |---|---|
-| Opptak | A glowing ember-red dot, the elapsed time, the last 2.4 s as 40 bars (3 pt wide, 6 pt apart) scrolling smoothly at 60 fps, and «slipp ⌘» («slipp Ctrl» on Windows and Linux) |
+| Opptak | A glowing ember-red dot, the elapsed time, the last 2.4 s as 40 bars (3 pt wide, 6 pt apart) scrolling smoothly at 60 fps, and the hold key to let go of: «slipp ⌘» for right ⌘, «slipp Ctrl» for right Control, on every system |
 | Rister | On release the bars fold into the whole take; a gold chisel line moves across it, and behind it the bars, now 8 pt apart so each holds one rune, become runes: the dictated text transliterated to the Younger Futhark. «rister …» |
 | Satt inn | A gold tick and the start of the text, in plain type, for about 1.5 s |
 | Hørte ingenting | «Hørte ingenting · lyttet på <mikrofon>» |
@@ -50,6 +50,7 @@ The colours named below are the two Viking themes'; Kjedelig uses the system's a
 | Administratorvindu | «Administratorvindu · ligger i Siste tekster», on Windows, when the window in front runs as administrator and refuses the text |
 | Transkriberingen feilet | «Transkriberingen feilet», when the model failed on the take |
 | Ingen mikrofon | «Ingen mikrofon er koblet til», when a take arms without one |
+| Mikrofon åpnet ikke | «<mikrofon> · kunne ikke åpnes», when a take arms on a microphone that cannot be opened: another program holds it, its audio format is not one Skald reads, or it went away a moment before |
 | Mikrofon byttet | «<mikrofon> · koblet til, brukes nå», once, when the active microphone changes |
 | Håndfritt | A padlock instead of the dot, and «⌃⌘X stopper» («Ctrl+Win+X stopper» on Windows, «Ctrl+Super+X stopper» on Linux) |
 
@@ -59,8 +60,8 @@ carves the runes of a text that does not exist yet: until the text arrives, the 
 cuts. When the text arrives, the carved stretch shows its runes, the chisel runs to the end in 150 ms, the row
 stands 0.4 s, and Satt inn follows.
 
-Hørte ingenting, Ikke satt inn, Administratorvindu, Transkriberingen feilet and Ingen mikrofon stand 2 s, and
-Mikrofon byttet 2.5 s.
+Hørte ingenting, Ikke satt inn, Administratorvindu, Transkriberingen feilet, Ingen mikrofon and Mikrofon åpnet
+ikke stand 2 s, and Mikrofon byttet 2.5 s.
 
 With reduced motion asked for, the pill shows each state without movement; the recording bars are a still picture
 of the last 2.4 s, replaced once a second.

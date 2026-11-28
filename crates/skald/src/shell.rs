@@ -396,6 +396,9 @@ impl Shell {
         if changed.theme {
             self.overlay.set_theme(self.screen.theme(), cx);
         }
+        if changed.hold_key {
+            self.overlay.set_hold_key(self.screen.hold_key(), cx);
+        }
         for pill in changed.pills {
             match pill {
                 Pill::Record { hands_free: false } => self.overlay.record(cx),
@@ -408,6 +411,9 @@ impl Shell {
                 Pill::AdministratorWindow => self.overlay.administrator_window(cx),
                 Pill::TranscriptionFailed => self.overlay.transcription_failed(cx),
                 Pill::NoMicrophone => self.overlay.no_microphone(cx),
+                Pill::MicrophoneNotOpened(microphone) => {
+                    self.overlay.microphone_not_opened(&microphone, cx);
+                }
                 Pill::MicrophoneChanged(microphone) => {
                     self.overlay.microphone_changed(&microphone, cx);
                 }

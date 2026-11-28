@@ -64,6 +64,9 @@ enum State {
     AdministratorWindow,
     TranscriptionFailed,
     NoMicrophone,
+    MicrophoneNotOpened {
+        microphone: String,
+    },
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -214,6 +217,15 @@ impl Pill {
         self.show(State::NoMicrophone, now);
     }
 
+    pub fn microphone_not_opened(&mut self, microphone: &str, now: Duration) {
+        self.show(
+            State::MicrophoneNotOpened {
+                microphone: microphone.to_owned(),
+            },
+            now,
+        );
+    }
+
     /// Shown at once, or after the take on screen is done.
     pub fn microphone_changed(&mut self, microphone: &str, now: Duration) {
         let notice = State::MicrophoneChanged {
@@ -289,7 +301,8 @@ impl Pill {
                 | State::NotInserted
                 | State::AdministratorWindow
                 | State::TranscriptionFailed
-                | State::NoMicrophone => message_ends(NOTICE_FOR),
+                | State::NoMicrophone
+                | State::MicrophoneNotOpened { .. } => message_ends(NOTICE_FOR),
                 State::MicrophoneChanged { .. } => message_ends(MICROPHONE_CHANGED_FOR),
                 State::Recording { .. } => return,
             };
@@ -401,6 +414,9 @@ pub(crate) enum Look<'a> {
     AdministratorWindow,
     TranscriptionFailed,
     NoMicrophone,
+    MicrophoneNotOpened {
+        microphone: &'a str,
+    },
 }
 
 /// The dot's breath for a moment with no movement.
@@ -466,6 +482,7 @@ fn look(state: &State, now: Duration, still: bool) -> Look<'_> {
         State::AdministratorWindow => Look::AdministratorWindow,
         State::TranscriptionFailed => Look::TranscriptionFailed,
         State::NoMicrophone => Look::NoMicrophone,
+        State::MicrophoneNotOpened { microphone } => Look::MicrophoneNotOpened { microphone },
     }
 }
 
@@ -713,6 +730,22 @@ mod tests {
             &Look::NoMicrophone
         );
         pill.advance(ms(3000) + FADE);
+        assert!(pill.is_hidden());
+    }
+
+    #[test]
+    fn a_microphone_that_will_not_open_shows_two_seconds_with_its_name() {
+        let mut pill = recorded(2);
+        pill.release(ms(3000));
+        pill.microphone_not_opened("Shure MV7", ms(3200));
+        assert_eq!(
+            only(&pill.scene(ms(3500), Motion::Full)),
+            &Look::MicrophoneNotOpened {
+                microphone: "Shure MV7"
+            },
+            "it takes the place of the take before"
+        );
+        pill.advance(ms(5200) + FADE);
         assert!(pill.is_hidden());
     }
 

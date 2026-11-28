@@ -17,6 +17,20 @@ the pill named a key the user was not holding. The settings window and the first
 a newer Skald is hinted as the system's own, the key the listener then takes. The hands-free hint is the
 chord and does not change. Changed: [design.md](design.md#overlay).
 
+## D-54 — A microphone that cannot be opened is shown on the overlay
+
+2026-11-28, Claude; that it is shown, the lead; the words, Claude.
+
+The microphone opens when the hold key goes down, so the first words are kept (D-20). When it cannot be
+opened, because another program holds it, its audio format is not one Skald reads, or it went away a moment
+before the press and the next one was not chosen yet, the take that arms has nothing to record. It used to
+end there with a line in the terminal and nothing on screen: no pill, no sound and no red dot, so the user held
+the key and spoke to nothing. Now the overlay says «<mikrofon> · kunne ikke åpnes» for 2 s, as the other
+notices stand, in the form of «<mikrofon> · koblet til, brukes nå»: the microphone's name first, cut to fit,
+since the user acts on the microphone. The first-run test shows the terminal's line with the reason. A press
+that does not arm, as in ⌘C, still shows nothing, and «Ingen mikrofon er koblet til» stays for a take that arms
+with no microphone at all. Changed: [design.md](design.md#overlay).
+
 ## D-52 — The Linux release is a tarball laid out as under /usr; skald-bin installs it on Arch
 
 2026-11-28, the lead (what the tarball holds and the package's dependencies), Claude (the rest).

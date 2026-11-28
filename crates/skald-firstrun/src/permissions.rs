@@ -2,7 +2,7 @@
 
 use crate::action::{Action, Permission};
 use crate::button::ButtonSpec;
-use crate::model::{Access, Permissions, Platform};
+use crate::model::{Access, ListedAs, Permissions, Platform};
 
 /// macOS may ask about the clipboard the first time Skald puts the previous one back (docs/design.md,
 /// Insertion); the step says so before it happens.
@@ -10,9 +10,43 @@ pub const CLIPBOARD_NOTE: &str = "macOS kan spørre én gang om Skald får lese 
      den bare for å legge tilbake det som lå der, etter at teksten er satt inn. Svarer du nei, blir \
      teksten liggende på utklippstavlen.";
 
+/// What the step calls the program a program started from a terminal is listed as, when its name was not
+/// found.
+const UNNAMED_PROGRAM: &str = "terminalprogrammet";
+
+/// The name the system's settings list Skald's permissions under.
+fn listed_name(listed: &ListedAs) -> &str {
+    match listed {
+        ListedAs::Skald => "Skald",
+        ListedAs::StartedFrom(Some(name)) => name,
+        ListedAs::StartedFrom(None) => UNNAMED_PROGRAM,
+    }
+}
+
 /// The window comes back to the front by itself once a permission is granted.
-pub const COME_BACK_NOTE: &str =
-    "Når du har slått på Skald i Systeminnstillinger, kommer dette vinduet fram igjen av seg selv.";
+pub fn come_back_note(listed: &ListedAs) -> String {
+    format!(
+        "Når du har slått på {} i Systeminnstillinger, kommer dette vinduet fram igjen av seg selv.",
+        listed_name(listed)
+    )
+}
+
+/// What to turn on, when Skald was started from another program, as from a terminal: macOS lists that
+/// program, not Skald.
+pub fn started_from_note(listed: &ListedAs) -> Option<String> {
+    match listed {
+        ListedAs::Skald => None,
+        ListedAs::StartedFrom(Some(name)) => Some(format!(
+            "Skald er startet fra {name}, så macOS viser {name}, ikke Skald, under Tilgjengelighet og \
+             Mikrofon. Slå på {name} der."
+        )),
+        ListedAs::StartedFrom(None) => Some(
+            "Skald er startet fra et terminalprogram, så macOS viser terminalprogrammet, ikke Skald, \
+             under Tilgjengelighet og Mikrofon. Slå på terminalprogrammet der."
+                .to_owned(),
+        ),
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PermissionRow {
@@ -29,23 +63,34 @@ pub struct PermissionRow {
 }
 
 /// The permissions this platform asks for, in the order the step lists them.
-pub fn rows(platform: Platform, permissions: &Permissions) -> Vec<PermissionRow> {
+pub fn rows(
+    platform: Platform,
+    permissions: &Permissions,
+    listed: &ListedAs,
+) -> Vec<PermissionRow> {
     let mut rows = vec![row(
         Permission::Microphone,
         permissions.microphone,
         platform,
+        listed,
     )];
     if platform.asks_for_accessibility() {
         rows.push(row(
             Permission::Accessibility,
             permissions.accessibility,
             platform,
+            listed,
         ));
     }
     rows
 }
 
-fn row(permission: Permission, access: Access, platform: Platform) -> PermissionRow {
+fn row(
+    permission: Permission,
+    access: Access,
+    platform: Platform,
+    listed: &ListedAs,
+) -> PermissionRow {
     let (name, purpose) = match permission {
         Permission::Microphone => ("Mikrofon", "for å høre det du sier"),
         Permission::Accessibility => ("Tilgjengelighet", "for tasten og innsettingen"),
@@ -73,8 +118,12 @@ fn row(permission: Permission, access: Access, platform: Platform) -> Permission
         ),
         Access::Restricted => ("Sperret av en regel på denne maskinen", None),
     };
-    let hint = (access == Access::Denied && platform == Platform::MacOs)
-        .then(|| format!("Slå på Skald under Personvern og sikkerhet › {name}."));
+    let hint = (access == Access::Denied && platform == Platform::MacOs).then(|| {
+        format!(
+            "Slå på {} under Personvern og sikkerhet › {name}.",
+            listed_name(listed)
+        )
+    });
     PermissionRow {
         permission,
         name,
@@ -98,6 +147,7 @@ mod tests {
                 microphone,
                 accessibility,
             },
+            &ListedAs::Skald,
         )
     }
 
@@ -158,6 +208,38 @@ mod tests {
             );
             assert_eq!(rows[0].hint, None);
         }
+    }
+
+    #[test]
+    fn a_skald_started_from_a_terminal_names_the_terminal_to_turn_on() {
+        let herdr = ListedAs::StartedFrom(Some("Herdr Core".into()));
+        let note = started_from_note(&herdr).unwrap();
+        assert!(
+            note.contains("viser Herdr Core, ikke Skald, under Tilgjengelighet og Mikrofon"),
+            "{note}"
+        );
+        assert!(note.ends_with("Slå på Herdr Core der."), "{note}");
+        assert!(come_back_note(&herdr).starts_with("Når du har slått på Herdr Core i"));
+        let denied = super::rows(
+            Platform::MacOs,
+            &Permissions {
+                microphone: Access::Denied,
+                accessibility: Access::Denied,
+            },
+            &herdr,
+        );
+        assert_eq!(
+            denied[1].hint.as_deref(),
+            Some("Slå på Herdr Core under Personvern og sikkerhet › Tilgjengelighet.")
+        );
+
+        let unnamed = ListedAs::StartedFrom(None);
+        let note = started_from_note(&unnamed).unwrap();
+        assert!(note.contains("ikke Skald"), "{note}");
+        assert!(note.ends_with("Slå på terminalprogrammet der."), "{note}");
+
+        assert_eq!(started_from_note(&ListedAs::Skald), None);
+        assert!(come_back_note(&ListedAs::Skald).starts_with("Når du har slått på Skald i"));
     }
 
     #[test]

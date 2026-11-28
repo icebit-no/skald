@@ -20,6 +20,18 @@ pub struct FirstRunModel {
     /// The machine has no GPU with a Vulkan driver, so the model will compute on the CPU, and the model's
     /// step says so.
     pub no_vulkan: bool,
+    pub listed_as: ListedAs,
+}
+
+/// Whom the system's settings list Skald's permissions under. macOS asks on behalf of the program Skald
+/// was started from, so a Skald started from a terminal is listed as that terminal.
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub enum ListedAs {
+    /// Skald itself, as Skald.app.
+    #[default]
+    Skald,
+    /// The program Skald was started from, with its name as the settings show it when it was found.
+    StartedFrom(Option<String>),
 }
 
 /// What the model's step says when [`FirstRunModel::no_vulkan`] holds.
@@ -35,6 +47,7 @@ impl FirstRunModel {
             download: Download::from_status(status),
             test: TestDictation::NotStarted,
             no_vulkan: false,
+            listed_as: ListedAs::Skald,
         }
     }
 

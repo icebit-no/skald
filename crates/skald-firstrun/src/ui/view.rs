@@ -367,7 +367,11 @@ impl FirstRunView {
 
     fn permissions_step(&self, p: &Palette, cx: &Context<Self>) -> Vec<AnyElement> {
         let mac = self.model.platform == Platform::MacOs;
-        let rows = permissions::rows(self.model.platform, &self.permissions);
+        let rows = permissions::rows(
+            self.model.platform,
+            &self.permissions,
+            &self.model.listed_as,
+        );
         let all_granted = rows.iter().all(|row| row.granted);
         let mut card = controls::card(p).gap(px(0.0)).p(px(0.0));
         for (index, row) in rows.iter().enumerate() {
@@ -387,7 +391,11 @@ impl FirstRunView {
             card.into_any_element(),
         ];
         if mac && !all_granted {
-            elements.push(controls::quiet(permissions::COME_BACK_NOTE, p).into_any_element());
+            if let Some(note) = permissions::started_from_note(&self.model.listed_as) {
+                elements.push(controls::note(note, p).into_any_element());
+            }
+            let come_back = permissions::come_back_note(&self.model.listed_as);
+            elements.push(controls::quiet(come_back, p).into_any_element());
         }
         if mac {
             elements.push(controls::note(permissions::CLIPBOARD_NOTE, p).into_any_element());

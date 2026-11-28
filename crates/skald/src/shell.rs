@@ -7,7 +7,8 @@
 //! The first run comes before the loop: the loop starts when the window's test asks for it, or when the
 //! window is done, and the menu bar item appears once the window is done and the loop is ready. A loop the
 //! test started that stops, as when the model will not load, says why in the window, which can start it
-//! again.
+//! again. A Skald that started without Accessibility starts again instead of starting the loop, once the
+//! first run has it granted (D-60), and the new one opens on the test when the test asked.
 //!
 //! The model must be dropped before the process exits, so quitting stops the loop first: «Avslutt Skald»
 //! asks it to stop, and the app quits once it has. When the system ends the app, as at log out, the main
@@ -38,6 +39,7 @@ use crate::control::Control;
 use crate::events::Event;
 use crate::permissions;
 use crate::pipeline::WorkerHandle;
+use crate::restart;
 use crate::say::{self, Exit, Line, Printer};
 use crate::screen::{self, Pill, Screen};
 
@@ -79,6 +81,8 @@ pub(crate) fn run(
                 linked: None,
                 launcher,
                 running: Rc::clone(&running),
+                // Without it no loop starts here; the first run says otherwise.
+                accessibility_at_start: true,
                 quitting: false,
                 paths,
                 printer,
@@ -170,6 +174,8 @@ struct Shell {
     linked: Option<Linked>,
     launcher: Launcher,
     running: Running,
+    /// Whether this process had Accessibility when it started.
+    accessibility_at_start: bool,
     /// The user asked to quit, so the loop's end is the app's.
     quitting: bool,
     paths: Paths,
@@ -239,10 +245,25 @@ impl Shell {
         }
     }
 
-    /// Starts the loop, and hands the screen its running Skald once it is ready.
-    fn start_loop(&mut self, cx: &mut App) {
+    /// Starts the loop, and hands the screen its running Skald once it is ready. A Skald that started
+    /// without Accessibility and has it now starts again instead (D-60); `test` opens the new one on the
+    /// first run's test.
+    fn start_loop(&mut self, test: bool, cx: &mut App) {
         if self.running.borrow().is_some() {
             return;
+        }
+        if restart::needed(
+            self.accessibility_at_start,
+            skald_input::accessibility_granted(),
+        ) {
+            self.printer.say(Line::Restarting);
+            match restart::restart(test) {
+                Ok(()) => {
+                    self.quit(cx);
+                    return;
+                }
+                Err(error) => self.printer.say(Line::NotRestarted(error.to_string())),
+            }
         }
         let (thread, readied) = match self.launcher.start() {
             Ok(started) => started,
@@ -308,7 +329,12 @@ impl Shell {
             cx,
         );
         window.show(&first_run.model, cx);
+        self.accessibility_at_start = first_run.accessibility_at_start;
+        let run_test = first_run.run_test;
         self.first_run = Some(Window { window, first_run });
+        if run_test && self.can_take_dictation() {
+            self.on_first_run_action(FirstRunAction::RunTest, cx);
+        }
     }
 
     fn on_first_run_action(&mut self, action: FirstRunAction, cx: &mut App) {
@@ -347,7 +373,7 @@ impl Shell {
                     };
                     window.window.update(&window.first_run.model, cx);
                 }
-                self.start_loop(cx);
+                self.start_loop(true, cx);
             }
             FirstRunAction::Done => self.first_run_done(cx),
             FirstRunAction::Closed => {
@@ -367,7 +393,7 @@ impl Shell {
         if self.linked.is_some() {
             self.show_tray();
         } else {
-            self.start_loop(cx);
+            self.start_loop(false, cx);
         }
     }
 

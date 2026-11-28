@@ -5,6 +5,24 @@ decision, and that pull request also edits the page where the rule lives ([desig
 [plan.md](plan.md)). Those pages say what holds; this one says when and why it came to hold. A later decision
 that undoes one adds an entry of its own, and the earlier entry gets one line naming it.
 
+## D-60 — Skald starts again once the first run has Accessibility granted
+
+2026-11-28, Claude; found in Thomas's first run (#22), the restart set by the lead.
+
+macOS gives keystrokes only to a process that had Accessibility when it started. On Thomas's first run the
+permission was granted while Skald ran, the window read it as granted, and the test created its event tap with
+no error, yet the tap heard no key until Skald was started again. The hold listener already starts again every
+five seconds and at each change of a privacy permission, so starting the tap again in the same process does not
+help.
+
+So a Skald that started without Accessibility starts itself again, once, where it would start the dictation
+loop with it granted: as the first run's test starts, or as the window is done. Started from a terminal, it
+replaces itself in place with exec, so it keeps the terminal, its arguments and the program macOS asks on behalf
+of; Skald.app is opened again through `open` once the old process has ended, so the two never meet. After the
+test it is started with an option the help leaves out, which opens the first-run window on the test and runs
+it; after the window is done it starts as any Skald with nothing missing. A Skald that had the permission from
+the start, or still lacks it, does not start again. Changed: [design.md](design.md#first-run).
+
 ## D-58 — A tag releases to GitHub, the tap, the bucket and the AUR; the Mac bundle is signed apart from its build
 
 2026-11-28, Claude; GitHub's own runners, the secrets from 1Password and winget by hand set by the lead's brief.

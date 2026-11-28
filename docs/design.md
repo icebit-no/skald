@@ -193,7 +193,9 @@ switcher, so the window comes back to the front by itself when a permission is g
 microphone prompt is answered. On macOS the step says that macOS may ask once whether Skald may read the clipboard
 (Insertion). The test take is inserted into a field in the window, «Teksten settes inn her»; when it does
 not arrive there, the window shows «Skald hørte:» and the text. «Hopp over» leaves the test out and becomes
-«Ferdig» once a take was heard; both wait until the model is checked and the permissions are granted.
+«Ferdig» once a take was heard; both wait until the model is checked and the permissions are granted. macOS
+gives keystrokes only to a process that had Accessibility when it started, so a Skald started without it starts
+again once, as the test starts or the window is done, and opens on the test when the test asked (D-60).
 
 On Windows and Linux the model computes on the GPU through Vulkan, on NVIDIA, AMD and Intel alike. A machine
 with no Vulkan driver runs it on the CPU, and the window's «Talemodell» step says so: «Fant ingen

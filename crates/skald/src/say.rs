@@ -94,6 +94,10 @@ pub(crate) enum Line {
     Downloaded(&'static str),
     /// The loop the first run's test started stopped, and why.
     LoopStopped(String),
+    /// Skald starts again, since macOS gives keystrokes only to a process that had Accessibility as it
+    /// started (D-60).
+    Restarting,
+    NotRestarted(String),
     Stopping,
 }
 
@@ -249,6 +253,15 @@ impl fmt::Display for Line {
             }
             Line::Downloaded(model) => write!(f, "{model} er lastet ned og sjekket."),
             Line::LoopStopped(reason) => write!(f, "Dikteringen stoppet: {reason}"),
+            Line::Restarting => f.write_str(
+                "Tilgjengelighet er gitt. Skald starter på nytt, for macOS gir tastetrykk bare til et \
+                 program som hadde tilgangen da det startet.",
+            ),
+            Line::NotRestarted(reason) => write!(
+                f,
+                "Skald fikk ikke startet på nytt ({reason}). Virker ikke tasten, så avslutt Skald og \
+                 start det igjen."
+            ),
             Line::Stopping => f.write_str("Avslutter …"),
         }
     }
@@ -799,6 +812,18 @@ mod tests {
             Exit::MicrophoneDenied
                 .to_string()
                 .contains("Systeminnstillinger › Personvern og sikkerhet › Mikrofon")
+        );
+    }
+
+    #[test]
+    fn starting_again_says_why_and_what_to_do_when_it_fails() {
+        assert!(Line::Restarting.to_string().contains("starter på nytt"));
+        assert!(!Line::Restarting.is_verbose());
+        let failed = Line::NotRestarted("ingen tilgang".into()).to_string();
+        assert!(failed.contains("(ingen tilgang)"), "{failed}");
+        assert!(
+            failed.contains("avslutt Skald og start det igjen"),
+            "{failed}"
         );
     }
 

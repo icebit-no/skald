@@ -24,6 +24,8 @@ mod models;
 #[cfg(target_os = "macos")]
 mod permissions;
 mod pipeline;
+#[cfg(any(target_os = "macos", target_os = "linux", windows))]
+mod restart;
 mod say;
 #[cfg(any(target_os = "macos", target_os = "linux", windows))]
 mod screen;

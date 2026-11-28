@@ -15,7 +15,13 @@ pub(crate) struct Options {
     pub(crate) verbose: bool,
     /// Dictation in the terminal alone, without the overlay and the menu bar item, as for debugging.
     pub(crate) terminal: bool,
+    /// Opens the first-run window on its test and runs it. Skald passes it to itself when it starts again
+    /// for Accessibility in the middle of the first run (D-60), so the help leaves it out.
+    pub(crate) first_run_test: bool,
 }
+
+/// The option [`Options::first_run_test`] is read from.
+pub(crate) const FIRST_RUN_TEST: &str = "--first-run-test";
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub(crate) enum Invocation {
@@ -34,7 +40,7 @@ pub(crate) enum Invocation {
 
 /// What macOS adds when it starts the app from Finder or at login on some versions: the process serial
 /// number, `-psn_0_12345`. It says nothing to Skald.
-fn from_launch_services(arg: &OsString) -> bool {
+pub(crate) fn from_launch_services(arg: &OsString) -> bool {
     arg.to_str().is_some_and(|arg| arg.starts_with("-psn_"))
 }
 
@@ -58,6 +64,7 @@ pub(crate) fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Invocati
             "--vad" => options.vad = Some(path("--vad")?),
             "-v" | "--verbose" => options.verbose = true,
             "--terminal" => options.terminal = true,
+            FIRST_RUN_TEST => options.first_run_test = true,
             "-h" | "--help" => return Ok(Invocation::Help),
             "-V" | "--version" => return Ok(Invocation::Version),
             flag if flag.starts_with('-') => theirs.push(arg),
@@ -168,6 +175,7 @@ mod tests {
             vad: Some(PathBuf::from("v.gguf")),
             verbose: true,
             terminal: true,
+            first_run_test: true,
         };
         let args = [
             "--dir",
@@ -178,6 +186,7 @@ mod tests {
             "--terminal",
             "--vad",
             "v.gguf",
+            "--first-run-test",
         ];
         assert_eq!(parse(&args), Ok(Invocation::Dictate(options)));
         assert_eq!(

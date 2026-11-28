@@ -1,8 +1,8 @@
 # Skald for Windows
 
 How Skald is packed for Windows, and how the manifests for Scoop and winget are made. Why it is packed this way
-is in [D-51](../../docs/decisions.md); publishing the zip and the manifests belongs to the release pipeline, M6
-in [plan.md](../../docs/plan.md).
+is in [D-51](../../docs/decisions.md); how the release workflow publishes the zip and the manifests is in
+[RELEASING.md](../RELEASING.md).
 
 | File | Does |
 |---|---|

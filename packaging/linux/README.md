@@ -119,5 +119,5 @@ layerrule = ignorezero, skald
 for the release (D-52): the release `skald`, the desktop entry `app.icebit.skald.desktop` and the icons in
 `hicolor`, these Hyprland lines as `share/skald/hyprland.conf`, this README, the licence and
 THIRD-PARTY-NOTICES, laid out as under `/usr`. The same checkout packs to the same bytes. Arch's
-package is made from it ([packaging/arch](../arch/README.md)); nothing is published until the release pipeline
-(M6).
+package is made from it ([packaging/arch](../arch/README.md)); the release workflow attaches the tarball to the
+GitHub release and pushes the package to the AUR ([RELEASING.md](../RELEASING.md)).

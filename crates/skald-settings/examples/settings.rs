@@ -159,20 +159,20 @@ fn sample() -> SettingsModel {
     let mut config = Config::default();
     config.microphones = vec!["Shure MV7".into(), "AirPods Pro".into()];
     config.vocabulary.sentence =
-        "Vi merget pull-requesten i går og deployet den til staging.".into();
+        "Ingrid og Sindre hentet ungene i barnehagen på Lade før kampen til Rosenborg.".into();
     for word in [
         "Skald",
-        "GPUI",
-        "transcribe.cpp",
         "Nasjonalbiblioteket",
-        "PostgreSQL",
+        "Sindre",
+        "Lade",
+        "Rosenborg",
     ] {
         config.vocabulary.add_word(word);
     }
     for (from, to) in [
-        ("mercha", "merget"),
-        ("Post gres SQL", "PostgreSQL"),
-        ("pull request en", "pull-requesten"),
+        ("Sin dre", "Sindre"),
+        ("Rosen borg", "Rosenborg"),
+        ("barne hagen", "barnehagen"),
     ] {
         config
             .corrections
@@ -191,12 +191,12 @@ fn sample() -> SettingsModel {
             "Shure MV7",
             "Møtet er flyttet til torsdag klokka ti, og vi tar det på Teams.",
         ),
-        (12, "Shure MV7", "Vi mercha pull request en etter lunsj."),
         (
-            3,
+            12,
             "Shure MV7",
-            "Databasen kjører på Post gres SQL i staging.",
+            "Sin dre henter ungene i barne hagen etter jobb.",
         ),
+        (3, "Shure MV7", "Kampen til Rosen borg starter klokka sju."),
         (0, "Shure MV7", "Kan du sende meg notatene fra møtet i går?"),
     ];
     for (minutes_ago, microphone, said) in takes {

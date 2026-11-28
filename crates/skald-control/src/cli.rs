@@ -90,8 +90,8 @@ fn help() -> String {
         text.push_str(&format!("  {usage:width$}  {does}\n"));
     }
     text.push_str(
-        "\nSett ord og navn med mellomrom i anførselstegn: skald fix add \"Post gres SQL\" \
-         \"PostgreSQL\"\nMed --json skriver hver kommando ett JSON-objekt.\nNår Skald ikke kjører, \
+        "\nSett ord og navn med mellomrom i anførselstegn: skald fix add \"Rosen borg\" \
+         \"Rosenborg\"\nMed --json skriver hver kommando ett JSON-objekt.\nNår Skald ikke kjører, \
          skrives endringene rett i innstillingsfilen.\n\nInnstillinger for «skald config»:\n",
     );
     let width = SettingKey::ALL
@@ -355,8 +355,8 @@ fn parse(args: &[OsString]) -> Result<Invocation, Error> {
         },
         ["vocab", "sentence", _, _, ..] => {
             return Err(usage(
-                "Sett setningen i anførselstegn: skald vocab sentence \"Vi merget pull-requesten i \
-                 går.\"",
+                "Sett setningen i anførselstegn: skald vocab sentence \"Ingrid hentet ungene på \
+                 Lade før kampen til Rosenborg.\"",
             ));
         }
 

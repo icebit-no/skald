@@ -37,10 +37,10 @@ mod sample {
 
     const SAMPLE_TEXTS: [&str; 6] = [
         "Hei, dette er en prøve.",
-        "Kan du merge pull-requesten etter lunsj?",
+        "Kan du hente ungene etter trening?",
         "Møtet er flyttet til torsdag klokka ti, og vi tar det på Teams i stedet for på kontoret.",
         "Husk å kjøpe brød og melk på vei hjem.",
-        "Rettingen fra «mercha» til «merget» virker.",
+        "Rettingen fra «barne hagen» til «barnehagen» virker.",
         "Ordskatten har plass til de viktigste navnene til slutt.",
     ];
 

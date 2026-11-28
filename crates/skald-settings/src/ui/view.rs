@@ -66,7 +66,7 @@ impl SettingsView {
         };
         let sentence = cx.new(|cx| {
             InputState::new(window, cx)
-                .placeholder("Vi merget pull-requesten i går.")
+                .placeholder("Ingrid hentet ungene på Lade før kampen til Rosenborg.")
                 .default_value(model.config.vocabulary.sentence.clone())
         });
         let new_word = input("Et ord eller navn", window, cx);

@@ -21,15 +21,18 @@ use windows_sys::Win32::UI::Shell::{
 };
 use windows_sys::Win32::UI::WindowsAndMessaging::{
     AppendMenuW, CreateIconIndirect, CreatePopupMenu, CreateWindowExW, DefWindowProcW, DestroyIcon,
-    DestroyMenu, DestroyWindow, GWLP_USERDATA, GetCursorPos, GetSystemMetrics, GetWindowLongPtrW,
-    HICON, HMENU, ICONINFO, MF_CHECKED, MF_GRAYED, MF_POPUP, MF_SEPARATOR, MF_STRING, PostMessageW,
-    RegisterClassW, RegisterWindowMessageW, SM_CXSMICON, SetForegroundWindow, SetWindowLongPtrW,
-    TPM_RETURNCMD, TPM_RIGHTBUTTON, TrackPopupMenuEx, WM_APP, WM_CONTEXTMENU, WM_NULL,
-    WM_SETTINGCHANGE, WNDCLASSW, WS_OVERLAPPED,
+    DestroyMenu, DestroyWindow, GWLP_USERDATA, GetCursorPos, GetForegroundWindow, GetSystemMetrics,
+    GetWindowLongPtrW, HICON, HMENU, ICONINFO, MF_CHECKED, MF_GRAYED, MF_POPUP, MF_SEPARATOR,
+    MF_STRING, PostMessageW, RegisterClassW, RegisterWindowMessageW, SM_CXSMICON,
+    SetForegroundWindow, SetWindowLongPtrW, TPM_RETURNCMD, TPM_RIGHTBUTTON, TrackPopupMenuEx,
+    WM_APP, WM_CONTEXTMENU, WM_NULL, WM_SETTINGCHANGE, WNDCLASSW, WS_OVERLAPPED,
 };
 
 use crate::menu::Entry;
 use crate::rune::{self, Rgb};
+
+#[path = "windows_focus.rs"]
+mod focus;
 use crate::{Action, Activity, TrayError, TrayModel};
 
 /// What the icon sends the window when it is clicked.
@@ -216,6 +219,7 @@ impl State {
         if menu.is_null() {
             return;
         }
+        let return_to = focus::window_to_return_to(window);
         // Safety: the menu and the window are alive; the window is brought to the front first so the menu
         // closes when the user clicks elsewhere, and is sent a message after, both as the documentation
         // for TrackPopupMenu asks.
@@ -231,6 +235,11 @@ impl State {
             );
             PostMessageW(window, WM_NULL, 0, 0);
             DestroyMenu(menu);
+            // A click elsewhere, or a choice that opens one of Skald's windows, has put another window in
+            // front, which keeps it; otherwise the window the user was in gets the focus back.
+            if GetForegroundWindow() == window && !return_to.is_null() {
+                SetForegroundWindow(return_to);
+            }
             chosen
         };
         if let Some(action) = usize::try_from(chosen)

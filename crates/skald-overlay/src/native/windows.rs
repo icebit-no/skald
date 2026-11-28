@@ -14,9 +14,8 @@ use windows_sys::Win32::Graphics::Gdi::{
 use windows_sys::Win32::System::Registry::{HKEY_CURRENT_USER, RRF_RT_REG_DWORD, RegGetValueW};
 use windows_sys::Win32::UI::HiDpi::GetDpiForWindow;
 use windows_sys::Win32::UI::WindowsAndMessaging::{
-    GWL_EXSTYLE, GetForegroundWindow, GetWindowLongPtrW, LWA_ALPHA, SPI_GETCLIENTAREAANIMATION,
-    SetLayeredWindowAttributes, SetWindowLongPtrW, SystemParametersInfoW, WS_EX_LAYERED,
-    WS_EX_NOACTIVATE, WS_EX_TRANSPARENT,
+    GWL_EXSTYLE, GetForegroundWindow, GetWindowLongPtrW, SPI_GETCLIENTAREAANIMATION,
+    SetWindowLongPtrW, SystemParametersInfoW, WS_EX_LAYERED, WS_EX_NOACTIVATE, WS_EX_TRANSPARENT,
 };
 
 use super::PillFrame;
@@ -31,17 +30,18 @@ fn hwnd(window: &Window) -> Option<HWND> {
 }
 
 /// Windows passes a click through a window only when it is layered as well as transparent to the mouse.
+/// GPUI draws the window through DirectComposition rather than into a bitmap Windows keeps for it, so the
+/// layered style decides only where clicks go: no opacity is set, which would have Windows draw a layered
+/// bitmap the window does not have. Electron makes its windows ignore the mouse the same way.
 pub(crate) fn let_clicks_through(window: &Window) {
     let Some(hwnd) = hwnd(window) else {
         return;
     };
-    // Safety: the window is GPUI's and alive while borrowed; only its extended style changes. A layered
-    // window shows only once its opacity is set, here to whole, so the drawing's own alpha applies.
+    // Safety: the window is GPUI's and alive while borrowed; only its extended style changes.
     unsafe {
         let style = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
         let through = (WS_EX_LAYERED | WS_EX_TRANSPARENT | WS_EX_NOACTIVATE) as isize;
         SetWindowLongPtrW(hwnd, GWL_EXSTYLE, style | through);
-        SetLayeredWindowAttributes(hwnd, 0, 255, LWA_ALPHA);
     }
 }
 

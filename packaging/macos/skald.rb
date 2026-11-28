@@ -12,7 +12,7 @@ cask "skald" do
 
   # Skald ships for Apple Silicon only (D-34).
   depends_on arch: :arm64
-  depends_on macos: :@MACOS@
+  @DEPENDS_ON_MACOS@
 
   app "Skald.app"
   # The command line is the app's own executable (D-25), linked so it stays the same build after every upgrade.

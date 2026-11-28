@@ -35,14 +35,16 @@ value() {
 said=$(value CFBundleShortVersionString)
 [ "$said" = "$version" ] || fail "the bundle in $name says version '$said', not $version"
 minimum=$(value LSMinimumSystemVersion)
-# Homebrew names each macOS by its release; the cask takes the oldest the bundle promises, and newer ones with it.
+# Homebrew names each macOS by its release, and a cask's minimum admits that release and every newer one. Homebrew's
+# lint refuses a minimum at the oldest macOS Homebrew supports (Big Sur in Homebrew 7) as saying nothing, so that one
+# is written as macOS alone.
 case "${minimum%%.*}" in
-    11) macos=big_sur ;;
-    12) macos=monterey ;;
-    13) macos=ventura ;;
-    14) macos=sonoma ;;
-    15) macos=sequoia ;;
-    26) macos=tahoe ;;
+    11) depends="depends_on :macos" ;;
+    12) depends="depends_on macos: :monterey" ;;
+    13) depends="depends_on macos: :ventura" ;;
+    14) depends="depends_on macos: :sonoma" ;;
+    15) depends="depends_on macos: :sequoia" ;;
+    26) depends="depends_on macos: :tahoe" ;;
     *) fail "the bundle asks for macOS '$minimum', which this script has no Homebrew name for" ;;
 esac
 
@@ -54,7 +56,7 @@ fi
 
 mkdir -p "$dir"
 cask="$dir/skald.rb"
-sed -e "s/@VERSION@/$version/g" -e "s/@SHA256@/$sha256/g" -e "s/@MACOS@/$macos/g" "$here/skald.rb" > "$cask"
+sed -e "s/@VERSION@/$version/g" -e "s/@SHA256@/$sha256/g" -e "s/@DEPENDS_ON_MACOS@/$depends/g" "$here/skald.rb" > "$cask"
 if grep -n '@[A-Z0-9_]*@' "$cask" >&2; then
     fail "$cask still holds a placeholder"
 fi

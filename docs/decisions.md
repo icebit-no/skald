@@ -5,6 +5,25 @@ decision, and that pull request also edits the page where the rule lives ([desig
 [plan.md](plan.md)). Those pages say what holds; this one says when and why it came to hold. A later decision
 that undoes one adds an entry of its own, and the earlier entry gets one line naming it.
 
+## D-56 — The tray menu gives the focus back; the overlay lets clicks through without an opacity
+
+2026-11-28, Claude; both risks found by the lead in review.
+
+The tray menu needs Skald's hidden window in front, or it would not close when the user clicks elsewhere
+(D-48), and the hidden window kept the focus after a choice, so the next take's paste went nowhere. Before the
+menu opens Skald notes the window to return to: the one in front, or, when the click on the icon put the
+taskbar in front, the app window highest in the z-order, as Alt+Tab would list it. After the menu, if the
+hidden window is still in front, that window gets the focus back; a click elsewhere, or a choice that opens one
+of Skald's windows, has put another window in front, which keeps it.
+
+The overlay is drawn by GPUI through DirectComposition, not into a bitmap Windows keeps for the window. D-49 had
+the overlay make the window layered and set its opacity to whole; a layered window's opacity has Windows draw a
+layered bitmap the window does not have, which could leave the pill black or empty. The overlay keeps the
+layered and mouse-transparent styles, which are what make Windows pass a click to the window below, and sets
+no opacity, as Electron makes its windows ignore the mouse. GPUI has no option of its own for it, and the
+mouse-transparent style alone does not pass clicks through a top-level window. CI builds and tests this but
+has no display to show the pill or a click on it; Thomas's machine does.
+
 ## D-51 — Windows ships as one zip with the DLLs beside skald.exe; Scoop and winget install it portable
 
 2026-11-28, Claude; what the zip holds, the manifests and that nothing is published yet set by the lead.
@@ -89,6 +108,8 @@ the first-run window's «Talemodell» step says «Fant ingen skjermkortdriver me
 machine has no GPU with a Vulkan driver; it asks the engine as the window opens, which loads the backends the
 model would load anyway. The overlay shows no message for it. Changed: [design.md](design.md#overlay)
 (Overlay, First run, Settings).
+
+The overlay sets no opacity on its layered window: D-56.
 
 ## D-48 — Skald's item on Windows is an icon in the notification area with the rune drawn at its size
 

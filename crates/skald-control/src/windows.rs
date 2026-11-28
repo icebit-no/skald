@@ -15,7 +15,7 @@ use std::ptr::{null, null_mut};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::thread::{self, JoinHandle};
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use windows_sys::Win32::Foundation::{
     CloseHandle, ERROR_ACCESS_DENIED, ERROR_BROKEN_PIPE, ERROR_FILE_NOT_FOUND, ERROR_IO_PENDING,
@@ -55,7 +55,7 @@ const ANSWER: Duration = Duration::from_secs(30);
 const TRANSCRIBE_ANSWER: Duration = Duration::from_secs(600);
 
 /// How long the command line waits for a free instance while every instance answers someone else.
-const BUSY_WAIT_MS: u32 = 2_000;
+const BUSY_WAIT: Duration = Duration::from_secs(5);
 
 /// What the system keeps for each direction of an instance; a longer line simply takes more turns.
 const BUFFER: u32 = 4_096;
@@ -297,9 +297,11 @@ fn wide(text: &str) -> Vec<u16> {
     text.encode_utf16().chain([0]).collect()
 }
 
-/// Opens the pipe as a client; `None` when nobody has created it.
+/// Opens the pipe as a client; `None` when nobody has created it. While every instance is busy it waits for
+/// one and tries again, since another client waiting at the same time may take the instance that comes free.
 fn open(name: &[u16]) -> io::Result<Option<Pipe>> {
-    for attempt in 0..2 {
+    let deadline = Instant::now() + BUSY_WAIT;
+    loop {
         // Safety: a NUL-terminated name; the server may identify the client but not act as it.
         let handle = unsafe {
             CreateFileW(
@@ -318,14 +320,18 @@ fn open(name: &[u16]) -> io::Result<Option<Pipe>> {
         // Safety: reads this thread's last error, set by the call above.
         match unsafe { GetLastError() } {
             ERROR_FILE_NOT_FOUND => return Ok(None),
-            ERROR_PIPE_BUSY if attempt == 0 => {
+            ERROR_PIPE_BUSY => {
+                let left = deadline.saturating_duration_since(Instant::now());
+                if left.is_zero() {
+                    return Err(io::Error::from_raw_os_error(ERROR_PIPE_BUSY as i32));
+                }
+                let wait = u32::try_from(left.as_millis()).unwrap_or(u32::MAX).max(1);
                 // Safety: a NUL-terminated name.
-                unsafe { WaitNamedPipeW(name.as_ptr(), BUSY_WAIT_MS) };
+                unsafe { WaitNamedPipeW(name.as_ptr(), wait) };
             }
             error => return Err(io::Error::from_raw_os_error(error as i32)),
         }
     }
-    Err(io::Error::from_raw_os_error(ERROR_PIPE_BUSY as i32))
 }
 
 fn create_instance(name: &[u16], access: &Access, first: bool) -> io::Result<Pipe> {

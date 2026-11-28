@@ -133,7 +133,7 @@ impl HoldKey {
     }
 
     /// What the user should know before holding this key, or nothing: a key Norwegian text needs, one
-    /// shortcuts use, or one this system does not let Skald hear.
+    /// shortcuts use, fn with what the Globe key does besides, or one this system does not let Skald hear.
     pub fn warning(&self) -> Option<String> {
         self.warning_on(Keyboard::CURRENT)
     }
@@ -148,6 +148,8 @@ impl HoldKey {
                 "{label} brukes når du skriver og i snarveier. Holder du den litt før neste tast, \
                  starter et opptak som avbrytes når tasten kommer."
             )),
+            // Let go alone, the Globe key also does what macOS's keyboard settings give it.
+            Self::Fn if keyboard == Keyboard::Mac => Some(GLOBE.to_owned()),
             Self::Fn if keyboard == Keyboard::Windows => Some(format!(
                 "Windows lar ikke Skald høre fn-tasten, så Skald lytter etter {} i stedet.",
                 Self::default_on(keyboard).name_on(keyboard)
@@ -161,6 +163,10 @@ impl HoldKey {
         !matches!(self, Self::Unknown(_))
     }
 }
+
+/// What the Globe key does besides, when fn is the hold key on a Mac.
+const GLOBE: &str = "🌐 gjør også det som står under Systeminnstillinger › Tastatur › «Trykk på 🌐-tasten \
+     for å». Sett den til «Gjør ingenting» hvis du bruker 🌐 til Skald.";
 
 fn capitalized(name: &str) -> String {
     if name == "fn" {
@@ -305,12 +311,19 @@ mod tests {
                 .unwrap()
                 .contains("høyre Ctrl")
         );
+        assert_eq!(
+            HoldKey::Fn.warning_on(Mac).as_deref(),
+            Some(
+                "🌐 gjør også det som står under Systeminnstillinger › Tastatur › «Trykk på 🌐-tasten \
+                 for å». Sett den til «Gjør ingenting» hvis du bruker 🌐 til Skald."
+            )
+        );
+        assert_eq!(HoldKey::Fn.warning_on(Keyboard::Linux), None);
         for key in [
             HoldKey::RightCommand,
             HoldKey::RightControl,
             HoldKey::RightShift,
             HoldKey::LeftOption,
-            HoldKey::Fn,
             HoldKey::Function(13),
         ] {
             assert_eq!(key.warning_on(Mac), None, "{key:?}");

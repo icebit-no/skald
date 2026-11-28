@@ -182,7 +182,9 @@ field then shows «Trykk tasten du vil holde inne …», takes the next modifier
 next function key, and Esc or «Avbryt» leaves the key as it was. It warns, and does not refuse, for right ⌥,
 Alt Gr on a PC: «Høyre ⌥ trengs til @, [ ], { } og | på norsk tastatur.», and for left ⌘, left Control and left
 ⇧, which shortcuts and typing use: «Venstre ⇧ brukes når du skriver og i snarveier. Holder du den litt før neste
-tast, starter et opptak som avbrytes når tasten kommer.» On Linux the desktop's key binding holds the key, so
+tast, starter et opptak som avbrytes når tasten kommer.», and for fn, whose Globe key macOS also gives a task of
+its own: «🌐 gjør også det som står under Systeminnstillinger › Tastatur › «Trykk på 🌐-tasten for å». Sett den
+til «Gjør ingenting» hvis du bruker 🌐 til Skald.» On Linux the desktop's key binding holds the key, so
 the field shows the Hyprland lines that bind the key set (packaging/linux) in place of «Velg tast …». The overlay's
 hint, the menu and the first run's test name the key set: ⌘ drawn, any other in words.
 

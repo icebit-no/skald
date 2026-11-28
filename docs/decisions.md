@@ -17,8 +17,9 @@ The arming rules hold for every key: 200 ms, any other key cancels, the watchdog
 The settings window takes the key by having the user press it: the key listener, which tells the sides apart
 by each event's key code as #64 does, reports the next modifier pressed and let go alone, or the next function
 key, and starts no take meanwhile. The window warns, without refusing, for right ⌥, which Norwegian text needs
-for @, brackets, braces and |, and for left ⌘, left Control and left ⇧, which shortcuts and typing use, so a
-pause on one starts a take that the next key cancels. A function key held is kept from the app in front, as
+for @, brackets, braces and |, for left ⌘, left Control and left ⇧, which shortcuts and typing use, so a
+pause on one starts a take that the next key cancels, and for fn, whose Globe key also does what macOS's
+keyboard settings give it unless that is set to «Gjør ingenting». A function key held is kept from the app in front, as
 the hands-free chord is, since F5 in a browser reloads; a function key has no modifier flag, so its own events
 say whether it is down, and a release they miss ends at the cap.
 

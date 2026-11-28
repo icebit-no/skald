@@ -29,6 +29,7 @@ pub(crate) enum Pill {
     AdministratorWindow,
     TranscriptionFailed,
     NoMicrophone,
+    MicrophoneNotOpened(String),
     MicrophoneChanged(String),
     Cancel,
 }
@@ -107,6 +108,10 @@ impl Screen {
             Event::NoMicrophone => {
                 self.on_screen = None;
                 changed.pills.push(Pill::NoMicrophone);
+            }
+            Event::MicrophoneNotOpened { microphone, .. } => {
+                self.on_screen = None;
+                changed.pills.push(Pill::MicrophoneNotOpened(microphone));
             }
             Event::Ended { take, ending } => {
                 self.carving = self.carving.saturating_sub(1);
@@ -249,6 +254,13 @@ pub(crate) fn test_dictation(event: &Event) -> Option<TestDictation> {
         Event::Carving { .. } => TestDictation::Transcribing,
         Event::NoMicrophone => TestDictation::Failed {
             reason: Line::NoMicrophone.to_string(),
+        },
+        Event::MicrophoneNotOpened { microphone, error } => TestDictation::Failed {
+            reason: Line::CaptureFailed {
+                microphone: microphone.clone(),
+                error: error.clone(),
+            }
+            .to_string(),
         },
         Event::Ended { ending, .. } => match ending {
             Ending::Inserted(text)
@@ -459,6 +471,35 @@ mod tests {
     }
 
     #[test]
+    fn a_microphone_that_will_not_open_is_named_and_takes_the_pill_from_one_being_carved() {
+        let mut screen = Screen::default();
+        let shown = pills(
+            &mut screen,
+            vec![
+                recording(1),
+                Event::Carving { take: 1 },
+                Event::MicrophoneNotOpened {
+                    microphone: "Shure MV7".into(),
+                    error: skald_audio::CaptureError::Busy,
+                },
+                Event::Ended {
+                    take: 1,
+                    ending: Ending::Inserted("Første.".into()),
+                },
+            ],
+        );
+        assert_eq!(
+            shown,
+            [
+                Pill::Record { hands_free: false },
+                Pill::Release,
+                Pill::MicrophoneNotOpened("Shure MV7".into()),
+            ]
+        );
+        assert_eq!(screen.tray().activity, Activity::Idle);
+    }
+
+    #[test]
     fn the_dot_is_red_while_recording_and_gold_while_any_take_waits_for_its_text() {
         let mut screen = Screen::default();
         let activity = |screen: &Screen| screen.tray().activity;
@@ -655,6 +696,15 @@ mod tests {
             test_dictation(&Event::NoMicrophone),
             Some(TestDictation::Failed {
                 reason: "Ingen mikrofon er koblet til.".into()
+            })
+        );
+        assert_eq!(
+            test_dictation(&Event::MicrophoneNotOpened {
+                microphone: "Shure MV7".into(),
+                error: skald_audio::CaptureError::Busy,
+            }),
+            Some(TestDictation::Failed {
+                reason: "Kunne ikke åpne Shure MV7: et annet program bruker den.".into()
             })
         );
         assert_eq!(

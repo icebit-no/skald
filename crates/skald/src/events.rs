@@ -3,6 +3,7 @@
 
 use std::sync::Arc;
 
+use skald_audio::CaptureError;
 use skald_core::Config;
 use skald_core::state::State;
 
@@ -29,6 +30,11 @@ pub(crate) enum Event {
     },
     /// A take armed with no microphone connected, so none started.
     NoMicrophone,
+    /// A take armed on a microphone that could not be opened, so none started.
+    MicrophoneNotOpened {
+        microphone: String,
+        error: CaptureError,
+    },
     /// The take's text was inserted, or why not.
     Ended {
         take: u64,

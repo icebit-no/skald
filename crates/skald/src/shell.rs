@@ -408,6 +408,9 @@ impl Shell {
                 Pill::AdministratorWindow => self.overlay.administrator_window(cx),
                 Pill::TranscriptionFailed => self.overlay.transcription_failed(cx),
                 Pill::NoMicrophone => self.overlay.no_microphone(cx),
+                Pill::MicrophoneNotOpened(microphone) => {
+                    self.overlay.microphone_not_opened(&microphone, cx);
+                }
                 Pill::MicrophoneChanged(microphone) => {
                     self.overlay.microphone_changed(&microphone, cx);
                 }

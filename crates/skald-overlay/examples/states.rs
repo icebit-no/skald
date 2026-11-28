@@ -106,6 +106,12 @@ async fn show_every_state(overlay: &Rc<RefCell<Overlay>>, cx: &mut AsyncApp) {
     act(cx, &|overlay, cx| overlay.no_microphone(cx));
     wait(overlay, cx, Duration::from_millis(2600)).await;
 
+    println!("Mikrofon åpnet ikke");
+    act(cx, &|overlay, cx| {
+        overlay.microphone_not_opened(PLUGGED_IN, cx)
+    });
+    wait(overlay, cx, Duration::from_millis(2600)).await;
+
     println!("Mikrofon byttet");
     act(cx, &|overlay, cx| {
         overlay.microphone_changed(PLUGGED_IN, cx)

@@ -7,7 +7,7 @@ use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::{Duration, Instant};
 
-use handy_keys::{KeyEvent, KeyboardListener};
+use handy_keys::{KeyEvent, KeyboardListener, Modifiers};
 
 use crate::hold::HoldMachine;
 use crate::hotkey::{HANDS_FREE, HoldKey, KeyChange, classify};
@@ -86,6 +86,8 @@ struct Driver {
     reported: Option<Unavailable>,
     /// A key event has arrived since the listener started listening.
     heard_a_key: bool,
+    /// The modifiers by side as the latest key event had them.
+    held: Modifiers,
     taps_due: Option<Instant>,
 }
 
@@ -102,6 +104,7 @@ impl Driver {
             retry_at: Instant::now(),
             reported: None,
             heard_a_key: false,
+            held: Modifiers::empty(),
             taps_due: None,
         }
     }
@@ -214,6 +217,8 @@ impl Driver {
                 self.keyboard = Some(keyboard);
                 self.reported = None;
                 self.heard_a_key = false;
+                // A new tap knows no modifier yet, as handy-keys' new listener does not.
+                self.held = Modifiers::empty();
                 self.taps_due = Some(Instant::now() + TAPS_AFTER);
                 self.send(ListenerEvent::Ready);
             }
@@ -243,6 +248,7 @@ impl Driver {
 
     fn on_key_event(&mut self, event: &KeyEvent) {
         let now = Instant::now();
+        self.held = event.modifiers;
         if !std::mem::replace(&mut self.heard_a_key, true) {
             self.send(ListenerEvent::Seen(Seen::FirstKey {
                 key: key_name(event),
@@ -251,7 +257,7 @@ impl Driver {
         }
         let hold_event = match classify(event, self.hold_key, HANDS_FREE) {
             KeyChange::HoldKey => {
-                let sample = sample(self.hold_key);
+                let sample = sample(self.hold_key, self.held);
                 self.send(ListenerEvent::Seen(Seen::HoldKey {
                     down: event.is_key_down,
                     sample,
@@ -274,7 +280,7 @@ impl Driver {
     fn tick_if_due(&mut self) {
         let now = Instant::now();
         if self.machine.next_tick().is_some_and(|due| due <= now)
-            && let Some(event) = self.machine.tick(now, sample(self.hold_key))
+            && let Some(event) = self.machine.tick(now, sample(self.hold_key, self.held))
         {
             self.send(ListenerEvent::Hold(event));
         }

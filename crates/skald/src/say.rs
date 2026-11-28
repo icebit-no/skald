@@ -236,7 +236,7 @@ impl fmt::Display for Line {
                 HoldEvent::Pressed { .. } => "Holdetasten er trykket; opptaket starter om den holdes.",
                 HoldEvent::NotArmed => {
                     "Ikke noe opptak: tasten ble sluppet for tidlig, en annen tast kom til, eller \
-                     maskinvaren sa at tasten var oppe."
+                     Skald leste tasten som oppe."
                 }
                 HoldEvent::Armed { .. } => "Opptaket starter.",
                 HoldEvent::Released => "Holdetasten er sluppet.",
@@ -631,7 +631,7 @@ fn write_seen(f: &mut fmt::Formatter<'_>, seen: &Seen) -> fmt::Result {
             sample,
         } => write!(
             f,
-            "Holdetasten {} ifølge hendelsen; maskinvaren sier holdetasten {}, {}.",
+            "Holdetasten {} ifølge hendelsen; Skald leser holdetasten som {}, {}.",
             down(*pressed),
             if sample.hold_key_down { "nede" } else { "oppe" },
             if sample.other_modifiers_down {
@@ -897,11 +897,11 @@ mod tests {
         assert!(
             Line::Hold(HoldEvent::NotArmed)
                 .to_string()
-                .contains("maskinvaren sa at tasten var oppe")
+                .contains("Skald leste tasten som oppe")
         );
         assert_eq!(
             held.to_string(),
-            "Holdetasten ned ifølge hendelsen; maskinvaren sier holdetasten oppe, ingen andre \
+            "Holdetasten ned ifølge hendelsen; Skald leser holdetasten som oppe, ingen andre \
              modifikatorer."
         );
         assert_eq!(

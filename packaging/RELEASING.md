@@ -140,7 +140,8 @@ OP_ACCOUNT=my.1password.com op read 'op://icebit/Skald - aur key/private key?ssh
    gh repo create icebit-no/scoop-bucket --public --add-readme --description 'Scoop manifests for icebit apps'
    ```
 
-   Users then install with `brew install --cask icebit-no/tap/skald`, and with
+   Homebrew loads casks only from a tap its user trusts, so users install with `brew tap icebit-no/tap`,
+   `brew trust icebit-no/tap` and `brew install --cask icebit-no/tap/skald`; with Scoop,
    `scoop bucket add icebit https://github.com/icebit-no/scoop-bucket` and `scoop install icebit/skald`.
 2. An AUR account to maintain `skald-bin`, with the AUR key's public half. The name was free on 2026-11-28; the
    workflow's first push creates the package, with that account as its maintainer.

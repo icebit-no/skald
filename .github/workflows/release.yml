@@ -303,7 +303,8 @@ jobs:
           mv "$RUNNER_TEMP/bundle/Skald-$VERSION.zip" "$RUNNER_TEMP/out/"
           packaging/macos/cask.sh "$RUNNER_TEMP/out/Skald-$VERSION.zip" "$RUNNER_TEMP/out/homebrew"
 
-      # Homebrew lints a cask only from a tap, so the cask is put in one made here and removed again.
+      # Homebrew lints a cask only from a tap, so the cask is put in one made here, trusted as a user trusts
+      # icebit-no/homebrew-tap, and removed again.
       - name: Check the cask with Homebrew
         env:
           HOMEBREW_NO_AUTO_UPDATE: 1
@@ -313,6 +314,7 @@ jobs:
           brew tap-new --no-git skald-release/check > /dev/null
           tap=$(brew --repository skald-release/check)
           trap 'brew untap skald-release/check > /dev/null' EXIT
+          brew trust skald-release/check
           mkdir -p "$tap/Casks"
           cp "$RUNNER_TEMP/out/homebrew/skald.rb" "$tap/Casks/skald.rb"
           brew style --cask skald-release/check/skald

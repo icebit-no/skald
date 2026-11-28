@@ -5,6 +5,36 @@ decision, and that pull request also edits the page where the rule lives ([desig
 [plan.md](plan.md)). Those pages say what holds; this one says when and why it came to hold. A later decision
 that undoes one adds an entry of its own, and the earlier entry gets one line naming it.
 
+## D-57 — THIRD-PARTY-NOTICES is written from Cargo.lock and checked in CI
+
+2026-11-28, Claude; a script of Python's standard library, checked in CI, set by the lead's brief; what is left
+out and the MPL crate settled by the lead in review.
+
+`THIRD-PARTY-NOTICES` credits what Skald's program carries and what it downloads: the National Library's models,
+with the attribution their cards give and the note that Skald downloads them and does not redistribute them;
+transcribe.cpp with ggml, the code it takes from whisper.cpp and llama.cpp, miniz, the code ggml carries from
+llamafile and YaRN, and on Windows and Linux the Khronos Group's Vulkan and SPIR-V headers its Vulkan backend is
+compiled with; Silero VAD; Alegreya Sans with the font licence; and every Rust crate compiled into `skald` for
+`aarch64-apple-darwin`, `x86_64-pc-windows-msvc` and `x86_64-unknown-linux-gnu`. Those are the normal
+dependencies of `skald` that `cargo metadata` resolves for each target.
+
+`scripts/notices/notices.py` writes the file and the notices workflow fails when it is out of date. A crate's
+licence text comes from its package, or from its repository's root for a crate taken from git. Where a crate
+offers a choice, Skald takes MIT, then Apache 2.0, then the others, preferring one whose text the package ships;
+for a crate that ships none, the Apache 2.0 text kept beside the script, which needs no copyright line, before
+the MIT one. Texts in the standard wording of MIT and Apache 2.0 are printed once, with each crate's copyright
+lines listed beside it; any other text is printed as the crate ships it, once for the crates that ship it alike.
+Public-domain dedications are listed without a text. The script fails on a crate offered only under a copyleft
+licence, on a licence it can take no text for, on a model in `skald-models`' registry or a font or model file in
+the repository it does not credit, and on a copyright line copied by hand that its source no longer has. The
+macOS bundle carries `LICENSE` and the notices in `Contents/Resources`, and the Windows zip as `.txt` files
+(D-51).
+
+Decided by the lead: build dependencies, procedural macros and test-only crates are left out, since they run
+while Skald is built and are not part of the program. `option-ext`, which `dirs` brings in on macOS and Linux,
+is under the MPL 2.0 and is accepted: its copyleft covers its own files, which Skald does not change, and its
+source stays on crates.io; its text is in the notices. Changed: [plan.md](plan.md) M6.
+
 ## D-55 — The overlay's recording hint names the hold key in use
 
 2026-11-28, Claude; the words settled by the lead.

@@ -8,6 +8,7 @@
 use std::ffi::CString;
 use std::fmt;
 use std::path::{Path, PathBuf};
+use std::sync::{Arc, Mutex, PoisonError};
 use std::time::{Duration, Instant};
 
 use skald_core::config::Language;
@@ -132,11 +133,60 @@ pub fn route_logs_to_log_crate() {
 /// A Whisper model, loaded once and kept for every take.
 ///
 /// Drop it before the process exits: the Metal backend aborts the process at exit when a model is still
-/// loaded.
+/// loaded. Dropping it frees the model even while a [`Tokenizer`] made from it is kept.
 pub struct Transcriber {
     // Declared before the model, so it is dropped first.
     session: whisper::Session,
-    model: whisper::Model,
+    model: SharedModel,
+}
+
+/// The loaded model, which a [`Tokenizer`] reads from other threads while the session computes on it.
+/// transcribe.cpp allows a model to be queried from any thread while one run computes; tokenizing reads
+/// only its vocabulary.
+type ModelCell = Arc<Mutex<Option<whisper::Model>>>;
+
+/// The transcriber's hold on the model: freed when the transcriber is dropped, after its session, however
+/// many tokenizers still point at the cell.
+struct SharedModel(ModelCell);
+
+impl SharedModel {
+    fn with<T>(&self, read: impl FnOnce(&whisper::Model) -> T) -> Option<T> {
+        read_model(&self.0, read)
+    }
+}
+
+/// Reads the model in the cell; `None` once it is dropped.
+fn read_model<T>(cell: &ModelCell, read: impl FnOnce(&whisper::Model) -> T) -> Option<T> {
+    cell.lock()
+        .unwrap_or_else(PoisonError::into_inner)
+        .as_ref()
+        .map(read)
+}
+
+impl Drop for SharedModel {
+    fn drop(&mut self) {
+        drop(self.0.lock().unwrap_or_else(PoisonError::into_inner).take());
+    }
+}
+
+/// Counts tokens with a loaded model from any thread, without waiting for a take it transcribes. Once the
+/// model is dropped it counts nothing.
+#[derive(Clone)]
+pub struct Tokenizer {
+    model: ModelCell,
+}
+
+impl fmt::Debug for Tokenizer {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Tokenizer").finish_non_exhaustive()
+    }
+}
+
+impl Tokenizer {
+    /// The tokens a prompt takes, as [`Transcriber`] counts them; `None` once the model is dropped.
+    pub fn count(&self, text: &str) -> Option<usize> {
+        read_model(&self.model, |model| prompt_tokens(model, text))
+    }
 }
 
 impl fmt::Debug for Transcriber {
@@ -159,12 +209,22 @@ impl Transcriber {
             });
         }
         let session = whisper::Session::new(&model)?;
-        Ok(Self { session, model })
+        Ok(Self {
+            session,
+            model: SharedModel(Arc::new(Mutex::new(Some(model)))),
+        })
     }
 
     /// The device the model computes on: «MTL0», the GPU through Metal, on a Mac.
     pub fn device(&self) -> String {
-        self.model.device()
+        self.model.with(whisper::Model::device).unwrap_or_default()
+    }
+
+    /// Counts with this model from other threads, while it transcribes here.
+    pub fn tokenizer(&self) -> Tokenizer {
+        Tokenizer {
+            model: Arc::clone(&self.model.0),
+        }
     }
 
     /// Transcribes 16 kHz mono samples. The prompt is fitted to [`PROMPT_TOKENS`] by dropping whole parts
@@ -198,18 +258,24 @@ impl Transcriber {
     }
 }
 
-/// Counts as the model reads a Whisper prompt: the text trimmed, after one space. A text the tokenizer
-/// cannot take counts as more than any budget, so it is never sent.
 impl CountTokens for Transcriber {
     fn count_tokens(&self, text: &str) -> usize {
-        let text = text.trim();
-        if text.is_empty() {
-            return 0;
-        }
         self.model
-            .tokenize(&format!(" {text}"))
-            .map_or(usize::MAX, |tokens| tokens.len())
+            .with(|model| prompt_tokens(model, text))
+            .unwrap_or(usize::MAX)
     }
+}
+
+/// Counts as the model reads a Whisper prompt: the text trimmed, after one space. A text the tokenizer
+/// cannot take counts as more than any budget, so it is never sent.
+fn prompt_tokens(model: &whisper::Model, text: &str) -> usize {
+    let text = text.trim();
+    if text.is_empty() {
+        return 0;
+    }
+    model
+        .tokenize(&format!(" {text}"))
+        .map_or(usize::MAX, |tokens| tokens.len())
 }
 
 /// NB-Whisper's language tokens: `no` writes bokmål, `nn` nynorsk.
@@ -259,6 +325,11 @@ impl Engine {
 
     pub fn transcriber(&self) -> &Transcriber {
         &self.transcriber
+    }
+
+    /// Counts with the speech model from other threads, while it transcribes takes here.
+    pub fn tokenizer(&self) -> Tokenizer {
+        self.transcriber.tokenizer()
     }
 
     /// The model alone, for transcribing without the silence gate, as a measurement does.

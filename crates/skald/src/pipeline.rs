@@ -1,14 +1,14 @@
 //! What happens to a recording once the take has ended: the silence gate and the model, the corrections,
 //! the insertion and the history. It runs on a thread of its own, which holds the model for as long as Skald
 //! runs, so the keys stay live while the model works and takes are inserted in the order they were made.
-//! The command line's and the settings window's questions that need the model, the ordskatt meter and a
-//! file to transcribe, are answered on the same thread, between takes, as is a word corrected in the
-//! history, which the thread keeps.
+//! A file to transcribe for the command line is done on the same thread, between takes, as is a word
+//! corrected in the history, which the thread keeps. The ordskatt meter's counts need only the model's
+//! tokenizer, which answers from any thread at once, even while a take is transcribed or waits to be pasted.
 
 use std::io;
 use std::path::PathBuf;
-use std::sync::Arc;
 use std::sync::mpsc::{self, Sender};
+use std::sync::{Arc, OnceLock};
 use std::thread::{self, JoinHandle};
 use std::time::{Duration, Instant};
 
@@ -18,7 +18,6 @@ use skald_core::history::Entry;
 use skald_core::silence::Silence;
 use skald_core::silence_gate::{Decision, Reason};
 use skald_core::state::State;
-use skald_core::vocabulary::CountTokens;
 use skald_engine::{Decoding, Engine, Take, TakeOptions};
 use skald_input::{InsertError, InsertOptions, Inserted};
 
@@ -26,12 +25,15 @@ use crate::files;
 use crate::sounds::{Chime, Sound};
 use crate::wav;
 
+/// Counts the tokens a text takes for the loaded model, from any thread and at once, as the ordskatt meter
+/// counts them; `None` once the model is dropped.
+pub(crate) type Counter = Arc<dyn Fn(&str) -> Option<usize> + Send + Sync>;
+
 /// The speech model and the silence gate around it.
 pub(crate) trait Transcribe {
     /// Where the model computes, such as «MTL0».
     fn device(&self) -> String;
-    /// The tokens a text takes for the model, as the ordskatt meter counts them.
-    fn count_tokens(&self, text: &str) -> usize;
+    fn token_counter(&self) -> Counter;
     fn take(
         &mut self,
         samples: &[f32],
@@ -53,8 +55,9 @@ impl Transcribe for Engine {
         self.transcriber().device()
     }
 
-    fn count_tokens(&self, text: &str) -> usize {
-        CountTokens::count_tokens(self, text)
+    fn token_counter(&self) -> Counter {
+        let tokenizer = self.tokenizer();
+        Arc::new(move |text| tokenizer.count(text))
     }
 
     fn take(
@@ -292,10 +295,6 @@ pub(crate) struct Corrected {
 }
 
 impl<T: Transcribe, I> Pipeline<T, I> {
-    pub(crate) fn count_tokens(&self, text: &str) -> usize {
-        self.transcriber.count_tokens(text)
-    }
-
     /// Transcribes a file's samples as a take, through the silence gate, with the configuration's language,
     /// ordskatt and known phrases; nothing is corrected, inserted or kept.
     pub(crate) fn transcribe(&mut self, samples: &[f32], config: &Config) -> Result<Take, String> {
@@ -335,10 +334,6 @@ pub(crate) enum WorkerEvent {
 /// What the worker is asked to do, in the order it was asked.
 enum Work {
     Take(Job),
-    CountTokens {
-        text: String,
-        answer: Sender<usize>,
-    },
     CorrectHistory {
         unix_ms: i64,
         before: String,
@@ -355,6 +350,8 @@ enum Work {
 /// The thread that loads the model, then does the work handed to it one piece at a time.
 pub(crate) struct Worker {
     work: Sender<Work>,
+    /// The model's counter, once it has loaded.
+    tokens: Arc<OnceLock<Counter>>,
     thread: Option<JoinHandle<()>>,
 }
 
@@ -375,6 +372,8 @@ impl Worker {
         L: FnOnce() -> Result<T, String> + Send + 'static,
     {
         let (work, inbox) = mpsc::channel::<Work>();
+        let tokens = Arc::new(OnceLock::new());
+        let counter = Arc::clone(&tokens);
         let thread = thread::Builder::new()
             .name("skald-pipeline".into())
             .spawn(move || {
@@ -388,6 +387,8 @@ impl Worker {
                         return;
                     }
                 };
+                // Before the screen hears of the model, so the meter it then offers counts.
+                let _ = counter.set(transcriber.token_counter());
                 let _ = events.send(WorkerEvent::Loaded {
                     device: transcriber.device(),
                     took: started.elapsed(),
@@ -404,9 +405,6 @@ impl Worker {
                                 });
                             }));
                             let _ = events.send(WorkerEvent::Done(report));
-                        }
-                        Work::CountTokens { text, answer } => {
-                            let _ = answer.send(pipeline.count_tokens(&text));
                         }
                         Work::CorrectHistory {
                             unix_ms,
@@ -432,6 +430,7 @@ impl Worker {
             })?;
         Ok(Self {
             work,
+            tokens,
             thread: Some(thread),
         })
     }
@@ -441,10 +440,11 @@ impl Worker {
         let _ = self.work.send(Work::Take(job));
     }
 
-    /// For the command line's questions, from any thread.
+    /// For the command line's and the settings window's questions, from any thread.
     pub(crate) fn handle(&self) -> WorkerHandle {
         WorkerHandle {
             work: self.work.clone(),
+            tokens: Arc::clone(&self.tokens),
         }
     }
 
@@ -468,20 +468,19 @@ impl Drop for Worker {
     }
 }
 
-/// Asks the worker what needs the model. Each question waits behind the work handed over before it, a
-/// take being transcribed included.
+/// Asks the worker what needs the model. A file to transcribe waits behind the work handed over before
+/// it, a take being transcribed included; a count does not wait.
 #[derive(Clone)]
 pub(crate) struct WorkerHandle {
     work: Sender<Work>,
+    tokens: Arc<OnceLock<Counter>>,
 }
 
 impl WorkerHandle {
-    /// The tokens `text` takes for the model; `None` once the worker has stopped.
+    /// The tokens `text` takes for the model, at once; `None` while the model loads and once it is
+    /// dropped.
     pub(crate) fn count_tokens(&self, text: &str) -> Option<usize> {
-        let (answer, answered) = mpsc::channel();
-        let text = text.to_owned();
-        self.work.send(Work::CountTokens { text, answer }).ok()?;
-        answered.recv().ok()
+        (self.tokens.get()?)(text)
     }
 
     /// Corrects a word in a history entry, after the work handed over before it; the worker reports the
@@ -590,8 +589,12 @@ pub(crate) mod tests {
             "FAKE0".into()
         }
 
-        fn count_tokens(&self, text: &str) -> usize {
-            text.split_whitespace().count()
+        /// A word a token, and nothing once the model is dropped, as the engine's tokenizer.
+        fn token_counter(&self) -> Counter {
+            let dropped = Arc::clone(&self.dropped);
+            Arc::new(move |text: &str| {
+                (!dropped.load(Ordering::SeqCst)).then(|| text.split_whitespace().count())
+            })
         }
 
         fn take(
@@ -1076,6 +1079,80 @@ pub(crate) mod tests {
         worker.finish();
     }
 
+    #[test]
+    fn a_count_is_answered_at_once_while_a_take_waits_to_be_pasted() {
+        let scratch = Scratch::new("worker-count-busy");
+        let (restore, restored) = mpsc::channel::<()>();
+        let (events, received) = mpsc::channel();
+        let worker = Worker::spawn(
+            move || Ok(FakeModel::new([Ok(heard("Hei."))])),
+            SlowRestore { restored },
+            quiet(),
+            State::default(),
+            scratch.0.join("state.toml"),
+            events,
+        )
+        .unwrap();
+        let handle = worker.handle();
+        worker.submit(job(config()));
+        let within = Duration::from_secs(5);
+        assert!(matches!(
+            received.recv_timeout(within),
+            Ok(WorkerEvent::Loaded { .. })
+        ));
+        assert!(matches!(
+            received.recv_timeout(within),
+            Ok(WorkerEvent::Pasted { .. })
+        ));
+
+        let (counted, count) = mpsc::channel();
+        let asking = handle.clone();
+        thread::spawn(move || {
+            let _ = counted.send(asking.count_tokens("Vi merget den."));
+        });
+        assert_eq!(
+            count.recv_timeout(within),
+            Ok(Some(3)),
+            "not behind the take"
+        );
+
+        restore.send(()).unwrap();
+        worker.finish();
+        assert_eq!(
+            handle.count_tokens("Vi merget den."),
+            None,
+            "the model is gone"
+        );
+    }
+
+    #[test]
+    fn a_count_while_the_model_loads_is_none_at_once() {
+        let scratch = Scratch::new("worker-count-loading");
+        let (load, loading) = mpsc::channel::<()>();
+        let (events, received) = mpsc::channel();
+        let worker = Worker::spawn(
+            move || {
+                let _ = loading.recv();
+                Ok(FakeModel::new([]))
+            },
+            FakeInserter::answering(Ok(Inserted::PreviousRestored)),
+            quiet(),
+            State::default(),
+            scratch.0.join("state.toml"),
+            events,
+        )
+        .unwrap();
+        let handle = worker.handle();
+        assert_eq!(handle.count_tokens("Vi merget den."), None);
+        load.send(()).unwrap();
+        assert!(matches!(
+            received.recv_timeout(Duration::from_secs(5)),
+            Ok(WorkerEvent::Loaded { .. })
+        ));
+        assert_eq!(handle.count_tokens("Vi merget den."), Some(3));
+        worker.finish();
+    }
+
     /// Pastes at once and puts the previous clipboard back when the test says so.
     struct SlowRestore {
         restored: mpsc::Receiver<()>,
@@ -1099,7 +1176,7 @@ pub(crate) mod tests {
         let scratch = Scratch::new("worker-questions");
         let model = FakeModel::new([Ok(heard("Hei.")), Ok(silent(Reason::TooLittleSpeech))]);
         let seen = Arc::clone(&model.seen);
-        let (events, _received) = mpsc::channel();
+        let (events, received) = mpsc::channel();
         let worker = Worker::spawn(
             move || Ok(model),
             FakeInserter::answering(Ok(Inserted::PreviousRestored)),
@@ -1110,6 +1187,10 @@ pub(crate) mod tests {
         )
         .unwrap();
         let handle = worker.handle();
+        assert!(matches!(
+            received.recv_timeout(Duration::from_secs(5)),
+            Ok(WorkerEvent::Loaded { .. })
+        ));
         let config = config();
         assert_eq!(
             handle.count_tokens(&config.vocabulary.prompt().text()),

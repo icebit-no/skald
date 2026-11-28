@@ -315,11 +315,12 @@ mod tests {
         _scratch: Scratch,
     }
 
+    /// A running Skald whose model has loaded, so its counts answer.
     fn running(name: &str, takes: Vec<Take>) -> Running {
         let scratch = Scratch::new(name);
         let paths = Paths::in_one_folder(&scratch.0);
         let model = FakeModel::new(takes.into_iter().map(Ok));
-        let (events, _) = mpsc::channel();
+        let (events, received) = mpsc::channel();
         let worker = Worker::spawn(
             move || Ok(model),
             FakeInserter::answering(Ok(Inserted::PreviousRestored)),
@@ -329,6 +330,10 @@ mod tests {
             events,
         )
         .unwrap();
+        assert!(matches!(
+            received.recv_timeout(std::time::Duration::from_secs(5)),
+            Ok(crate::pipeline::WorkerEvent::Loaded { .. })
+        ));
         let settings = Arc::new(Settings::new(Arc::new(Config::default())));
         let control = Control::new(paths.clone(), Arc::clone(&settings), worker.handle());
         Running {

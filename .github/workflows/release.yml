@@ -1,0 +1,659 @@
+# The release pipeline. On a tag vX.Y.Z it builds Skald on all three systems with the packaging scripts, signs the
+# Mac bundle with the Developer ID, notarizes and staples it, and creates the GitHub release with the three
+# archives, SHA256SUMS and the tag's annotation as its notes. Then it commits the cask to the Homebrew tap and the
+# manifest to the Scoop bucket and pushes skald-bin to the AUR, each skipped with a notice while its key is not
+# set; the winget manifests are kept as the run's artifact for a pull request to winget-pkgs by hand.
+#
+# Started by hand, or by a pull request that changes the packaging, it is a dry run: it builds and packs
+# everything, rehearses the Mac signing with a throwaway identity made on the runner, and keeps what a release
+# would publish as the run's artifacts. It reads no secret, signs nothing with the Developer ID and publishes
+# nothing.
+#
+# packaging/RELEASING.md names every secret this reads and how to cut a release; D-58 says why it is built this
+# way. Adapted from Ferric's release workflow (MIT, by the same author).
+name: release
+
+on:
+  push:
+    tags: ['v[0-9]*']
+  # A dry run: by hand on any branch, and on a pull request that changes how a release is built.
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/release.yml'
+      - '.github/actions/vulkan-sdk/**'
+      - 'packaging/macos/**'
+      - 'packaging/windows/**'
+      - 'packaging/linux/**'
+      - 'packaging/arch/**'
+      - '!**.md'
+
+permissions:
+  contents: read
+
+# One release at a time, never cancelled midway. A dry run gives way to a newer one of its own ref and never takes
+# a waiting release's place.
+concurrency:
+  group: ${{ (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')) && 'release' || format('release-dry-run-{0}', github.ref) }}
+  cancel-in-progress: ${{ !(github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')) }}
+
+env:
+  CARGO_TERM_COLOR: always
+  # Every Mac release is signed by this team, since the microphone and Accessibility grants follow it (D-34).
+  APPLE_TEAM_ID: Q4LJS2JYGD
+
+jobs:
+  # What the run reads is required before anything is built, so a release that cannot finish stops at the
+  # cheapest point and names every value it wanted.
+  version:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      prerelease: ${{ steps.version.outputs.prerelease }}
+      release: ${{ steps.version.outputs.release }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Read the version
+        id: version
+        env:
+          RELEASE: ${{ github.event_name == 'push' && startsWith(github.ref, 'refs/tags/') }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          version=$(sed -n '/^\[workspace\.package\]/,/^\[/ s/^version = "\(.*\)"$/\1/p' Cargo.toml)
+          if [ -z "$version" ]; then
+            echo "Cargo.toml names no version under [workspace.package]."
+            exit 1
+          fi
+          if [ "$RELEASE" = true ] && [ "$TAG" != "v$version" ]; then
+            echo "The tag is $TAG and the workspace's version in Cargo.toml is $version. A release's tag is v and that version."
+            exit 1
+          fi
+          # A version with a pre-release part, as 0.2.0-rc.1, which pacman cannot take as a pkgver.
+          case "$version" in
+            *-*) prerelease=true ;;
+            *) prerelease=false ;;
+          esac
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "prerelease=$prerelease" >> "$GITHUB_OUTPUT"
+          echo "release=$RELEASE" >> "$GITHUB_OUTPUT"
+          if [ "$RELEASE" != true ]; then
+            echo "::notice title=Dry run::A dry run of Skald $version. Nothing is signed with the Developer ID or published; what a release would publish is kept as the run's artifacts."
+          elif [ "$prerelease" = true ]; then
+            echo "::notice title=Pre-release::Skald $version becomes a GitHub pre-release and goes to no tap, bucket or AUR."
+          else
+            echo "Releasing Skald $version."
+          fi
+
+      # actions/checkout fetches the tag as a name for the commit, without its annotation.
+      - name: Take the notes from the tag's annotation
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin "+refs/tags/$TAG:refs/tags/$TAG"
+          if [ "$(git cat-file -t "refs/tags/$TAG")" != tag ]; then
+            echo "$TAG is a lightweight tag. A release's notes are its tag's annotation, so it is made with git tag -a (packaging/RELEASING.md)."
+            exit 1
+          fi
+          if [ "$(git rev-parse "refs/tags/$TAG^{commit}")" != "$GITHUB_SHA" ]; then
+            echo "$TAG names another commit than the one this run was started for; it was moved. Release a new version instead."
+            exit 1
+          fi
+          # The message without a signature, if the tag carries one.
+          git tag -l --format='%(contents:subject)%0a%0a%(contents:body)' "$TAG" > "$RUNNER_TEMP/notes.md"
+          if [ -z "$(tr -d '[:space:]' < "$RUNNER_TEMP/notes.md")" ]; then
+            echo "$TAG's annotation is empty, and it is the release's notes."
+            exit 1
+          fi
+          cat "$RUNNER_TEMP/notes.md"
+
+      - name: Write the dry run's notes
+        if: ${{ !(github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')) }}
+        run: |
+          printf 'A dry run of %s at %s. Nothing is released.\n' "$GITHUB_REF_NAME" "$GITHUB_SHA" > "$RUNNER_TEMP/notes.md"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: notes
+          path: ${{ runner.temp }}/notes.md
+          if-no-files-found: error
+
+      # The certificate decides who macOS shows as the developer and which team the grants follow, so one of
+      # another team, or one that is not a Developer ID Application certificate, would cost every user their
+      # grants or fail notarization. Asked here, before the builds; sign.sh asks again.
+      - name: Require the Mac's signing secrets
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+        env:
+          DEVELOPER_ID_P12_BASE64: ${{ secrets.DEVELOPER_ID_P12_BASE64 }}
+          DEVELOPER_ID_P12_PASSWORD: ${{ secrets.DEVELOPER_ID_P12_PASSWORD }}
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
+          REQUIRED: DEVELOPER_ID_P12_BASE64 DEVELOPER_ID_P12_PASSWORD APPLE_API_KEY_P8 APPLE_API_KEY_ID APPLE_API_ISSUER_ID
+        run: |
+          set -euo pipefail
+          missing=""
+          for name in $REQUIRED; do
+            if [ -z "${!name:-}" ]; then
+              missing="$missing $name"
+            fi
+          done
+          if [ -n "$missing" ]; then
+            echo "The release cannot run. These secrets are not set on this repository:$missing"
+            echo "packaging/RELEASING.md says what each of them is and how to set it."
+            exit 1
+          fi
+          refuse() {
+            echo "$1 is set to something the release cannot use. It has to be $2."
+            exit 1
+          }
+          if ! printf '%s\n' "$APPLE_API_KEY_P8" | grep -q 'BEGIN PRIVATE KEY'; then
+            refuse APPLE_API_KEY_P8 "the text of the AuthKey_<id>.p8 file App Store Connect gave"
+          fi
+          if ! printf '%s' "$APPLE_API_KEY_ID" | grep -Eq '^[A-Z0-9]{10}$'; then
+            refuse APPLE_API_KEY_ID "the ten letters and digits of the key's id"
+          fi
+          if ! printf '%s' "$APPLE_API_ISSUER_ID" | grep -Eiq '^[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$'; then
+            refuse APPLE_API_ISSUER_ID "the issuer id App Store Connect shows above its keys, a UUID"
+          fi
+          p12="$RUNNER_TEMP/developer-id.p12"
+          trap 'rm -f "$p12" "$p12.pem"' EXIT
+          if ! printf '%s' "$DEVELOPER_ID_P12_BASE64" | base64 --decode > "$p12" 2>/dev/null; then
+            refuse DEVELOPER_ID_P12_BASE64 "the .p12 file in base64"
+          fi
+          # Keychain Access writes the file with a cipher OpenSSL 3 keeps among its legacy ones.
+          if ! openssl pkcs12 -in "$p12" -nokeys -clcerts -passin env:DEVELOPER_ID_P12_PASSWORD -out "$p12.pem" 2>/dev/null &&
+            ! openssl pkcs12 -legacy -in "$p12" -nokeys -clcerts -passin env:DEVELOPER_ID_P12_PASSWORD -out "$p12.pem" 2>/dev/null; then
+            refuse DEVELOPER_ID_P12_BASE64 "a PKCS#12 file that opens with DEVELOPER_ID_P12_PASSWORD"
+          fi
+          subject=$(openssl x509 -in "$p12.pem" -noout -subject -nameopt RFC2253)
+          echo "$subject"
+          if ! printf '%s' "$subject" | grep -q "CN=Developer ID Application: .*($APPLE_TEAM_ID)" ||
+            ! printf '%s' "$subject" | grep -q "OU=$APPLE_TEAM_ID"; then
+            refuse DEVELOPER_ID_P12_BASE64 "a Developer ID Application certificate of team $APPLE_TEAM_ID"
+          fi
+          if ! openssl x509 -in "$p12.pem" -noout -checkend 0 > /dev/null; then
+            echo "The Developer ID certificate expired on $(openssl x509 -in "$p12.pem" -noout -enddate | cut -d= -f2)."
+            exit 1
+          fi
+          if ! openssl x509 -in "$p12.pem" -noout -checkend $((30 * 24 * 3600)) > /dev/null; then
+            echo "::warning title=Developer ID::The Developer ID certificate expires on $(openssl x509 -in "$p12.pem" -noout -enddate | cut -d= -f2)."
+          fi
+          echo "The Mac's signing secrets are set, and the certificate is team $APPLE_TEAM_ID's Developer ID Application certificate, in date."
+
+  # Skald.app built and signed ad hoc by bundle.sh, which checks what it made. No secret reaches this job, which
+  # runs every build script of the dependencies; the next job signs the bundle on a machine of its own.
+  macos:
+    needs: version
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # rustup installs the toolchain rust-toolchain.toml pins on the first cargo call.
+      - run: packaging/macos/bundle.sh
+
+      # The artifact store keeps no file modes, so the bundle travels as a tarball.
+      - run: tar -C target/release -czf "$RUNNER_TEMP/Skald.app.tar.gz" Skald.app
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: macos-bundle
+          path: ${{ runner.temp }}/Skald.app.tar.gz
+          if-no-files-found: error
+          compression-level: 0
+
+  # Signs with the Developer ID in a keychain of the run's own, notarizes, staples and packs the zip the cask
+  # installs, then runs the signed skald in a step that holds no secret. This job never runs cargo, and the
+  # secrets are each in the one step that needs them.
+  macos-sign:
+    needs: [version, macos]
+    runs-on: macos-15
+    # Notarization usually answers within minutes, and notarize.sh waits an hour at most.
+    timeout-minutes: 90
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: macos-bundle
+          path: ${{ runner.temp }}/bundle
+
+      - run: tar -C "$RUNNER_TEMP/bundle" -xzf "$RUNNER_TEMP/bundle/Skald.app.tar.gz"
+
+      # Apple's intermediate certificate makes the Developer ID identity valid for codesign. It comes with the
+      # runner's image; a dry run fails here, ahead of a tag, should an image ever come without it.
+      - name: Require Apple's Developer ID intermediate on the runner
+        run: |
+          if ! security find-certificate -c "Developer ID Certification Authority" > /dev/null 2>&1 &&
+            ! security find-certificate -c "Developer ID Certification Authority" /Library/Keychains/System.keychain > /dev/null 2>&1; then
+            echo "The runner has no Developer ID Certification Authority, so sign.sh would find the identity not valid. https://www.apple.com/certificateauthority/ has it."
+            exit 1
+          fi
+          echo "The runner has Apple's Developer ID Certification Authority."
+
+      - name: Sign with the Developer ID
+        if: needs.version.outputs.release == 'true'
+        env:
+          DEVELOPER_ID_P12_BASE64: ${{ secrets.DEVELOPER_ID_P12_BASE64 }}
+          DEVELOPER_ID_P12_PASSWORD: ${{ secrets.DEVELOPER_ID_P12_PASSWORD }}
+        run: TMPDIR="$RUNNER_TEMP" packaging/macos/sign.sh "$RUNNER_TEMP/bundle/Skald.app"
+
+      # notarize.sh packs the stapled bundle as Skald-VERSION.zip beside it and checks the zip as a user unpacks it.
+      - name: Notarize, staple and pack
+        if: needs.version.outputs.release == 'true'
+        env:
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
+        run: TMPDIR="$RUNNER_TEMP" packaging/macos/notarize.sh "$RUNNER_TEMP/bundle/Skald.app"
+
+      # The keychain, the import and codesign run as they do in a release, with a self-signed identity made here
+      # and thrown away, so a tag is not the first time they run on GitHub's Mac. The macOS system's own openssl
+      # writes the PKCS#12 cipher the security tool reads.
+      - name: Rehearse the signing with a throwaway identity
+        if: needs.version.outputs.release != 'true'
+        run: |
+          set -euo pipefail
+          rehearsal="$RUNNER_TEMP/rehearsal"
+          mkdir -m 700 "$rehearsal"
+          /usr/bin/openssl req -x509 -newkey rsa:2048 -nodes -days 1 -subj "/CN=Skald rehearsal" \
+            -addext "keyUsage=critical,digitalSignature" -addext "extendedKeyUsage=critical,codeSigning" \
+            -keyout "$rehearsal/key.pem" -out "$rehearsal/cert.pem" 2>/dev/null
+          password=$(/usr/bin/openssl rand -hex 16)
+          /usr/bin/openssl pkcs12 -export -name "Skald rehearsal" -inkey "$rehearsal/key.pem" -in "$rehearsal/cert.pem" \
+            -out "$rehearsal/identity.p12" -passout "pass:$password"
+          DEVELOPER_ID_P12_BASE64=$(base64 -i "$rehearsal/identity.p12") DEVELOPER_ID_P12_PASSWORD="$password" \
+            TMPDIR="$RUNNER_TEMP" packaging/macos/sign.sh --rehearse "$RUNNER_TEMP/bundle/Skald.app"
+          rm -rf "$rehearsal"
+          ditto -c -k --keepParent "$RUNNER_TEMP/bundle/Skald.app" "$RUNNER_TEMP/bundle/Skald-$VERSION.zip"
+
+      # The signed binary has to start, with the hardened runtime and nothing of this job's environment.
+      - name: Run the signed skald
+        run: |
+          set -euo pipefail
+          check="$RUNNER_TEMP/check"
+          mkdir "$check"
+          ditto -x -k "$RUNNER_TEMP/bundle/Skald-$VERSION.zip" "$check"
+          codesign --verify --strict --deep "$check/Skald.app"
+          said=$(env -i HOME="$check/home" PATH=/usr/bin:/bin "$check/Skald.app/Contents/MacOS/skald" --version)
+          if [ "$said" != "skald $VERSION" ]; then
+            echo "The signed skald says '$said', not 'skald $VERSION'."
+            exit 1
+          fi
+          echo "The signed skald runs: $said"
+          rm -rf "$check"
+
+      - name: Write the cask
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/out"
+          mv "$RUNNER_TEMP/bundle/Skald-$VERSION.zip" "$RUNNER_TEMP/out/"
+          packaging/macos/cask.sh "$RUNNER_TEMP/out/Skald-$VERSION.zip" "$RUNNER_TEMP/out/homebrew"
+
+      # Homebrew lints a cask only from a tap, so the cask is put in one made here, trusted as a user trusts
+      # icebit-no/homebrew-tap, and removed again.
+      - name: Check the cask with Homebrew
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: 1
+          HOMEBREW_NO_ANALYTICS: 1
+        run: |
+          set -euo pipefail
+          brew tap-new --no-git skald-release/check > /dev/null
+          tap=$(brew --repository skald-release/check)
+          trap 'brew untap skald-release/check > /dev/null' EXIT
+          brew trust skald-release/check
+          mkdir -p "$tap/Casks"
+          cp "$RUNNER_TEMP/out/homebrew/skald.rb" "$tap/Casks/skald.rb"
+          brew style --cask skald-release/check/skald
+          brew audit --cask --strict skald-release/check/skald
+          {
+            echo "### Casks/skald.rb"
+            echo '```ruby'
+            cat "$RUNNER_TEMP/out/homebrew/skald.rb"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: macos
+          path: ${{ runner.temp }}/out/
+          if-no-files-found: error
+          compression-level: 0
+
+      # sign.sh deletes its keychain however it ends; a step stopped outright leaves it on the search list.
+      - name: Delete a signing keychain a stopped step left
+        if: always()
+        run: |
+          for keychain in "$RUNNER_TEMP"/skald-sign.*/signing.keychain-db; do
+            [ -e "$keychain" ] || continue
+            security delete-keychain "$keychain" || true
+            echo "deleted $keychain"
+          done
+
+  # The Windows zip and its Scoop and winget manifests, as the windows-package workflow builds them. No secret
+  # reaches this job, and nothing signs the zip until SignPath Foundation does (packaging/windows/README.md).
+  windows:
+    needs: version
+    runs-on: windows-latest
+    timeout-minutes: 90
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      # The runner's Git turns line endings into CRLF on checkout; the files Skald embeds expect the repository's
+      # bytes.
+      - run: git config --global core.autocrlf false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: ./.github/actions/vulkan-sdk
+
+      # A release build, the zip, and a start of the exe from the unpacked zip.
+      - run: ./packaging/windows/package.ps1
+
+      - name: Fill the manifests
+        run: |
+          $zip = "target/package/skald-$env:VERSION-windows-x86_64.zip"
+          if (-not (Test-Path $zip)) { throw "package.ps1 packed no $zip." }
+          $sha256 = (Get-Content "$zip.sha256" -Raw).Split(' ')[0]
+          ./packaging/windows/manifests.ps1 -Version $env:VERSION -Sha256 $sha256
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: windows
+          path: |
+            target/package/skald-${{ needs.version.outputs.version }}-windows-x86_64.zip
+            target/package/skald-${{ needs.version.outputs.version }}-windows-x86_64.zip.sha256
+            target/package/manifests/scoop/
+          if-no-files-found: error
+          compression-level: 0
+
+      # winget-pkgs takes a pull request from a person's account, so the manifests are kept for one by hand.
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: winget
+          path: target/package/manifests/winget/
+          if-no-files-found: error
+
+  # The Linux tarball, and skald-bin built from it, installed and run on Arch before its PKGBUILD is written for
+  # the AUR. No secret reaches this job.
+  linux:
+    needs: version
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+      # Pinned by digest, as the actions are by commit. container.sh brings it up to date before it builds.
+      ARCH_IMAGE: archlinux:base-devel-20261108.0.623074@sha256:fa2d4ce3310ddd90a4208e5168be8ad367da5129af1245f38fd2d803bcbe3239
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The system libraries the crates link, as in the linux workflow: ALSA for cpal; Wayland, xkbcommon, X11's
+      # xcb and fontconfig for GPUI; the Vulkan and SPIR-V headers, the Vulkan loader and glslc for
+      # transcribe.cpp's Vulkan backend.
+      - run: >-
+          sudo apt-get update &&
+          sudo apt-get install -y --no-install-recommends
+          libasound2-dev libfontconfig-dev libwayland-dev libxkbcommon-x11-dev libx11-xcb-dev
+          libvulkan-dev spirv-headers glslc
+
+      - run: packaging/linux/tarball.sh
+
+      # A pre-release's version is not a version pacman takes, and a pre-release goes to no AUR.
+      - name: Try skald-bin on Arch and write it for the AUR
+        if: needs.version.outputs.prerelease == 'false'
+        run: |
+          docker run --rm -v "$PWD:/src:ro" -v "$PWD/target/dist:/dist" "$ARCH_IMAGE" \
+            /src/packaging/arch/container.sh "/dist/skald-$VERSION-linux-x86_64.tar.gz" /dist/aur
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: linux
+          path: |
+            target/dist/skald-${{ needs.version.outputs.version }}-linux-x86_64.tar.gz
+            target/dist/skald-${{ needs.version.outputs.version }}-linux-x86_64.tar.gz.sha256
+            target/dist/aur/
+          if-no-files-found: error
+          # The AUR wants .SRCINFO beside the PKGBUILD.
+          include-hidden-files: true
+          compression-level: 0
+
+  # The GitHub release: the three archives, the Windows zip's .sha256, which Scoop's autoupdate reads, and
+  # SHA256SUMS, made as a draft and published once every file is on it. A dry run keeps the same files as its
+  # artifact release.
+  release:
+    needs: [version, macos-sign, windows, linux]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    outputs:
+      newest: ${{ steps.newest.outputs.newest }}
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+      PRERELEASE: ${{ needs.version.outputs.prerelease }}
+      TAG: ${{ github.ref_name }}
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          path: ${{ runner.temp }}/in
+          pattern: '{macos,windows,linux,notes}'
+
+      - name: Collect the release's files and write SHA256SUMS
+        run: |
+          set -euo pipefail
+          in="$RUNNER_TEMP/in"
+          dist="$RUNNER_TEMP/dist"
+          mkdir "$dist"
+          windows="skald-$VERSION-windows-x86_64.zip"
+          linux="skald-$VERSION-linux-x86_64.tar.gz"
+          # Each .sha256 the packaging scripts wrote has to name the bytes that are here.
+          (cd "$in/windows" && sha256sum --check --strict "$windows.sha256")
+          (cd "$in/linux" && sha256sum --check --strict "$linux.sha256")
+          cp "$in/macos/Skald-$VERSION.zip" "$in/windows/$windows" "$in/windows/$windows.sha256" "$in/linux/$linux" "$dist/"
+          (cd "$dist" && sha256sum "Skald-$VERSION.zip" "$windows" "$linux" > SHA256SUMS)
+          {
+            echo "### The release's files"
+            echo '```'
+            cat "$dist/SHA256SUMS"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          ls -l "$dist"
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: needs.version.outputs.release != 'true'
+        with:
+          name: release
+          path: ${{ runner.temp }}/dist/
+          if-no-files-found: error
+          compression-level: 0
+
+      # An older version released after a newer one, a fix on an older line, is not marked as the latest, and the
+      # tap, the bucket and the AUR keep the newer one.
+      - name: Ask whether this is the newest release
+        id: newest
+        if: needs.version.outputs.release == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          newest=true
+          if [ "$PRERELEASE" = true ]; then
+            newest=false
+          else
+            highest=$(gh release list -R "$GITHUB_REPOSITORY" --exclude-drafts --exclude-pre-releases --limit 1000 \
+              --json tagName -q '.[].tagName' | sed -n 's/^v//p' | { cat; echo "$VERSION"; } | sort -V | tail -n 1)
+            if [ "$highest" != "$VERSION" ]; then
+              newest=false
+              echo "::warning title=Not the newest::Skald $highest is released already, so $VERSION is not marked as the latest release and goes to no tap, bucket or AUR."
+            fi
+          fi
+          echo "newest=$newest" >> "$GITHUB_OUTPUT"
+
+      - name: Create the GitHub release
+        if: needs.version.outputs.release == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NEWEST: ${{ steps.newest.outputs.newest }}
+        run: |
+          set -euo pipefail
+          notes="$RUNNER_TEMP/in/notes/notes.md"
+          files=("$RUNNER_TEMP/dist"/*)
+          state=$(gh release view "$TAG" -R "$GITHUB_REPOSITORY" --json isDraft -q .isDraft 2>/dev/null || echo none)
+          case "$state" in
+            none)
+              flags=(--draft --verify-tag --title "Skald $VERSION" --notes-file "$notes")
+              if [ "$PRERELEASE" = true ]; then
+                flags+=(--prerelease)
+              fi
+              gh release create "$TAG" -R "$GITHUB_REPOSITORY" "${flags[@]}" "${files[@]}"
+              ;;
+            true)
+              # A rerun after this step stopped before publishing finds its draft, whose files are replaced.
+              gh release upload "$TAG" -R "$GITHUB_REPOSITORY" --clobber "${files[@]}"
+              gh release edit "$TAG" -R "$GITHUB_REPOSITORY" --notes-file "$notes"
+              ;;
+            false)
+              echo "Skald $VERSION is published already; its files are compared with this run's below."
+              ;;
+          esac
+          if [ "$state" != false ]; then
+            gh release edit "$TAG" -R "$GITHUB_REPOSITORY" --draft=false --latest="$NEWEST"
+          fi
+
+      # What the release serves is fetched the way the cask, the Scoop manifest and the PKGBUILD fetch it, since
+      # each of them names a file's checksum and refuses other bytes.
+      - name: Require the published files to be this run's
+        if: needs.version.outputs.release == 'true'
+        run: |
+          set -euo pipefail
+          check="$RUNNER_TEMP/check"
+          mkdir "$check"
+          for file in "$RUNNER_TEMP/dist"/*; do
+            name=$(basename "$file")
+            url="https://github.com/$GITHUB_REPOSITORY/releases/download/$TAG/$name"
+            curl -fsSL --retry 5 --retry-all-errors -o "$check/$name" "$url"
+            if ! cmp -s "$file" "$check/$name"; then
+              echo "$url is not the file this run made."
+              exit 1
+            fi
+            echo "$url is this run's $name."
+          done
+          echo "The winget manifests are the run's artifact winget; packaging/RELEASING.md says how to send them to winget-pkgs." >> "$GITHUB_STEP_SUMMARY"
+
+  # The cask, the Scoop manifest and skald-bin, each committed with a key of its own that reaches that one
+  # repository. Without its key a target is skipped with a notice, so the first release need not wait on all three.
+  publish:
+    needs: [version, release]
+    if: needs.version.outputs.release == 'true' && needs.release.outputs.newest == 'true'
+    name: publish (${{ matrix.target }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: Homebrew tap
+            secret: HOMEBREW_TAP_DEPLOY_KEY
+            remote: git@github.com:icebit-no/homebrew-tap.git
+            branch: main
+            artifact: macos
+            from: homebrew
+            to: Casks
+            package: skald
+            # GitHub's own key (api.github.com/meta), so the push goes to github.com and nowhere else.
+            known_host: github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl
+          - target: Scoop bucket
+            secret: SCOOP_BUCKET_DEPLOY_KEY
+            remote: git@github.com:icebit-no/scoop-bucket.git
+            branch: main
+            artifact: windows
+            from: manifests/scoop
+            to: bucket
+            package: skald
+            known_host: github.com ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIOMqqnkVzrm0SdG6UOoqKLsabgH5C9okWi0dh2l9GKJl
+          - target: AUR
+            secret: AUR_SSH_KEY
+            # The AUR makes the package on its first push.
+            remote: ssh://aur@aur.archlinux.org/skald-bin.git
+            branch: master
+            artifact: linux
+            from: aur
+            to: .
+            package: skald-bin
+            # The key the AUR's front page lists (SHA256:RFzBCUItH9LZS0cKB5UE6ceAYhBD5C8GeOBip8Z11+4).
+            known_host: aur.archlinux.org ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIEuBKrPzbawxA/k2g6NcyV5jmqwJ2s+zpgZGZ7tpLIcN
+    env:
+      VERSION: ${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: ${{ matrix.artifact }}
+          path: ${{ runner.temp }}/in
+
+      - name: Commit to the ${{ matrix.target }}
+        env:
+          KEY: ${{ secrets[matrix.secret] }}
+          SECRET: ${{ matrix.secret }}
+          TARGET: ${{ matrix.target }}
+          REMOTE: ${{ matrix.remote }}
+          BRANCH: ${{ matrix.branch }}
+          FROM: ${{ matrix.from }}
+          TO: ${{ matrix.to }}
+          PACKAGE: ${{ matrix.package }}
+          KNOWN_HOST: ${{ matrix.known_host }}
+        run: |
+          set -euo pipefail
+          if [ -z "${KEY:-}" ]; then
+            skipped="$SECRET is not set, so Skald $VERSION goes to no $TARGET. The run's artifact ${{ matrix.artifact }} holds what would have gone there; packaging/RELEASING.md says how to make the key."
+            echo "::notice title=$TARGET::$skipped"
+            echo "$skipped" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          if ! printf '%s\n' "$KEY" | grep -q 'BEGIN OPENSSH PRIVATE KEY'; then
+            echo "$SECRET is set to something this cannot use. It has to be the private half of an SSH key in OpenSSH's format."
+            exit 1
+          fi
+          key="$RUNNER_TEMP/key"
+          (umask 077 && printf '%s\n' "$KEY" > "$key")
+          printf '%s\n' "$KNOWN_HOST" > "$RUNNER_TEMP/known_hosts"
+          export GIT_SSH_COMMAND="ssh -i $key -o IdentitiesOnly=yes -o BatchMode=yes -o StrictHostKeyChecking=yes -o UserKnownHostsFile=$RUNNER_TEMP/known_hosts"
+          repository="$RUNNER_TEMP/repository"
+          git clone --quiet --depth 1 "$REMOTE" "$repository"
+          mkdir -p "$repository/$TO"
+          cp -R "$RUNNER_TEMP/in/$FROM/." "$repository/$TO/"
+          git -C "$repository" add -A
+          if git -C "$repository" diff --cached --quiet; then
+            echo "The $TARGET carries $PACKAGE $VERSION already."
+          else
+            git -C "$repository" -c user.name="github-actions[bot]" \
+              -c user.email="41898282+github-actions[bot]@users.noreply.github.com" \
+              commit --quiet -m "$PACKAGE $VERSION"
+            git -C "$repository" push --quiet origin "HEAD:$BRANCH"
+            echo "The $TARGET carries $PACKAGE $VERSION."
+          fi
+          git -C "$repository" show --stat HEAD
+          echo "The $TARGET carries $PACKAGE $VERSION." >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Remove the key
+        if: always()
+        run: |
+          rm -f "$RUNNER_TEMP/key"
+          if [ -e "$RUNNER_TEMP/key" ]; then
+            echo "The key is still on this runner."
+            exit 1
+          fi

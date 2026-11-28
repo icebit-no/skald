@@ -134,12 +134,16 @@ Design: [Site](design.md#site).
 - [x] `THIRD-PARTY-NOTICES` written from Cargo.lock by `scripts/notices/` and checked in CI, and carried in the
       macOS bundle and the Windows zip (D-57); a README that says how to build and run Skald from source.
 - [ ] Release pipeline after Ferric's: notarize on the Mac runner, cask to `icebit-no/homebrew-tap`, manifest
-      to `icebit-no/scoop-bucket`, AUR.
+      to `icebit-no/scoop-bucket`, AUR. Built in `.github/workflows/release.yml` (D-58), tried by its dry run;
+      ticked once Thomas has done the steps in `packaging/RELEASING.md` (the tap and the bucket, the AUR
+      account, the keys and the secrets) and the first tag is released.
 - [ ] `icebit-no/skald-site`: Astro, an nginx image, app-sync and Caddy on svalbard, at skald.icebit.app.
 - [ ] Entry in the icebit.app rack.
 
 ## Waiting on Thomas
 
+- The first release: the tap and the bucket repositories, an AUR account, three SSH keys and the secrets, then
+  the tag, as `packaging/RELEASING.md` says.
 - The test set: three runs of `skald bench record`, about ten minutes each, as research/test-set/README.md says.
 - The hero of the site: concept A, «Skalden i stamnen», is chosen; it needs final polish and a bokmål version.
 - Nordlyd: access to `NbAiLab/nordlyd-asr-qwen06B-nov26preview` must be requested on Hugging Face before it

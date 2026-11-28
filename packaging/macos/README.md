@@ -1,13 +1,16 @@
 # Skald.app
 
 How Skald is built into a macOS app bundle, signed with a Developer ID, notarized by Apple and stapled. Why the
-bundle is made this way is in [D-34](../../docs/decisions.md); the release pipeline that runs these steps on a tag
-belongs to M6 in [plan.md](../../docs/plan.md).
+bundle is made this way is in [D-34](../../docs/decisions.md); how the release workflow runs these steps on a tag
+is in [RELEASING.md](../RELEASING.md).
 
 | File | Does |
 |---|---|
 | `bundle.sh` | Builds `skald` in release mode and makes `target/release/Skald.app`, signed ad hoc or with the Developer ID |
+| `sign.sh` | Signs a bundle again with a Developer ID handed over in the environment, in a keychain of the run's own, as the release workflow does |
 | `notarize.sh` | Sends a Developer ID bundle to Apple, staples the ticket, checks Gatekeeper's verdict and packs the zip |
+| `cask.sh` | Writes the Homebrew cask for a release's zip from `skald.rb` |
+| `skald.rb` | The cask for `icebit-no/homebrew-tap`, with placeholders |
 | `Info.plist` | The bundle's Info.plist; `bundle.sh` fills in the version and the oldest macOS |
 | `skald.entitlements` | The one entitlement the app has: the microphone |
 
@@ -103,8 +106,38 @@ ln -sf /Applications/Skald.app/Contents/MacOS/skald ~/.local/bin/skald
 
 `skald last`, `skald vocab add …` and the other commands then talk to the running Skald, or work on the
 configuration file when it is not running ([design.md](../../docs/design.md#command-line)). The Homebrew cask
-(D-14, M6) will make the same link for its users.
+makes the same link for its users.
+
+## In the release workflow
+
+The release workflow signs on a GitHub runner, whose login keychain holds no identity, and keeps the build and the
+signing apart: one job builds the bundle with `bundle.sh`, signed ad hoc and with no secret in reach of the
+dependencies' build scripts, and another, which never runs cargo, signs it again with `sign.sh`:
+
+```sh
+DEVELOPER_ID_P12_BASE64=… DEVELOPER_ID_P12_PASSWORD=… packaging/macos/sign.sh target/release/Skald.app
+```
+
+`sign.sh` takes the *Developer ID Application* certificate of team `Q4LJS2JYGD` with its private key as a `.p12`
+file in base64, and the file's password. It removes both from its environment before it runs anything, imports
+the identity into a keychain it makes for the run, adds that keychain to the end of the search list while codesign
+runs, and deletes it however the run ends. It signs with the hardened runtime, the entitlements and a secure
+timestamp, and checks the identifier, the signer, the team and the entitlements, as `bundle.sh --developer-id`
+does; it runs nothing from the bundle. `--rehearse` takes whatever code-signing identity the file holds, a
+self-signed one included, so the dry run tries the keychain and codesign without the Developer ID.
+
+`notarize.sh` then notarizes, staples and packs the zip, and `cask.sh` writes the cask from it:
+
+```sh
+packaging/macos/cask.sh target/release/Skald-0.1.0.zip
+```
+
+It reads the version and the oldest macOS from the bundle's Info.plist inside the zip, requires the version to be
+the one in the zip's name, and writes `target/dist/homebrew/skald.rb` with the zip's SHA-256. The cask installs
+Skald.app and links its `skald` onto the PATH, depends on Apple Silicon and the bundle's oldest macOS, quits Skald
+before an upgrade or an uninstall, and with `--zap` moves `~/Library/Application Support/Skald` to the Trash. The
+secrets and how to set them are in [RELEASING.md](../RELEASING.md).
 
 ## Credits
 
-`bundle.sh` and `notarize.sh` are adapted from the macOS packaging of Ferric (MIT, by the same author).
+`bundle.sh`, `sign.sh` and `notarize.sh` are adapted from the macOS packaging of Ferric (MIT, by the same author).

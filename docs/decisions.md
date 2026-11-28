@@ -5,6 +5,38 @@ decision, and that pull request also edits the page where the rule lives ([desig
 [plan.md](plan.md)). Those pages say what holds; this one says when and why it came to hold. A later decision
 that undoes one adds an entry of its own, and the earlier entry gets one line naming it.
 
+## D-58 — A tag releases to GitHub, the tap, the bucket and the AUR; the Mac bundle is signed apart from its build
+
+2026-11-28, Claude; GitHub's own runners, the secrets from 1Password and winget by hand set by the lead's brief.
+
+`.github/workflows/release.yml` releases on an annotated tag `vX.Y.Z` that matches the workspace's version, and
+the tag's annotation is the release's notes, which «Sagaen» on the site reads (design.md, Site). The downloads
+are the GitHub release's files: the notarized `Skald-X.Y.Z.zip`, the Windows zip with its `.sha256` for Scoop's
+`autoupdate`, the Linux tarball, and `SHA256SUMS`. The cask, the Scoop manifest and skald-bin name those files and
+their checksums, so the release is made as a draft, published once every file is on it, and read back before any
+of them is committed. Every job runs on GitHub's own runners, since the repository is public.
+
+The Mac bundle is built in one job, signed ad hoc and with no secret in reach of the dependencies' build scripts,
+and signed with the Developer ID in another, which never runs cargo, on a runner of its own. `packaging/macos/sign.sh`
+imports the certificate into a keychain made for the run and deleted however it ends; `notarize.sh` notarizes,
+staples and packs. The five Apple secrets are Ferric's, since the certificate and the key are the team's and
+every release is signed by team `Q4LJS2JYGD` (D-34); a release stops before it builds when one is missing, its
+certificate is another team's, or it has expired.
+
+The cask goes to `icebit-no/homebrew-tap` and the manifest to `icebit-no/scoop-bucket` (D-14), each committed
+with a deploy key that reaches that one repository, and skald-bin to the AUR with an SSH key of its own; each is
+skipped with a notice while its key is not set, so the first release need not wait on all three. The PKGBUILD
+goes only after skald-bin has been built, installed and run from the tarball in an Arch container. winget-pkgs
+takes pull requests from a person's account, so its manifests are kept as the run's artifact for Thomas to send.
+A pre-release tag (`v0.2.0-rc.1`) becomes a GitHub pre-release and goes nowhere else, since pacman takes no
+hyphen in a version and the tap and the bucket have no channel for one; a version older than one released is not
+marked latest and goes nowhere else either, so no user is moved back.
+
+A dry run, by hand or on a pull request that changes the packaging, builds and packs all of it, rehearses the
+signing with a self-signed identity made on the runner, and keeps the files as artifacts, so the pipeline is tried
+before a tag. Adapted from Ferric's release workflow (MIT, by the same author). Changed: [plan.md](plan.md) M6;
+the steps for Thomas are in `packaging/RELEASING.md`.
+
 ## D-57 — THIRD-PARTY-NOTICES is written from Cargo.lock and checked in CI
 
 2026-11-28, Claude; a script of Python's standard library, checked in CI, set by the lead's brief; what is left

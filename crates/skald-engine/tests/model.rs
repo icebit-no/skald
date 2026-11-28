@@ -162,6 +162,16 @@ fn counts_prompt_tokens_as_the_engine_check() {
         engine.count_tokens("  Skald "),
         engine.count_tokens("Skald")
     );
+
+    let tokenizer = engine.tokenizer();
+    let sentence = "Vi merget pull-requesten i går.";
+    let counted = std::thread::spawn({
+        let tokenizer = tokenizer.clone();
+        move || tokenizer.count(sentence)
+    });
+    assert_eq!(counted.join().unwrap(), Some(engine.count_tokens(sentence)));
+    drop(engine);
+    assert_eq!(tokenizer.count(sentence), None, "the model is freed");
 }
 
 #[test]

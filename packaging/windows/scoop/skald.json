@@ -1,0 +1,35 @@
+{
+    "version": "{{version}}",
+    "description": "Norsk diktering på maskinen: hold høyre Ctrl, snakk, slipp. Talemodeller fra Nasjonalbiblioteket.",
+    "homepage": "https://skald.icebit.app",
+    "license": "MIT",
+    "suggest": {
+        "Microsoft Visual C++ Redistributable": "extras/vcredist2022"
+    },
+    "architecture": {
+        "64bit": {
+            "url": "{{url}}",
+            "hash": "{{sha256}}"
+        }
+    },
+    "bin": "skald.exe",
+    "shortcuts": [
+        [
+            "skald.exe",
+            "Skald"
+        ]
+    ],
+    "checkver": {
+        "github": "https://github.com/icebit-no/skald"
+    },
+    "autoupdate": {
+        "architecture": {
+            "64bit": {
+                "url": "https://github.com/icebit-no/skald/releases/download/v$version/skald-$version-windows-x86_64.zip"
+            }
+        },
+        "hash": {
+            "url": "$url.sha256"
+        }
+    }
+}

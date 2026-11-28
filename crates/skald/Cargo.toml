@@ -42,7 +42,11 @@ block2 = "=0.6.2"
 objc2 = "=0.6.5"
 objc2-foundation = { version = "=0.3.2", default-features = false, features = ["std", "NSError", "NSString"] }
 
-# The console's Ctrl-C and close events, which end the loop as the signals do on Unix. This version is in
-# the tree through skald-models.
+# The console, which a command attaches to and whose Ctrl-C and close end the loop as the signals do on
+# Unix, and the Run key for start at login. This version is in the tree through skald-models.
 [target.'cfg(windows)'.dependencies]
-windows-sys = { version = "=0.61.2", features = ["Win32_Foundation", "Win32_System_Console"] }
+windows-sys = { version = "=0.61.2", features = [
+    "Win32_Foundation",
+    "Win32_System_Console",
+    "Win32_System_Registry",
+] }
